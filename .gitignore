@@ -1,0 +1,30 @@
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Node
+node_modules/
+package.json
+package-lock.json
+
+# Local pre-change backups (revert anchors)
+_physics-backup-*/
+
+# Calibration / harness ephemera (gitignored cache; committed inputs in
+# scripts/data/ are not affected, e.g. paths.json, harness.baseline*.json)
+scripts/data/.cache/
+scripts/outputs/
+
+# OS
+.DS_Store
+Thumbs.db
+*~
+*.bak

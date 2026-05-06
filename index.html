@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Real-time Propagation | ionocast</title>
+<meta name="description" content="Live HF and VHF band-condition predictor for amateur radio. Real-time solar, geomagnetic, and ionospheric data through a station-aware SNR budget.">
+<meta name="author" content="Toprak Kilic, TA1BUT">
+<meta name="application-name" content="ionocast">
+<link rel="canonical" href="https://ionocast.org/">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Real-time Propagation | ionocast">
+<meta property="og:description" content="Live HF and VHF band-condition predictor for amateur radio. Real-time solar, geomagnetic, and ionospheric data through a station-aware SNR budget.">
+<meta property="og:url" content="https://ionocast.org/">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="tr_TR">
+<meta property="og:image" content="https://ionocast.org/assets/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="ionocast logo and tagline: live HF and VHF band-condition predictor for amateur radio.">
+<meta property="og:site_name" content="ionocast">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Real-time Propagation | ionocast">
+<meta name="twitter:description" content="Live HF and VHF band-condition predictor for amateur radio. Real-time solar, geomagnetic, and ionospheric data through a station-aware SNR budget.">
+<meta name="twitter:image" content="https://ionocast.org/assets/og-image.png">
+<meta name="twitter:image:alt" content="ionocast logo and tagline: live HF and VHF band-condition predictor for amateur radio.">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ionocast">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="msapplication-TileColor" content="#ffffff">
+<meta name="msapplication-TileImage" content="/assets/icon-192.png">
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://sdo.gsfc.nasa.gov">
+<link rel="preconnect" href="https://services.swpc.noaa.gov">
+<link rel="preconnect" href="https://prop.kc2g.com">
+<link rel="preconnect" href="https://www.sws.bom.gov.au">
+<link rel="preconnect" href="https://www.sidc.be">
+<link rel="preconnect" href="https://www.timeanddate.com">
+<link rel="preconnect" href="https://db1.wspr.live">
+<link rel="stylesheet" href="style.css">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "ionocast",
+  "url": "https://ionocast.org/",
+  "description": "Live HF and VHF band-condition predictor for amateur radio. Real-time solar, geomagnetic, and ionospheric data through a station-aware SNR budget.",
+  "applicationCategory": "Science",
+  "applicationSubCategory": "Amateur radio propagation",
+  "operatingSystem": "Any (browser-based)",
+  "browserRequirements": "Requires JavaScript and a modern browser",
+  "isAccessibleForFree": true,
+  "inLanguage": ["en", "tr"],
+  "image": "https://ionocast.org/assets/og-image.png",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Toprak Kilic",
+    "alternateName": "TA1BUT",
+    "email": "ta1but@toprakkilic.com"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="top"></div>
+<header>
+  <div class="header-row">
+    <h1><img src="assets/logo.svg" alt="ionocast" class="logo"></h1>
+    <div class="controls">
+      <button id="settings-toggle" type="button" aria-label="Settings" aria-expanded="false" title="Settings (location, theme, power, antenna, mode, noise)">&#9881;</button>
+    </div>
+  </div>
+  <div class="sub"><span id="sub-text">Solar, space weather, and HF/VHF propagation</span><span id="refreshed"></span></div>
+  <div id="utc-clock" class="utc-clock"></div>
+  <nav id="toc" class="toc"></nav>
+</header>
+
+<main id="content"></main>
+
+<noscript>
+  <p class="bootstrap-warn">
+    ionocast needs JavaScript. Most panels are derived live in the browser
+    from SWPC, kc2g, GIRO, and other live sources.
+  </p>
+</noscript>
+
+<p id="bootstrap-hint" class="bootstrap-warn" hidden>
+  This page is loaded from a <code>file://</code> URL, so the ES modules
+  it depends on are blocked by the browser. Serve it over HTTP instead:
+  <code>npx wrangler@4 pages dev .</code> &nbsp;or&nbsp;
+  <code>python3 -m http.server</code>, then open <code>http://localhost:8000/</code>.
+</p>
+<script src="src/bootstrap-hint.js"></script>
+
+<footer>
+  <a href="#top">Back to top</a>
+  <a href="https://ko-fi.com/K3K71YK6YE" target="_blank" rel="noopener"><img class="kofi-button" height="36" src="https://storage.ko-fi.com/cdn/kofi3.png?v=6" alt="Buy Me a Coffee at ko-fi.com" /></a>
+  <p><small><span id="built-by">Built by Toprak Kilic, TA1BUT</span>. Contact: <a href="mailto:ta1but@toprakkilic.com">ta1but@toprakkilic.com</a></small></p>
+</footer>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

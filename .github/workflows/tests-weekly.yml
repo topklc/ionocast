@@ -1,0 +1,59 @@
+name: tests (weekly, full + heavy)
+
+# Runs the full test matrix once a week, including the heavy tuning
+# sweeps (tune-r7, voacap-fixtures) that the daily and per-push
+# workflows skip. Heavy suites regenerate the VOACAP fixtures from
+# voacapl and run the R7 calibration grid; each adds tens of minutes
+# but catches calibration drift that lighter suites cannot detect.
+#
+# Cadence: 03:00 UTC every Sunday. Off-hours, weekend, isolated from
+# weekday cron traffic on the runners.
+#
+# Failure modes:
+#   - tune-r7 sweep produces a different optimum: suite fails with the
+#     new optimum vs the recorded value. Investigate; either retune or
+#     update the recorded constants in src/constants.js if the shift
+#     is real.
+#   - voacap-fixtures regen disagrees with checked-in fixtures: suite
+#     fails. Re-run scripts/tests.mjs --suite=voacap-fixtures --heavy
+#     locally and commit the updated fixtures.
+#   - upstream network failure: suite fails with a network error.
+#     Re-run via workflow_dispatch.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+jobs:
+  weekly:
+    name: all suites + heavy
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Populate harness cache (required by tune-r7)
+        # tune-r7 reads scripts/.cache/harness.json; without this step
+        # the suite reports `{ skipped: "missing harness.json" }` and
+        # the weekly run never exercises the calibration grid.
+        # `--no-cache` forces a fresh ~30-day fetch from upstream
+        # (WSPR + Kp + F10.7 + GIRO) which takes ~5-15 minutes.
+        run: node scripts/harness.mjs --window-days=30 --no-cache
+
+      - name: Run all suites including heavy
+        run: node scripts/tests.mjs --suite=all --heavy
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-report-weekly
+          path: scripts/outputs/tests.report.json
+          if-no-files-found: warn
+          retention-days: 90

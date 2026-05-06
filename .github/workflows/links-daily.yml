@@ -1,0 +1,77 @@
+name: link check (daily)
+
+# Daily scan of upstream URLs referenced in the codebase: data-source
+# CREDITS, SECTIONS image links, README, licenses page, and paper
+# bibliography. Catches dead links from data providers (SWPC /
+# NASA SDO / kc2g / GIRO / SILSO / GFZ / WDC Kyoto / IMO / etc.)
+# before they surface as broken image tiles or 404s in the operator UI.
+#
+# Cadence: 05:00 UTC daily. Off-peak for most upstream services and
+# isolated from the other scheduled workflows (data-wspr-refresh
+# 06:00, tests-daily 07:00).
+#
+# Failure modes:
+#   - dead link (404 / 410 / DNS fail): workflow fails; lychee report
+#     uploaded as artifact. Either update the reference (sections.js
+#     / CREDITS / paper bibliography) or remove the dead source.
+#   - upstream rate-limited (429) / transient (503): accepted as
+#     success; lychee retries 3x with backoff before giving up.
+#   - 403: accepted because some servers block CI user-agents but
+#     the URL is valid in browsers (NASA / SDO behave this way).
+#   - lychee action itself updates and breaks parsing: rare; pin
+#     a specific @v2.x.y tag if drift becomes a problem.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+jobs:
+  links:
+    name: lychee scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Scope: docs (README + licenses page + paper bibliography)
+          # plus the one JS file that hosts the CREDITS array and the
+          # SECTIONS image URLs. Other src/* files reference /api/*
+          # paths only, no external URLs worth checking.
+          args: |
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --max-retries 3
+            --retry-wait-time 5
+            --accept 200,203,206,301,302,304,403,429,503
+            --exclude ^https://db1\.wspr\.live/?$
+            --exclude ^https://github\.com/e46401ff/ionocast/?$
+            ./README.md
+            ./licenses.html
+            ./index.html
+            ./src/ui/sections.js
+            ./paper/ionocast-methodology.tex
+          fail: true
+          # --exclude rationale (verified 2026-05-06):
+          #   db1.wspr.live (bare endpoint): always 400 with body
+          #     "DB::Exception: Empty query" because ClickHouse
+          #     requires ?query=...; runtime never hits the bare URL.
+          #   github.com/e46401ff/ionocast: 404 to unauthenticated
+          #     visitors because the repo is private. Linked from
+          #     licenses.html and README; replace exclude with the
+          #     real public URL when / if the repo goes public.
+
+      - name: Upload lychee report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: ./lychee/out.md
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,42 @@
+name: keepalive
+
+# Pings this workflow via the GitHub API to register repository
+# activity, which keeps GitHub from auto-disabling scheduled
+# workflows after 60 days of inactivity in public repos.
+#
+# Belt-and-suspenders backup for data-wspr-refresh.yml, which already
+# commits daily under normal conditions (the spot-baselines.mjs file
+# embeds a `generated` timestamp that changes every run, so the diff
+# is never empty). If wspr.live is ever unreachable for an extended
+# period, this keepalive ensures the schedules stay enabled even
+# without the daily commit.
+#
+# API mode (no git commits) so the repo's history stays clean. Runs
+# weekly on Monday 00:00 UTC, well inside the 60-day window with
+# plenty of margin for missed runs.
+#
+# Failure modes:
+#   - keepalive-workflow action update breaks behavior: GitHub emails
+#     a warning 5 days before disable; re-enable manually in the
+#     Actions tab.
+#   - the keepalive workflow itself gets disabled: once off, it stays
+#     off. Re-enable by hand. Daily wspr-refresh commits are the
+#     primary safety net here.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gautamkrishnar/keepalive-workflow@v2

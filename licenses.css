@@ -1,0 +1,25 @@
+/* Long-form prose page; routes through the standardized tokens
+   (--accent-muted, --border, --muted, --font-mono) defined in
+   style.css. h2 inherits the canonical section-heading rule
+   (16px ink, 3px ink left border). The h3 override below is
+   deliberate: license sub-sections ("Voluntary donations",
+   "Development transparency") read as prose sub-heads in --ink,
+   not as the uppercase muted data-panel labels canonical h3
+   carries elsewhere. Body / list font-size 13px and caption
+   font-size 12px also stay denser than the data-page defaults
+   because prose pages benefit from tighter rhythm.
+
+   Extracted from licenses.html on 2026-05-06 so the page satisfies
+   the strict CSP (`style-src 'self'`) declared in /_headers, which
+   blocks inline <style>. */
+.licenses-page main h3{font-size:13px;margin:22px 0 8px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:600}
+.licenses-page main p{font-size:13px;line-height:1.55;margin:0 0 10px;max-width:760px}
+.licenses-page main ul,.licenses-page main ol{margin:0 0 10px;padding-left:20px;font-size:13px;line-height:1.55}
+.licenses-page main ul li,.licenses-page main ol li{margin:4px 0}
+.licenses-page main blockquote{margin:8px 0 10px;padding:8px 12px;border-left:3px solid var(--border);color:var(--muted);font-size:12px;line-height:1.5;max-width:760px}
+.licenses-page main code{background:var(--accent-muted);font-family:var(--font-mono);padding:1px 5px;border-radius:3px;font-size:12px}
+.licenses-page main table{border-collapse:collapse;margin:8px 0 16px;font-size:12px;line-height:1.4}
+.licenses-page main th,.licenses-page main td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top}
+.licenses-page main th{background:var(--accent-muted);font-weight:600}
+.licenses-meta,.ack-note{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:6px}
+.ack-note{max-width:760px}

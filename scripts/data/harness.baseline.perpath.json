@@ -1,0 +1,2570 @@
+{
+  "generated": "2026-05-06T16:02:56.625Z",
+  "groundTruthMode": "per-path",
+  "bboxDeg": 5,
+  "windowDays": 30,
+  "config": {
+    "lIonoHfDb": 1,
+    "defocusDbPerExtraHop": 0.25,
+    "bandBiasDb": {},
+    "perBandSigma": true,
+    "sigmaBaseDb": 8,
+    "refPowerDbm": 50,
+    "snrRequiredDb": 3,
+    "fusionEnabled": false,
+    "scatterWeight": 1.5,
+    "nvisTailWeight": 0,
+    "esWeight": 0,
+    "sigmaScale": 1,
+    "lowBandScale": 1,
+    "esScreenScale": 1,
+    "fusionMaxKm": null
+  },
+  "f107": 156,
+  "f107A": 126.8,
+  "n": 252350,
+  "byBand": {
+    "160 m": {
+      "brierBin": 0.721943932871212,
+      "nBin": 25235,
+      "accBin": 0.1989696849613632,
+      "marginMean": 17.412555424209856,
+      "marginStd": 12.223552381332212,
+      "pOpenMean": 0.8813326083548095,
+      "openRate": 0.10505250643946899
+    },
+    "80 m": {
+      "brierBin": 0.8217504004011262,
+      "nBin": 25235,
+      "accBin": 0.1654448187041807,
+      "marginMean": 30.081931044527952,
+      "marginStd": 10.189115540121469,
+      "pOpenMean": 0.9919589065473675,
+      "openRate": 0.16389934614622548
+    },
+    "60 m": {
+      "brierBin": 0.889866935145759,
+      "nBin": 25235,
+      "accBin": 0.10865860907469783,
+      "marginMean": 35.50900201065029,
+      "marginStd": 9.013731455399585,
+      "pOpenMean": 0.9991005843303834,
+      "openRate": 0.10853972657023975
+    },
+    "40 m": {
+      "brierBin": 0.7059524301913561,
+      "nBin": 25235,
+      "accBin": 0.29348127600554785,
+      "marginMean": 38.11958920470324,
+      "marginStd": 8.652885094809221,
+      "pOpenMean": 0.9996775064561498,
+      "openRate": 0.29348127600554785
+    },
+    "30 m": {
+      "brierBin": 0.6312752933622106,
+      "nBin": 25235,
+      "accBin": 0.3674261937784823,
+      "marginMean": 35.69358100206295,
+      "marginStd": 8.848491873491913,
+      "pOpenMean": 0.9991139041364826,
+      "openRate": 0.3674261937784823
+    },
+    "20 m": {
+      "brierBin": 0.4979221351815632,
+      "nBin": 25235,
+      "accBin": 0.4680800475530018,
+      "marginMean": 29.131119447877733,
+      "marginStd": 12.687953863900727,
+      "pOpenMean": 0.9561853863363861,
+      "openRate": 0.45880721220527043
+    },
+    "17 m": {
+      "brierBin": 0.49363661989293117,
+      "nBin": 25235,
+      "accBin": 0.4292054685952051,
+      "marginMean": 20.11056824066855,
+      "marginStd": 15.994502924623871,
+      "pOpenMean": 0.845156347300044,
+      "openRate": 0.31353279175747967
+    },
+    "15 m": {
+      "brierBin": 0.3670504228077574,
+      "nBin": 25235,
+      "accBin": 0.5432137903705171,
+      "marginMean": 14.759589862105262,
+      "marginStd": 17.400674521985486,
+      "pOpenMean": 0.7443127909944065,
+      "openRate": 0.31234396671289877
+    },
+    "12 m": {
+      "brierBin": 0.35883947499311364,
+      "nBin": 25235,
+      "accBin": 0.5692490588468397,
+      "marginMean": 8.206339419158876,
+      "marginStd": 17.64543826667795,
+      "pOpenMean": 0.6248410343150143,
+      "openRate": 0.16901129383792352
+    },
+    "10 m": {
+      "brierBin": 0.2504924560967667,
+      "nBin": 25235,
+      "accBin": 0.6881711908064196,
+      "marginMean": 3.5335510701817374,
+      "marginStd": 17.12143546961891,
+      "pOpenMean": 0.5420533479631366,
+      "openRate": 0.21711908064196553
+    }
+  },
+  "cell": {
+    "EU-EU short|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 22.617506314478433,
+      "marginStd": 8.292631760195588,
+      "pOpenMean": 0.9704977157448288
+    },
+    "EU-EU west|160 m": {
+      "n": 721,
+      "openRate": 0.4174757281553398,
+      "marginMean": 26.693433455826053,
+      "marginStd": 8.437311294619317,
+      "pOpenMean": 0.9872056935634732
+    },
+    "EU-EU east|160 m": {
+      "n": 721,
+      "openRate": 0.009708737864077669,
+      "marginMean": 25.51162931974479,
+      "marginStd": 7.935696064105161,
+      "pOpenMean": 0.9869854127080623
+    },
+    "EU-NA mid|160 m": {
+      "n": 721,
+      "openRate": 0.12205270457697642,
+      "marginMean": 17.628794200398882,
+      "marginStd": 8.828847002322552,
+      "pOpenMean": 0.91883682202126
+    },
+    "EU-NA north|160 m": {
+      "n": 721,
+      "openRate": 0.17614424410540916,
+      "marginMean": 19.175362590044365,
+      "marginStd": 7.953449071402783,
+      "pOpenMean": 0.9493018459830069
+    },
+    "EU-NA south|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 15.065629992564732,
+      "marginStd": 9.242600771655976,
+      "pOpenMean": 0.8695198502656449
+    },
+    "NA-EU east|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 15.678010010098756,
+      "marginStd": 7.499485932232785,
+      "pOpenMean": 0.9188449867949984
+    },
+    "NA-NA west-east|160 m": {
+      "n": 721,
+      "openRate": 0.09431345353675451,
+      "marginMean": 19.822864220250914,
+      "marginStd": 9.21592350840044,
+      "pOpenMean": 0.9394655258101448
+    },
+    "EU-Asia|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 13.00320811155033,
+      "marginStd": 5.991790625459429,
+      "pOpenMean": 0.9079721750614795
+    },
+    "NA-Asia|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 13.93670457234403,
+      "marginStd": 7.9720340039110775,
+      "pOpenMean": 0.8763785204216668
+    },
+    "Hawaii-VK|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 13.475960030237674,
+      "marginStd": 9.714391061113307,
+      "pOpenMean": 0.8336783363087833
+    },
+    "Hawaii-NA|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 20.44910284802723,
+      "marginStd": 9.82353502983872,
+      "pOpenMean": 0.9305813382073357
+    },
+    "Hawaii-JA|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 15.845761476001476,
+      "marginStd": 9.703902716594575,
+      "pOpenMean": 0.8722139237215172
+    },
+    "EU-South Africa|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 12.679103334660836,
+      "marginStd": 10.409376387401341,
+      "pOpenMean": 0.80773026642688
+    },
+    "NA-Brazil|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 13.713876560731366,
+      "marginStd": 10.484564497374965,
+      "pOpenMean": 0.8228445550521701
+    },
+    "EU-Brazil|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 13.445077176117014,
+      "marginStd": 10.484522780210124,
+      "pOpenMean": 0.8185941480813115
+    },
+    "VK-EU|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 6.778820317576887,
+      "marginStd": 10.471216346577881,
+      "pOpenMean": 0.7033514423956794
+    },
+    "VK-EU west|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 4.539754471240673,
+      "marginStd": 10.476796192209305,
+      "pOpenMean": 0.6596256507477402
+    },
+    "VK-NA|160 m": {
+      "n": 721,
+      "openRate": 0.016643550624133148,
+      "marginMean": 9.611703526362742,
+      "marginStd": 10.302116712588546,
+      "pOpenMean": 0.7585066267528469
+    },
+    "JA-VK|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 13.879421296820242,
+      "marginStd": 10.198513898176724,
+      "pOpenMean": 0.8309213402509119
+    },
+    "JA-EU|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 14.83862157192307,
+      "marginStd": 6.6868770782512685,
+      "pOpenMean": 0.9145378587990456
+    },
+    "NA-Argentina|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 12.455452886620963,
+      "marginStd": 10.300045057739755,
+      "pOpenMean": 0.8061477177422648
+    },
+    "EU-Argentina|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 11.460433504362701,
+      "marginStd": 10.282660221737492,
+      "pOpenMean": 0.7900774625427298
+    },
+    "Polar W-UA|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 16.110924561128346,
+      "marginStd": 7.02272310509399,
+      "pOpenMean": 0.9319747671926575
+    },
+    "Polar W6-EU|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 14.569153181230197,
+      "marginStd": 5.845870419331779,
+      "pOpenMean": 0.9375078477195549
+    },
+    "Polar W-NA|160 m": {
+      "n": 721,
+      "openRate": 0.09431345353675451,
+      "marginMean": 19.822864220250917,
+      "marginStd": 9.215923508400431,
+      "pOpenMean": 0.9394655258101448
+    },
+    "Equator NA|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 8.562189091318626,
+      "marginStd": 10.063388147247297,
+      "pOpenMean": 0.743519961763346
+    },
+    "Asia-VK|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 14.841777968960269,
+      "marginStd": 9.780171169330837,
+      "pOpenMean": 0.8537673242506882
+    },
+    "Asia-EU short|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 16.19399911417653,
+      "marginStd": 6.666745703685208,
+      "pOpenMean": 0.9330495305068942
+    },
+    "NVIS DE-NL|160 m": {
+      "n": 721,
+      "openRate": 0.7836338418862691,
+      "marginMean": 38.342102251096186,
+      "marginStd": 7.644007407130969,
+      "pOpenMean": 0.9996325011128246
+    },
+    "NVIS GB-FR|160 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 42.59528050726369,
+      "marginStd": 7.974110017290354,
+      "pOpenMean": 0.9998553538333391
+    },
+    "NVIS US-CA|160 m": {
+      "n": 721,
+      "openRate": 0.9583911234396671,
+      "marginMean": 38.07218959753046,
+      "marginStd": 9.06926656075031,
+      "pOpenMean": 0.9963607239712111
+    },
+    "NA-IT|160 m": {
+      "n": 721,
+      "openRate": 0.004160887656033287,
+      "marginMean": 15.722800005649441,
+      "marginStd": 8.278930861806437,
+      "pOpenMean": 0.9040270724878514
+    },
+    "EU-Mid-East|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 21.61559797504057,
+      "marginStd": 9.156093396298994,
+      "pOpenMean": 0.9525819435277848
+    },
+    "ZL-W6|160 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 10.68432958572388,
+      "marginStd": 10.057689439469911,
+      "pOpenMean": 0.7810795248379172
+    },
+    "EU-EU short|80 m": {
+      "n": 721,
+      "openRate": 0.13314840499306518,
+      "marginMean": 35.40468576725549,
+      "marginStd": 5.330977560127368,
+      "pOpenMean": 0.9999049261941917
+    },
+    "EU-EU west|80 m": {
+      "n": 721,
+      "openRate": 0.4895977808599168,
+      "marginMean": 39.50615693060502,
+      "marginStd": 5.455050069524555,
+      "pOpenMean": 0.9999508975124329
+    },
+    "EU-EU east|80 m": {
+      "n": 721,
+      "openRate": 0.14424410540915394,
+      "marginMean": 38.21214538084614,
+      "marginStd": 5.10151889835577,
+      "pOpenMean": 0.9999791914300822
+    },
+    "EU-NA mid|80 m": {
+      "n": 721,
+      "openRate": 0.3897364771151179,
+      "marginMean": 30.34257167173706,
+      "marginStd": 5.904524611156302,
+      "pOpenMean": 0.996216167119267
+    },
+    "EU-NA north|80 m": {
+      "n": 721,
+      "openRate": 0.37170596393897365,
+      "marginMean": 31.57252298608616,
+      "marginStd": 5.779329876396441,
+      "pOpenMean": 0.9941689949450929
+    },
+    "EU-NA south|80 m": {
+      "n": 721,
+      "openRate": 0.005547850208044383,
+      "marginMean": 27.96014162754961,
+      "marginStd": 5.941671924636029,
+      "pOpenMean": 0.9973520543794662
+    },
+    "NA-EU east|80 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 27.97352932134713,
+      "marginStd": 5.491385635999319,
+      "pOpenMean": 0.9917410782920557
+    },
+    "NA-NA west-east|80 m": {
+      "n": 721,
+      "openRate": 0.39528432732316227,
+      "marginMean": 32.59839604899669,
+      "marginStd": 6.181830090498006,
+      "pOpenMean": 0.9961746200183221
+    },
+    "EU-Asia|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 24.71224889673139,
+      "marginStd": 4.610773821951982,
+      "pOpenMean": 0.9885681289318035
+    },
+    "NA-Asia|80 m": {
+      "n": 721,
+      "openRate": 0.013869625520110958,
+      "marginMean": 26.385547846978564,
+      "marginStd": 5.124879002514304,
+      "pOpenMean": 0.997066529009206
+    },
+    "Hawaii-VK|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 26.129148509494357,
+      "marginStd": 6.244965682144235,
+      "pOpenMean": 0.9939132169327475
+    },
+    "Hawaii-NA|80 m": {
+      "n": 721,
+      "openRate": 0.19833564493758668,
+      "marginMean": 33.57784711885252,
+      "marginStd": 6.315129662039437,
+      "pOpenMean": 0.9995706984540194
+    },
+    "Hawaii-JA|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 28.82251443181039,
+      "marginStd": 6.23822317495277,
+      "pOpenMean": 0.997645402873167
+    },
+    "EU-South Africa|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 25.608291743187475,
+      "marginStd": 6.691741963329309,
+      "pOpenMean": 0.9916286118840736
+    },
+    "NA-Brazil|80 m": {
+      "n": 721,
+      "openRate": 0.012482662968099861,
+      "marginMean": 26.78844523078857,
+      "marginStd": 6.740077176885019,
+      "pOpenMean": 0.9939494171592353
+    },
+    "EU-Brazil|80 m": {
+      "n": 721,
+      "openRate": 0.011095700416088766,
+      "marginMean": 26.511266928342334,
+      "marginStd": 6.740050358706937,
+      "pOpenMean": 0.9934226152644106
+    },
+    "VK-EU|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 19.63115440744945,
+      "marginStd": 6.731496222799911,
+      "pOpenMean": 0.9637193935602435
+    },
+    "VK-EU west|80 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 17.2659208412383,
+      "marginStd": 6.735083266420424,
+      "pOpenMean": 0.9418725617321234
+    },
+    "VK-NA|80 m": {
+      "n": 721,
+      "openRate": 0.008321775312066574,
+      "marginMean": 22.464640705021303,
+      "marginStd": 6.622789315235373,
+      "pOpenMean": 0.9812767263418626
+    },
+    "JA-VK|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 26.838799786931926,
+      "marginStd": 6.556187505969916,
+      "pOpenMean": 0.9943884485424336
+    },
+    "JA-EU|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 26.999560524314894,
+      "marginStd": 4.291915084256177,
+      "pOpenMean": 0.9984716031071965
+    },
+    "NA-Argentina|80 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 25.33913701264176,
+      "marginStd": 6.621457537118264,
+      "pOpenMean": 0.9911795566855971
+    },
+    "EU-Argentina|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 24.331772452452146,
+      "marginStd": 6.610281571116576,
+      "pOpenMean": 0.9884359079983541
+    },
+    "Polar W-UA|80 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 28.251979037390807,
+      "marginStd": 5.236398101884808,
+      "pOpenMean": 0.9918514214232956
+    },
+    "Polar W6-EU|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 26.100426894125746,
+      "marginStd": 4.7071871944235175,
+      "pOpenMean": 0.9874624815772646
+    },
+    "Polar W-NA|80 m": {
+      "n": 721,
+      "openRate": 0.39528432732316227,
+      "marginMean": 32.59839604899669,
+      "marginStd": 6.181830090497988,
+      "pOpenMean": 0.9961746200183221
+    },
+    "Equator NA|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 21.20672791315901,
+      "marginStd": 6.469320951801817,
+      "pOpenMean": 0.97594018781919
+    },
+    "Asia-VK|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 27.641196772770332,
+      "marginStd": 6.287252894569916,
+      "pOpenMean": 0.9960868454164941
+    },
+    "Asia-EU short|80 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 28.47207419481606,
+      "marginStd": 4.284258381260482,
+      "pOpenMean": 0.99912386864486
+    },
+    "NVIS DE-NL|80 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 50.9283178694085,
+      "marginStd": 5.107835234539429,
+      "pOpenMean": 0.9999929795142183
+    },
+    "NVIS GB-FR|80 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 55.26124443869135,
+      "marginStd": 5.317540223305906,
+      "pOpenMean": 0.999998315873012
+    },
+    "NVIS US-CA|80 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 50.95070198915725,
+      "marginStd": 6.087134761338047,
+      "pOpenMean": 0.9996642835942743
+    },
+    "NA-IT|80 m": {
+      "n": 721,
+      "openRate": 0.12482662968099861,
+      "marginMean": 28.416463387373163,
+      "marginStd": 5.481531745411474,
+      "pOpenMean": 0.995763406984151
+    },
+    "EU-Mid-East|80 m": {
+      "n": 721,
+      "openRate": 0.03467406380027739,
+      "marginMean": 34.612069176201715,
+      "marginStd": 5.886060040476974,
+      "pOpenMean": 0.9997950869676432
+    },
+    "ZL-W6|80 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 23.451542665736476,
+      "marginStd": 6.465657496802194,
+      "pOpenMean": 0.9861114829567924
+    },
+    "EU-EU short|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 40.9079436299967,
+      "marginStd": 2.96165420006722,
+      "pOpenMean": 0.9999991968806049
+    },
+    "EU-EU west|60 m": {
+      "n": 721,
+      "openRate": 0.5284327323162274,
+      "marginMean": 45.03123143137085,
+      "marginStd": 3.0698256639772756,
+      "pOpenMean": 0.9999997534939739
+    },
+    "EU-EU east|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 43.64607253024671,
+      "marginStd": 2.8341771657518957,
+      "pOpenMean": 0.9999998690762989
+    },
+    "EU-NA mid|60 m": {
+      "n": 721,
+      "openRate": 0.39944521497919555,
+      "marginMean": 35.796286360972935,
+      "marginStd": 3.695658298430042,
+      "pOpenMean": 0.9985151133930167
+    },
+    "EU-NA north|60 m": {
+      "n": 721,
+      "openRate": 0.37031900138696255,
+      "marginMean": 36.82337714577094,
+      "marginStd": 3.9880224383015483,
+      "pOpenMean": 0.99842374299582
+    },
+    "EU-NA south|60 m": {
+      "n": 721,
+      "openRate": 0.008321775312066574,
+      "marginMean": 33.55844364770262,
+      "marginStd": 3.300928847022225,
+      "pOpenMean": 0.9999444919553822
+    },
+    "NA-EU east|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 33.14307061319689,
+      "marginStd": 3.8406276472433265,
+      "pOpenMean": 0.9974381303277582
+    },
+    "NA-NA west-east|60 m": {
+      "n": 721,
+      "openRate": 0.1276005547850208,
+      "marginMean": 38.1348491314239,
+      "marginStd": 3.592069888123636,
+      "pOpenMean": 0.9995977903875439
+    },
+    "EU-Asia|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 29.421785779373895,
+      "marginStd": 3.437254592126408,
+      "pOpenMean": 0.9960694348261194
+    },
+    "NA-Asia|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 31.636493590497945,
+      "marginStd": 2.8471550013990132,
+      "pOpenMean": 0.9998972910983815
+    },
+    "Hawaii-VK|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 31.54357041671145,
+      "marginStd": 3.469425378967452,
+      "pOpenMean": 0.9998308721909451
+    },
+    "Hawaii-NA|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 39.35435683603225,
+      "marginStd": 3.50840536779616,
+      "pOpenMean": 0.9999967404562821
+    },
+    "Hawaii-JA|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 34.48660950862253,
+      "marginStd": 3.465679541643491,
+      "pOpenMean": 0.9999598894776126
+    },
+    "EU-South Africa|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 31.243513593820694,
+      "marginStd": 3.7176344240713313,
+      "pOpenMean": 0.9997790944049628
+    },
+    "NA-Brazil|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 32.53079287899991,
+      "marginStd": 3.7444873204919906,
+      "pOpenMean": 0.9998735678014791
+    },
+    "EU-Brazil|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 32.24691144228798,
+      "marginStd": 3.7444724215048897,
+      "pOpenMean": 0.9998561147243652
+    },
+    "VK-EU|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 25.214071214805752,
+      "marginStd": 3.7397201237765136,
+      "pOpenMean": 0.997616826233387
+    },
+    "VK-EU west|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 22.757081884341208,
+      "marginStd": 3.741712925788214,
+      "pOpenMean": 0.9945109517751632
+    },
+    "VK-NA|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 28.038861571760002,
+      "marginStd": 3.679327397352812,
+      "pOpenMean": 0.999182429627098
+    },
+    "JA-VK|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 32.48899529118668,
+      "marginStd": 3.642326392204016,
+      "pOpenMean": 0.9998774334441812
+    },
+    "JA-EU|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 32.00790513544274,
+      "marginStd": 2.3872614465853563,
+      "pOpenMean": 0.9999347092706584
+    },
+    "NA-Argentina|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 30.937955437270023,
+      "marginStd": 3.6785875206227883,
+      "pOpenMean": 0.9997525993252099
+    },
+    "EU-Argentina|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 29.920714734735135,
+      "marginStd": 3.6723786506211766,
+      "pOpenMean": 0.9996201718635674
+    },
+    "Polar W-UA|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 33.29794846125248,
+      "marginStd": 3.7355574770174798,
+      "pOpenMean": 0.9974388436201536
+    },
+    "Polar W6-EU|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 30.667750118940006,
+      "marginStd": 3.5640045553133763,
+      "pOpenMean": 0.9955104938666866
+    },
+    "Polar W-NA|60 m": {
+      "n": 721,
+      "openRate": 0.1276005547850208,
+      "marginMean": 38.1348491314239,
+      "marginStd": 3.592069888123636,
+      "pOpenMean": 0.9995977903875439
+    },
+    "Equator NA|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 26.623408506089195,
+      "marginStd": 3.5940671954462173,
+      "pOpenMean": 0.9986479653286545
+    },
+    "Asia-VK|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 33.16342452798375,
+      "marginStd": 3.492918274762451,
+      "pOpenMean": 0.9999178935921458
+    },
+    "Asia-EU short|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 33.569102925026485,
+      "marginStd": 2.3807497765548047,
+      "pOpenMean": 0.9999700760129581
+    },
+    "NVIS DE-NL|60 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 56.27080466457729,
+      "marginStd": 3.2343381174928627,
+      "pOpenMean": 0.9999989351755774
+    },
+    "NVIS GB-FR|60 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 60.66752988435195,
+      "marginStd": 3.3427792426544594,
+      "pOpenMean": 0.9999998460479602
+    },
+    "NVIS US-CA|60 m": {
+      "n": 721,
+      "openRate": 0.1553398058252427,
+      "marginMean": 56.5270262029779,
+      "marginStd": 3.82338125831307,
+      "pOpenMean": 0.9999830433455668
+    },
+    "NA-IT|60 m": {
+      "n": 721,
+      "openRate": 0.08183079056865465,
+      "marginMean": 33.782387452369846,
+      "marginStd": 3.496064937407279,
+      "pOpenMean": 0.9983241006410568
+    },
+    "EU-Mid-East|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 40.28276043764936,
+      "marginStd": 3.270033355821609,
+      "pOpenMean": 0.9999984581335912
+    },
+    "ZL-W6|60 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 28.957184253558182,
+      "marginStd": 3.592031942669779,
+      "pOpenMean": 0.999456790382496
+    },
+    "EU-EU short|40 m": {
+      "n": 721,
+      "openRate": 0.14840499306518723,
+      "marginMean": 43.57095726748031,
+      "marginStd": 1.7769925200430958,
+      "pOpenMean": 0.9999999447138342
+    },
+    "EU-EU west|40 m": {
+      "n": 721,
+      "openRate": 0.9944521497919556,
+      "marginMean": 47.70433678841988,
+      "marginStd": 1.889328358963656,
+      "pOpenMean": 0.9999999902496844
+    },
+    "EU-EU east|40 m": {
+      "n": 721,
+      "openRate": 0.31900138696255204,
+      "marginMean": 46.27442081105997,
+      "marginStd": 1.70050629945329,
+      "pOpenMean": 0.9999999920019577
+    },
+    "EU-NA mid|40 m": {
+      "n": 721,
+      "openRate": 0.5381414701803051,
+      "marginMean": 38.42060469363992,
+      "marginStd": 2.7342257904308793,
+      "pOpenMean": 0.9991745877940402
+    },
+    "EU-NA north|40 m": {
+      "n": 721,
+      "openRate": 0.6047156726768377,
+      "marginMean": 39.36699335404199,
+      "marginStd": 3.0936066080916893,
+      "pOpenMean": 0.9993146207517569
+    },
+    "EU-NA south|40 m": {
+      "n": 721,
+      "openRate": 0.3092926490984743,
+      "marginMean": 36.25505564582917,
+      "marginStd": 1.9805573082106671,
+      "pOpenMean": 0.9999942771880013
+    },
+    "NA-EU east|40 m": {
+      "n": 721,
+      "openRate": 0.09153952843273232,
+      "marginMean": 35.64603038755069,
+      "marginStd": 3.0113711144802586,
+      "pOpenMean": 0.9987833944278318
+    },
+    "NA-NA west-east|40 m": {
+      "n": 721,
+      "openRate": 0.5894590846047156,
+      "marginMean": 40.8056244830951,
+      "marginStd": 2.278296115896114,
+      "pOpenMean": 0.9999791401541918
+    },
+    "EU-Asia|40 m": {
+      "n": 721,
+      "openRate": 0.004160887656033287,
+      "marginMean": 31.680819631059634,
+      "marginStd": 2.8056698518136374,
+      "pOpenMean": 0.9980774664909426
+    },
+    "NA-Asia|40 m": {
+      "n": 721,
+      "openRate": 0.2815533980582524,
+      "marginMean": 34.14550373224338,
+      "marginStd": 1.7082930008356279,
+      "pOpenMean": 0.999984516981195
+    },
+    "Hawaii-VK|40 m": {
+      "n": 721,
+      "openRate": 0.044382801664355064,
+      "marginMean": 34.13431864030531,
+      "marginStd": 2.0816552273813995,
+      "pOpenMean": 0.9999802841670824
+    },
+    "Hawaii-NA|40 m": {
+      "n": 721,
+      "openRate": 0.5700416088765603,
+      "marginMean": 42.153996400735046,
+      "marginStd": 2.105043220682021,
+      "pOpenMean": 0.9999998150342796
+    },
+    "Hawaii-JA|40 m": {
+      "n": 721,
+      "openRate": 0.1608876560332871,
+      "marginMean": 37.21611803507841,
+      "marginStd": 2.0794077249859697,
+      "pOpenMean": 0.9999964311550449
+    },
+    "EU-South Africa|40 m": {
+      "n": 721,
+      "openRate": 0.009708737864077669,
+      "marginMean": 33.94466178912226,
+      "marginStd": 2.2305806544479903,
+      "pOpenMean": 0.9999764199053215
+    },
+    "NA-Brazil|40 m": {
+      "n": 721,
+      "openRate": 0.420249653259362,
+      "marginMean": 35.299427691155195,
+      "marginStd": 2.2466923922918687,
+      "pOpenMean": 0.9999883372214818
+    },
+    "EU-Brazil|40 m": {
+      "n": 721,
+      "openRate": 0.18585298196948682,
+      "marginMean": 35.0121946873105,
+      "marginStd": 2.24668345290112,
+      "pOpenMean": 0.999986398213166
+    },
+    "VK-EU|40 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 27.875143170405224,
+      "marginStd": 2.2438320742654856,
+      "pOpenMean": 0.9995807821824509
+    },
+    "VK-EU west|40 m": {
+      "n": 721,
+      "openRate": 0.059639389736477116,
+      "marginMean": 25.358352239750058,
+      "marginStd": 2.2450277554718965,
+      "pOpenMean": 0.9988086951107611
+    },
+    "VK-NA|40 m": {
+      "n": 721,
+      "openRate": 0.31622746185852985,
+      "marginMean": 30.709509275114655,
+      "marginStd": 2.207596438413333,
+      "pOpenMean": 0.9998846827527231
+    },
+    "JA-VK|40 m": {
+      "n": 721,
+      "openRate": 0.047156726768377254,
+      "marginMean": 35.2115540313631,
+      "marginStd": 2.1853958353266982,
+      "pOpenMean": 0.9999881568813654
+    },
+    "JA-EU|40 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 34.39534663399497,
+      "marginStd": 1.4365100010000924,
+      "pOpenMean": 0.9999881647129925
+    },
+    "NA-Argentina|40 m": {
+      "n": 721,
+      "openRate": 0.023578363384188627,
+      "marginMean": 33.620901919570045,
+      "marginStd": 2.20715251237145,
+      "pOpenMean": 0.9999724742912031
+    },
+    "EU-Argentina|40 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 32.59872314586209,
+      "marginStd": 2.203427190375944,
+      "pOpenMean": 0.9999539598758641
+    },
+    "Polar W-UA|40 m": {
+      "n": 721,
+      "openRate": 0.005547850208044383,
+      "marginMean": 35.73912230161177,
+      "marginStd": 2.9672286148678424,
+      "pOpenMean": 0.9987858153751116
+    },
+    "Polar W6-EU|40 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 32.85567714171155,
+      "marginStd": 2.9181769109917766,
+      "pOpenMean": 0.997888729517338
+    },
+    "Polar W-NA|40 m": {
+      "n": 721,
+      "openRate": 0.5894590846047156,
+      "marginMean": 40.8056244830951,
+      "marginStd": 2.278296115896114,
+      "pOpenMean": 0.9999791401541918
+    },
+    "Equator NA|40 m": {
+      "n": 721,
+      "openRate": 0.004160887656033287,
+      "marginMean": 29.201362354475695,
+      "marginStd": 2.1564403172693605,
+      "pOpenMean": 0.99977401642156
+    },
+    "Asia-VK|40 m": {
+      "n": 721,
+      "openRate": 0.005547850208044383,
+      "marginMean": 35.821999393640205,
+      "marginStd": 2.095750964853092,
+      "pOpenMean": 0.9999919300539251
+    },
+    "Asia-EU short|40 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 36.01490089361531,
+      "marginStd": 1.4296356240776595,
+      "pOpenMean": 0.9999952183058446
+    },
+    "NVIS DE-NL|40 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 58.85343276827532,
+      "marginStd": 2.461905063696469,
+      "pOpenMean": 0.9999996027957333
+    },
+    "NVIS GB-FR|40 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 63.282057313295894,
+      "marginStd": 2.5176393721702257,
+      "pOpenMean": 0.9999999557717293
+    },
+    "NVIS US-CA|40 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 59.226573016001026,
+      "marginStd": 2.824064944159347,
+      "pOpenMean": 0.999997668247348
+    },
+    "NA-IT|40 m": {
+      "n": 721,
+      "openRate": 0.4840499306518724,
+      "marginMean": 36.36124495275677,
+      "marginStd": 2.651256529544142,
+      "pOpenMean": 0.9989619143247533
+    },
+    "EU-Mid-East|40 m": {
+      "n": 721,
+      "openRate": 0.027739251040221916,
+      "marginMean": 43.029490774487165,
+      "marginStd": 1.9620200134879402,
+      "pOpenMean": 0.9999999074378401
+    },
+    "ZL-W6|40 m": {
+      "n": 721,
+      "openRate": 0.42857142857142855,
+      "marginMean": 31.593542317454958,
+      "marginStd": 2.15521916559873,
+      "pOpenMean": 0.9999262953006384
+    },
+    "EU-EU short|30 m": {
+      "n": 721,
+      "openRate": 0.2843273231622746,
+      "marginMean": 41.642820808353186,
+      "marginStd": 0.8702628242856039,
+      "pOpenMean": 0.9999979257962279
+    },
+    "EU-EU west|30 m": {
+      "n": 721,
+      "openRate": 0.9750346740638003,
+      "marginMean": 45.78936618133095,
+      "marginStd": 0.9854692065739503,
+      "pOpenMean": 0.9999997580663503
+    },
+    "EU-EU east|30 m": {
+      "n": 721,
+      "openRate": 0.7004160887656034,
+      "marginMean": 44.33412418852634,
+      "marginStd": 0.8415765289089051,
+      "pOpenMean": 0.9999995277730735
+    },
+    "EU-NA mid|30 m": {
+      "n": 721,
+      "openRate": 0.6976421636615812,
+      "marginMean": 36.441071743901006,
+      "marginStd": 1.9745078391054078,
+      "pOpenMean": 0.9993252731807565
+    },
+    "EU-NA north|30 m": {
+      "n": 721,
+      "openRate": 0.8918169209431346,
+      "marginMean": 37.3674653133213,
+      "marginStd": 2.467493622540503,
+      "pOpenMean": 0.9990267350489528
+    },
+    "EU-NA south|30 m": {
+      "n": 721,
+      "openRate": 0.4604715672676838,
+      "marginMean": 34.22692620288926,
+      "marginStd": 0.926018942684133,
+      "pOpenMean": 0.9999221824716751
+    },
+    "NA-EU east|30 m": {
+      "n": 721,
+      "openRate": 0.20388349514563106,
+      "marginMean": 33.61618297767568,
+      "marginStd": 2.4314444274877656,
+      "pOpenMean": 0.9983649649011809
+    },
+    "NA-NA west-east|30 m": {
+      "n": 721,
+      "openRate": 0.8446601941747572,
+      "marginMean": 38.825568356818856,
+      "marginStd": 1.2385816738634792,
+      "pOpenMean": 0.9999820295475462
+    },
+    "EU-Asia|30 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 29.444453801527793,
+      "marginStd": 2.3487185182278236,
+      "pOpenMean": 0.9971804323792374
+    },
+    "NA-Asia|30 m": {
+      "n": 721,
+      "openRate": 0.3633841886269071,
+      "marginMean": 32.06764632615727,
+      "marginStd": 0.8448349849987188,
+      "pOpenMean": 0.9998048582563741
+    },
+    "Hawaii-VK|30 m": {
+      "n": 721,
+      "openRate": 0.24549237170596394,
+      "marginMean": 30.726002658184324,
+      "marginStd": 2.347489774601293,
+      "pOpenMean": 0.9994654458868993
+    },
+    "Hawaii-NA|30 m": {
+      "n": 721,
+      "openRate": 0.6199722607489597,
+      "marginMean": 40.080422389396865,
+      "marginStd": 0.9857441628764922,
+      "pOpenMean": 0.999995204258987
+    },
+    "Hawaii-JA|30 m": {
+      "n": 721,
+      "openRate": 0.130374479889043,
+      "marginMean": 35.10544068530048,
+      "marginStd": 0.9656269232536374,
+      "pOpenMean": 0.9999472518418472
+    },
+    "EU-South Africa|30 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 30.949177229163297,
+      "marginStd": 1.8789697243911967,
+      "pOpenMean": 0.9995997493165306
+    },
+    "NA-Brazil|30 m": {
+      "n": 721,
+      "openRate": 0.42995839112343964,
+      "marginMean": 32.44223963688621,
+      "marginStd": 1.7612094094552753,
+      "pOpenMean": 0.9997892291111561
+    },
+    "EU-Brazil|30 m": {
+      "n": 721,
+      "openRate": 0.047156726768377254,
+      "marginMean": 32.12495614373226,
+      "marginStd": 1.8036612986585066,
+      "pOpenMean": 0.9997561663893395
+    },
+    "VK-EU|30 m": {
+      "n": 721,
+      "openRate": 0.0319001386962552,
+      "marginMean": 25.153295329992524,
+      "marginStd": 1.439355623900769,
+      "pOpenMean": 0.9970894060385446
+    },
+    "VK-EU west|30 m": {
+      "n": 721,
+      "openRate": 0.13869625520110956,
+      "marginMean": 22.476010268423998,
+      "marginStd": 1.5331401242375335,
+      "pOpenMean": 0.9930410926442469
+    },
+    "VK-NA|30 m": {
+      "n": 721,
+      "openRate": 0.4535367545076283,
+      "marginMean": 27.566018573205806,
+      "marginStd": 2.0423810183836704,
+      "pOpenMean": 0.9985185999156909
+    },
+    "JA-VK|30 m": {
+      "n": 721,
+      "openRate": 0.24826629680998613,
+      "marginMean": 32.07439615674539,
+      "marginStd": 2.131526947147784,
+      "pOpenMean": 0.9997131497725545
+    },
+    "JA-EU|30 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 32.23935260830857,
+      "marginStd": 0.7241489645689767,
+      "pOpenMean": 0.9998215401358952
+    },
+    "NA-Argentina|30 m": {
+      "n": 721,
+      "openRate": 0.006934812760055479,
+      "marginMean": 30.503295558509986,
+      "marginStd": 2.0327173596277595,
+      "pOpenMean": 0.9994949192143424
+    },
+    "EU-Argentina|30 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 29.45358901117653,
+      "marginStd": 2.067632064729204,
+      "pOpenMean": 0.9992410619754248
+    },
+    "Polar W-UA|30 m": {
+      "n": 721,
+      "openRate": 0.0638002773925104,
+      "marginMean": 33.66293561787549,
+      "marginStd": 2.4202555492978823,
+      "pOpenMean": 0.9983682159557302
+    },
+    "Polar W6-EU|30 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 30.56598119049412,
+      "marginStd": 2.422326017670221,
+      "pOpenMean": 0.9973880540525197
+    },
+    "Polar W-NA|30 m": {
+      "n": 721,
+      "openRate": 0.8446601941747572,
+      "marginMean": 38.825568356818856,
+      "marginStd": 1.2385816738634792,
+      "pOpenMean": 0.9999820295475462
+    },
+    "Equator NA|30 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 25.837025103722343,
+      "marginStd": 2.2154130126094524,
+      "pOpenMean": 0.9971916529323243
+    },
+    "Asia-VK|30 m": {
+      "n": 721,
+      "openRate": 0.018030513176144243,
+      "marginMean": 32.49812504363614,
+      "marginStd": 2.3427923391729726,
+      "pOpenMean": 0.9997298322945255
+    },
+    "Asia-EU short|30 m": {
+      "n": 721,
+      "openRate": 0.026352288488210817,
+      "marginMean": 33.92588809872892,
+      "marginStd": 0.7168269247404139,
+      "pOpenMean": 0.9999140375490829
+    },
+    "NVIS DE-NL|30 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 56.887261405378744,
+      "marginStd": 2.0617042557423537,
+      "pOpenMean": 0.9999952645954265
+    },
+    "NVIS GB-FR|30 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 61.35840008952054,
+      "marginStd": 1.755229256315507,
+      "pOpenMean": 0.9999999323065552
+    },
+    "NVIS US-CA|30 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 57.3091882982145,
+      "marginStd": 2.0800057551185005,
+      "pOpenMean": 0.9999963935114079
+    },
+    "NA-IT|30 m": {
+      "n": 721,
+      "openRate": 0.6116504854368932,
+      "marginMean": 34.37071842201951,
+      "marginStd": 2.1672163571085066,
+      "pOpenMean": 0.9985648314017782
+    },
+    "EU-Mid-East|30 m": {
+      "n": 721,
+      "openRate": 0.052704576976421634,
+      "marginMean": 41.07561874217105,
+      "marginStd": 0.9207814193345081,
+      "pOpenMean": 0.9999971683138503
+    },
+    "ZL-W6|30 m": {
+      "n": 721,
+      "openRate": 0.463245492371706,
+      "marginMean": 28.308802554081836,
+      "marginStd": 2.222479222820528,
+      "pOpenMean": 0.9987827283929948
+    },
+    "EU-EU short|20 m": {
+      "n": 721,
+      "openRate": 0.5700416088765603,
+      "marginMean": 36.36091408813441,
+      "marginStd": 5.169343869681859,
+      "pOpenMean": 0.9994596226808056
+    },
+    "EU-EU west|20 m": {
+      "n": 721,
+      "openRate": 0.8599167822468793,
+      "marginMean": 40.584162423414476,
+      "marginStd": 5.0482848360533525,
+      "pOpenMean": 0.9998862360901084
+    },
+    "EU-EU east|20 m": {
+      "n": 721,
+      "openRate": 0.7364771151178918,
+      "marginMean": 39.55714970215085,
+      "marginStd": 4.297268012990646,
+      "pOpenMean": 0.9999020630601804
+    },
+    "EU-NA mid|20 m": {
+      "n": 721,
+      "openRate": 0.9292649098474342,
+      "marginMean": 30.819786787617897,
+      "marginStd": 5.763508298870742,
+      "pOpenMean": 0.9963856095516125
+    },
+    "EU-NA north|20 m": {
+      "n": 721,
+      "openRate": 0.912621359223301,
+      "marginMean": 33.585749252734104,
+      "marginStd": 3.026391834996685,
+      "pOpenMean": 0.9992783664309799
+    },
+    "EU-NA south|20 m": {
+      "n": 721,
+      "openRate": 0.5839112343966713,
+      "marginMean": 27.462011192871422,
+      "marginStd": 7.379904073015085,
+      "pOpenMean": 0.985350129530323
+    },
+    "NA-EU east|20 m": {
+      "n": 721,
+      "openRate": 0.36754507628294036,
+      "marginMean": 30.06414972445894,
+      "marginStd": 2.7557858382163323,
+      "pOpenMean": 0.9983739815085524
+    },
+    "NA-NA west-east|20 m": {
+      "n": 721,
+      "openRate": 0.8654646324549237,
+      "marginMean": 32.69572817957067,
+      "marginStd": 6.452807992731635,
+      "pOpenMean": 0.9970695537814765
+    },
+    "EU-Asia|20 m": {
+      "n": 721,
+      "openRate": 0.012482662968099861,
+      "marginMean": 26.499416808154916,
+      "marginStd": 2.07708060534809,
+      "pOpenMean": 0.9963937783351214
+    },
+    "NA-Asia|20 m": {
+      "n": 721,
+      "openRate": 0.37309292649098474,
+      "marginMean": 27.151495253661206,
+      "marginStd": 4.355613281116475,
+      "pOpenMean": 0.9949566917185837
+    },
+    "Hawaii-VK|20 m": {
+      "n": 721,
+      "openRate": 0.19833564493758668,
+      "marginMean": 21.162496609636353,
+      "marginStd": 11.744110099310223,
+      "pOpenMean": 0.8954714653620305
+    },
+    "Hawaii-NA|20 m": {
+      "n": 721,
+      "openRate": 0.8626907073509015,
+      "marginMean": 32.41740350012592,
+      "marginStd": 8.788621444814275,
+      "pOpenMean": 0.99243447690388
+    },
+    "Hawaii-JA|20 m": {
+      "n": 721,
+      "openRate": 0.23439667128987518,
+      "marginMean": 27.56091266074705,
+      "marginStd": 8.501981802492804,
+      "pOpenMean": 0.9800037415155096
+    },
+    "EU-South Africa|20 m": {
+      "n": 721,
+      "openRate": 0.023578363384188627,
+      "marginMean": 21.724383010173092,
+      "marginStd": 11.114619554926534,
+      "pOpenMean": 0.9108749825521479
+    },
+    "NA-Brazil|20 m": {
+      "n": 721,
+      "openRate": 0.5312066574202496,
+      "marginMean": 23.449689885766674,
+      "marginStd": 11.028307519836181,
+      "pOpenMean": 0.928988817309702
+    },
+    "EU-Brazil|20 m": {
+      "n": 721,
+      "openRate": 0.18862690707350901,
+      "marginMean": 23.09286197601488,
+      "marginStd": 11.087569825672132,
+      "pOpenMean": 0.9246541548518169
+    },
+    "VK-EU|20 m": {
+      "n": 721,
+      "openRate": 0.06102635228848821,
+      "marginMean": 16.48998202474043,
+      "marginStd": 10.138980765134251,
+      "pOpenMean": 0.862475847484474
+    },
+    "VK-EU west|20 m": {
+      "n": 721,
+      "openRate": 0.260748959778086,
+      "marginMean": 13.701598300455181,
+      "marginStd": 10.378491451383379,
+      "pOpenMean": 0.8186216076895867
+    },
+    "VK-NA|20 m": {
+      "n": 721,
+      "openRate": 0.3536754507628294,
+      "marginMean": 18.177032487845974,
+      "marginStd": 11.37029084083424,
+      "pOpenMean": 0.8639068437294771
+    },
+    "JA-VK|20 m": {
+      "n": 721,
+      "openRate": 0.2912621359223301,
+      "marginMean": 22.581145464187397,
+      "marginStd": 11.611193686716579,
+      "pOpenMean": 0.9133740697764978
+    },
+    "JA-EU|20 m": {
+      "n": 721,
+      "openRate": 0.044382801664355064,
+      "marginMean": 28.48469287925055,
+      "marginStd": 2.283204985000972,
+      "pOpenMean": 0.9988205331300946
+    },
+    "NA-Argentina|20 m": {
+      "n": 721,
+      "openRate": 0.3287101248266297,
+      "marginMean": 21.35297958459262,
+      "marginStd": 11.093564877791708,
+      "pOpenMean": 0.9072233329449559
+    },
+    "EU-Argentina|20 m": {
+      "n": 721,
+      "openRate": 0.05547850208044383,
+      "marginMean": 20.125025416920124,
+      "marginStd": 11.306201461855172,
+      "pOpenMean": 0.8899560040286224
+    },
+    "Polar W-UA|20 m": {
+      "n": 721,
+      "openRate": 0.3550624133148405,
+      "marginMean": 30.392340348911695,
+      "marginStd": 2.4167779356118055,
+      "pOpenMean": 0.9985436784449129
+    },
+    "Polar W6-EU|20 m": {
+      "n": 721,
+      "openRate": 0.013869625520110958,
+      "marginMean": 27.637003446905865,
+      "marginStd": 1.885187732812425,
+      "pOpenMean": 0.9973420827649093
+    },
+    "Polar W-NA|20 m": {
+      "n": 721,
+      "openRate": 0.8654646324549237,
+      "marginMean": 32.69572817957067,
+      "marginStd": 6.452807992731635,
+      "pOpenMean": 0.9970695537814765
+    },
+    "Equator NA|20 m": {
+      "n": 721,
+      "openRate": 0.019417475728155338,
+      "marginMean": 16.5723887231088,
+      "marginStd": 11.454984952695119,
+      "pOpenMean": 0.8393466896297868
+    },
+    "Asia-VK|20 m": {
+      "n": 721,
+      "openRate": 0.04854368932038835,
+      "marginMean": 22.865942587952038,
+      "marginStd": 11.903000499901207,
+      "pOpenMean": 0.9122447320066042
+    },
+    "Asia-EU short|20 m": {
+      "n": 721,
+      "openRate": 0.13730929264909847,
+      "marginMean": 30.215290983569325,
+      "marginStd": 2.2782849043318696,
+      "pOpenMean": 0.9993695505270972
+    },
+    "NVIS DE-NL|20 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 52.70126817425366,
+      "marginStd": 3.4777818219893,
+      "pOpenMean": 0.9999994062643867
+    },
+    "NVIS GB-FR|20 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 56.81117520842229,
+      "marginStd": 4.032088184960095,
+      "pOpenMean": 0.9999999749023507
+    },
+    "NVIS US-CA|20 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 51.430993998793674,
+      "marginStd": 6.255796558826747,
+      "pOpenMean": 0.9999976159910945
+    },
+    "NA-IT|20 m": {
+      "n": 721,
+      "openRate": 0.9292649098474342,
+      "marginMean": 29.820462538702856,
+      "marginStd": 4.125708217886574,
+      "pOpenMean": 0.9973756109185196
+    },
+    "EU-Mid-East|20 m": {
+      "n": 721,
+      "openRate": 0.39805825242718446,
+      "marginMean": 34.415136201904964,
+      "marginStd": 7.324162520173212,
+      "pOpenMean": 0.9973450544504657
+    },
+    "ZL-W6|20 m": {
+      "n": 721,
+      "openRate": 0.6463245492371706,
+      "marginMean": 18.930683070402907,
+      "marginStd": 11.380991552068055,
+      "pOpenMean": 0.8739926621255304
+    },
+    "EU-EU short|17 m": {
+      "n": 721,
+      "openRate": 0.24133148404993066,
+      "marginMean": 26.769363157187673,
+      "marginStd": 12.345247928329359,
+      "pOpenMean": 0.953807689479835
+    },
+    "EU-EU west|17 m": {
+      "n": 721,
+      "openRate": 0.5922330097087378,
+      "marginMean": 30.936937382453937,
+      "marginStd": 12.254374084096229,
+      "pOpenMean": 0.9796760217799639
+    },
+    "EU-EU east|17 m": {
+      "n": 721,
+      "openRate": 0.36893203883495146,
+      "marginMean": 29.724625202234694,
+      "marginStd": 11.955198854682507,
+      "pOpenMean": 0.975917720442425
+    },
+    "EU-NA mid|17 m": {
+      "n": 721,
+      "openRate": 0.6962552011095701,
+      "marginMean": 21.630880986908963,
+      "marginStd": 12.005617976952033,
+      "pOpenMean": 0.9077312206826936
+    },
+    "EU-NA north|17 m": {
+      "n": 721,
+      "openRate": 0.5589459084604715,
+      "marginMean": 23.327218546146316,
+      "marginStd": 10.214541133086106,
+      "pOpenMean": 0.9496394319169111
+    },
+    "EU-NA south|17 m": {
+      "n": 721,
+      "openRate": 0.463245492371706,
+      "marginMean": 18.960201129230583,
+      "marginStd": 12.889626590104909,
+      "pOpenMean": 0.8543031116268286
+    },
+    "NA-EU east|17 m": {
+      "n": 721,
+      "openRate": 0.23439667128987518,
+      "marginMean": 19.70225049011531,
+      "marginStd": 9.644664438426926,
+      "pOpenMean": 0.9202560831234912
+    },
+    "NA-NA west-east|17 m": {
+      "n": 721,
+      "openRate": 0.6615811373092927,
+      "marginMean": 23.546215653553848,
+      "marginStd": 12.70991727077201,
+      "pOpenMean": 0.918742520721395
+    },
+    "EU-Asia|17 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 14.770630190518803,
+      "marginStd": 6.589042379869179,
+      "pOpenMean": 0.901276716340276
+    },
+    "NA-Asia|17 m": {
+      "n": 721,
+      "openRate": 0.3120665742024965,
+      "marginMean": 17.546257772233794,
+      "marginStd": 11.62341334633444,
+      "pOpenMean": 0.8562831238944206
+    },
+    "Hawaii-VK|17 m": {
+      "n": 721,
+      "openRate": 0.16920943134535368,
+      "marginMean": 13.380137735555762,
+      "marginStd": 15.745342707491288,
+      "pOpenMean": 0.7184371113526115
+    },
+    "Hawaii-NA|17 m": {
+      "n": 721,
+      "openRate": 0.6255201109570042,
+      "marginMean": 23.961134627197527,
+      "marginStd": 14.294551627824088,
+      "pOpenMean": 0.8993157887725048
+    },
+    "Hawaii-JA|17 m": {
+      "n": 721,
+      "openRate": 0.1914008321775312,
+      "marginMean": 19.25498592356508,
+      "marginStd": 13.950533676756784,
+      "pOpenMean": 0.8389769202870451
+    },
+    "EU-South Africa|17 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 13.93015216017404,
+      "marginStd": 15.43736333778656,
+      "pOpenMean": 0.7314529206707234
+    },
+    "NA-Brazil|17 m": {
+      "n": 721,
+      "openRate": 0.21359223300970873,
+      "marginMean": 15.787324400166861,
+      "marginStd": 15.34928368326104,
+      "pOpenMean": 0.7599078024786523
+    },
+    "EU-Brazil|17 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 15.455116485053155,
+      "marginStd": 15.356154188078103,
+      "pOpenMean": 0.7556817122268208
+    },
+    "VK-EU|17 m": {
+      "n": 721,
+      "openRate": 0.008321775312066574,
+      "marginMean": 8.884831959318081,
+      "marginStd": 14.314891458268733,
+      "pOpenMean": 0.6704178675294052
+    },
+    "VK-EU west|17 m": {
+      "n": 721,
+      "openRate": 0.08044382801664356,
+      "marginMean": 6.233970958405363,
+      "marginStd": 14.39622126370193,
+      "pOpenMean": 0.6343239098865636
+    },
+    "VK-NA|17 m": {
+      "n": 721,
+      "openRate": 0.24549237170596394,
+      "marginMean": 10.440033607549491,
+      "marginStd": 15.414668747744914,
+      "pOpenMean": 0.680727817342276
+    },
+    "JA-VK|17 m": {
+      "n": 721,
+      "openRate": 0.3273231622746186,
+      "marginMean": 14.688437938937044,
+      "marginStd": 15.964587309659336,
+      "pOpenMean": 0.7346547473849262
+    },
+    "JA-EU|17 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 18.452538164471306,
+      "marginStd": 10.26669950641434,
+      "pOpenMean": 0.8933794442945626
+    },
+    "NA-Argentina|17 m": {
+      "n": 721,
+      "openRate": 0.22052704576976423,
+      "marginMean": 13.793549161636252,
+      "marginStd": 15.165256114597296,
+      "pOpenMean": 0.7317155796224912
+    },
+    "EU-Argentina|17 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 12.489576138681254,
+      "marginStd": 15.448335696126033,
+      "pOpenMean": 0.7083715478377877
+    },
+    "Polar W-UA|17 m": {
+      "n": 721,
+      "openRate": 0.1608876560332871,
+      "marginMean": 19.494407911674553,
+      "marginStd": 8.571416935655959,
+      "pOpenMean": 0.932633965173174
+    },
+    "Polar W6-EU|17 m": {
+      "n": 721,
+      "openRate": 0.008321775312066574,
+      "marginMean": 14.784225462951907,
+      "marginStd": 4.529262617241142,
+      "pOpenMean": 0.9267816065058887
+    },
+    "Polar W-NA|17 m": {
+      "n": 721,
+      "openRate": 0.6615811373092927,
+      "marginMean": 23.54621565355385,
+      "marginStd": 12.709917270772001,
+      "pOpenMean": 0.918742520721395
+    },
+    "Equator NA|17 m": {
+      "n": 721,
+      "openRate": 0.005547850208044383,
+      "marginMean": 8.953076573678834,
+      "marginStd": 15.448596387465932,
+      "pOpenMean": 0.659946876460967
+    },
+    "Asia-VK|17 m": {
+      "n": 721,
+      "openRate": 0.022191400832177532,
+      "marginMean": 14.825889709638888,
+      "marginStd": 16.174141992638955,
+      "pOpenMean": 0.7334214729048916
+    },
+    "Asia-EU short|17 m": {
+      "n": 721,
+      "openRate": 0.005547850208044383,
+      "marginMean": 20.1546593040961,
+      "marginStd": 10.368973777038978,
+      "pOpenMean": 0.9131983129753237
+    },
+    "NVIS DE-NL|17 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 42.529551124655384,
+      "marginStd": 11.343441491724256,
+      "pOpenMean": 0.9994420934888222
+    },
+    "NVIS GB-FR|17 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 46.80864121935185,
+      "marginStd": 11.708218156887211,
+      "pOpenMean": 0.999859165880413
+    },
+    "NVIS US-CA|17 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 42.106476779369416,
+      "marginStd": 12.695637767396855,
+      "pOpenMean": 0.9988057610858422
+    },
+    "NA-IT|17 m": {
+      "n": 721,
+      "openRate": 0.5201109570041609,
+      "marginMean": 20.050539589388613,
+      "marginStd": 11.161013492623411,
+      "pOpenMean": 0.9009740043683744
+    },
+    "EU-Mid-East|17 m": {
+      "n": 721,
+      "openRate": 0.024965325936199722,
+      "marginMean": 25.632818764815383,
+      "marginStd": 13.450364908290434,
+      "pOpenMean": 0.930312224358461
+    },
+    "ZL-W6|17 m": {
+      "n": 721,
+      "openRate": 0.34396671289875175,
+      "marginMean": 11.317016558925966,
+      "marginStd": 15.26310805952855,
+      "pOpenMean": 0.6913573418833087
+    },
+    "EU-EU short|15 m": {
+      "n": 721,
+      "openRate": 0.2857142857142857,
+      "marginMean": 21.454163720229683,
+      "marginStd": 14.663323694435661,
+      "pOpenMean": 0.8660549892747098
+    },
+    "EU-EU west|15 m": {
+      "n": 721,
+      "openRate": 0.4077669902912621,
+      "marginMean": 25.418842148646384,
+      "marginStd": 14.451786885421631,
+      "pOpenMean": 0.9199366266767764
+    },
+    "EU-EU east|15 m": {
+      "n": 721,
+      "openRate": 0.31900138696255204,
+      "marginMean": 24.180710344040104,
+      "marginStd": 14.234054775871,
+      "pOpenMean": 0.9090361720822383
+    },
+    "EU-NA mid|15 m": {
+      "n": 721,
+      "openRate": 0.5700416088765603,
+      "marginMean": 16.491135367000467,
+      "marginStd": 13.758822725307501,
+      "pOpenMean": 0.8046506194706391
+    },
+    "EU-NA north|15 m": {
+      "n": 721,
+      "openRate": 0.4563106796116505,
+      "marginMean": 16.231768100688445,
+      "marginStd": 11.038484652403024,
+      "pOpenMean": 0.8495427836239069
+    },
+    "EU-NA south|15 m": {
+      "n": 721,
+      "openRate": 0.231622746185853,
+      "marginMean": 14.456967115442474,
+      "marginStd": 14.908884460569912,
+      "pOpenMean": 0.7489070220930366
+    },
+    "NA-EU east|15 m": {
+      "n": 721,
+      "openRate": 0.09153952843273232,
+      "marginMean": 12.037450362848531,
+      "marginStd": 10.194575994273668,
+      "pOpenMean": 0.7853100139266085
+    },
+    "NA-NA west-east|15 m": {
+      "n": 721,
+      "openRate": 0.5825242718446602,
+      "marginMean": 18.458716798664103,
+      "marginStd": 14.776726984236571,
+      "pOpenMean": 0.818637415716629
+    },
+    "EU-Asia|15 m": {
+      "n": 721,
+      "openRate": 0.019417475728155338,
+      "marginMean": 2.9538126591171214,
+      "marginStd": 4.217235420926578,
+      "pOpenMean": 0.6086205697904402
+    },
+    "NA-Asia|15 m": {
+      "n": 721,
+      "openRate": 0.260748959778086,
+      "marginMean": 12.401090187938777,
+      "marginStd": 13.65023631246469,
+      "pOpenMean": 0.7331365470884595
+    },
+    "Hawaii-VK|15 m": {
+      "n": 721,
+      "openRate": 0.2857142857142857,
+      "marginMean": 9.610035345858373,
+      "marginStd": 17.577329563281346,
+      "pOpenMean": 0.6387171737242477
+    },
+    "Hawaii-NA|15 m": {
+      "n": 721,
+      "openRate": 0.59500693481276,
+      "marginMean": 19.730360256938372,
+      "marginStd": 16.885592560998944,
+      "pOpenMean": 0.7988129435261327
+    },
+    "Hawaii-JA|15 m": {
+      "n": 721,
+      "openRate": 0.32038834951456313,
+      "marginMean": 15.27625882239708,
+      "marginStd": 16.43188217283256,
+      "pOpenMean": 0.7369587274600216
+    },
+    "EU-South Africa|15 m": {
+      "n": 721,
+      "openRate": 0.06934812760055478,
+      "marginMean": 10.327392063158396,
+      "marginStd": 17.538698096699605,
+      "pOpenMean": 0.6480545040314699
+    },
+    "NA-Brazil|15 m": {
+      "n": 721,
+      "openRate": 0.5298196948682385,
+      "marginMean": 11.921345636651298,
+      "marginStd": 17.503867840445523,
+      "pOpenMean": 0.6697025348601174
+    },
+    "EU-Brazil|15 m": {
+      "n": 721,
+      "openRate": 0.2552011095700416,
+      "marginMean": 11.681252832614181,
+      "marginStd": 17.47889432977319,
+      "pOpenMean": 0.6679245741136773
+    },
+    "VK-EU|15 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 5.2777457360500035,
+      "marginStd": 16.20765205691454,
+      "pOpenMean": 0.5883349647648257
+    },
+    "VK-EU west|15 m": {
+      "n": 721,
+      "openRate": 0.036061026352288486,
+      "marginMean": 2.57396130347486,
+      "marginStd": 16.132644468047783,
+      "pOpenMean": 0.5548451406901578
+    },
+    "VK-NA|15 m": {
+      "n": 721,
+      "openRate": 0.2579750346740638,
+      "marginMean": 6.711080701213549,
+      "marginStd": 17.216526863033593,
+      "pOpenMean": 0.60500619758996
+    },
+    "JA-VK|15 m": {
+      "n": 721,
+      "openRate": 0.47018030513176146,
+      "marginMean": 10.911613902411514,
+      "marginStd": 18.092103895587126,
+      "pOpenMean": 0.6506511656168232
+    },
+    "JA-EU|15 m": {
+      "n": 721,
+      "openRate": 0.009708737864077669,
+      "marginMean": 11.97286779127811,
+      "marginStd": 11.843879778111761,
+      "pOpenMean": 0.7559978523775456
+    },
+    "NA-Argentina|15 m": {
+      "n": 721,
+      "openRate": 0.14701803051317613,
+      "marginMean": 10.479530048372384,
+      "marginStd": 17.134144948624016,
+      "pOpenMean": 0.6518009236058877
+    },
+    "EU-Argentina|15 m": {
+      "n": 721,
+      "openRate": 0.009708737864077669,
+      "marginMean": 8.99945626427476,
+      "marginStd": 17.441941973449687,
+      "pOpenMean": 0.6305053009095056
+    },
+    "Polar W-UA|15 m": {
+      "n": 721,
+      "openRate": 0.07766990291262135,
+      "marginMean": 10.247223596888642,
+      "marginStd": 8.221316683478657,
+      "pOpenMean": 0.7779957767477749
+    },
+    "Polar W6-EU|15 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 2.3633590292281808,
+      "marginStd": 2.1730319631345902,
+      "pOpenMean": 0.5921606680706725
+    },
+    "Polar W-NA|15 m": {
+      "n": 721,
+      "openRate": 0.5825242718446602,
+      "marginMean": 18.4587167986641,
+      "marginStd": 14.776726984236575,
+      "pOpenMean": 0.818637415716629
+    },
+    "Equator NA|15 m": {
+      "n": 721,
+      "openRate": 0.03744798890429958,
+      "marginMean": 5.258208466069168,
+      "marginStd": 17.405901488824114,
+      "pOpenMean": 0.5816443230768753
+    },
+    "Asia-VK|15 m": {
+      "n": 721,
+      "openRate": 0.1622746185852982,
+      "marginMean": 10.578966130592585,
+      "marginStd": 18.127227768546188,
+      "pOpenMean": 0.6454025882619597
+    },
+    "Asia-EU short|15 m": {
+      "n": 721,
+      "openRate": 0.022191400832177532,
+      "marginMean": 13.55914235445739,
+      "marginStd": 12.0673225955523,
+      "pOpenMean": 0.7830941828766353
+    },
+    "NVIS DE-NL|15 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 36.174670875790376,
+      "marginStd": 13.192726572511662,
+      "pOpenMean": 0.9919393773096896
+    },
+    "NVIS GB-FR|15 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 40.81047574174735,
+      "marginStd": 13.709391873670745,
+      "pOpenMean": 0.9969565351374889
+    },
+    "NVIS US-CA|15 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 36.674544607365156,
+      "marginStd": 14.789438607203111,
+      "pOpenMean": 0.9879707718226395
+    },
+    "NA-IT|15 m": {
+      "n": 721,
+      "openRate": 0.3606102635228849,
+      "marginMean": 14.100919130463183,
+      "marginStd": 12.522562836435602,
+      "pOpenMean": 0.7845220441934478
+    },
+    "EU-Mid-East|15 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 21.142057994198264,
+      "marginStd": 16.061839064532002,
+      "pOpenMean": 0.8357257608353812
+    },
+    "ZL-W6|15 m": {
+      "n": 721,
+      "openRate": 0.47572815533980584,
+      "marginMean": 7.659802938906918,
+      "marginStd": 16.99998666858782,
+      "pOpenMean": 0.6137534777412076
+    },
+    "EU-EU short|12 m": {
+      "n": 721,
+      "openRate": 0.10540915395284327,
+      "marginMean": 13.879837551851182,
+      "marginStd": 15.221267634105313,
+      "pOpenMean": 0.735976661618052
+    },
+    "EU-EU west|12 m": {
+      "n": 721,
+      "openRate": 0.130374479889043,
+      "marginMean": 17.447331503841014,
+      "marginStd": 14.634802689637521,
+      "pOpenMean": 0.8050010214236918
+    },
+    "EU-EU east|12 m": {
+      "n": 721,
+      "openRate": 0.02912621359223301,
+      "marginMean": 16.258114210053737,
+      "marginStd": 14.524228503073164,
+      "pOpenMean": 0.7870778547441714
+    },
+    "EU-NA mid|12 m": {
+      "n": 721,
+      "openRate": 0.22191400832177532,
+      "marginMean": 8.977885480629926,
+      "marginStd": 13.316537271522938,
+      "pOpenMean": 0.6698982030101128
+    },
+    "EU-NA north|12 m": {
+      "n": 721,
+      "openRate": 0.09292649098474341,
+      "marginMean": 6.152373641765915,
+      "marginStd": 7.575435388337111,
+      "pOpenMean": 0.6647050923854552
+    },
+    "EU-NA south|12 m": {
+      "n": 721,
+      "openRate": 0.217753120665742,
+      "marginMean": 8.487494294295429,
+      "marginStd": 15.748621836803094,
+      "pOpenMean": 0.6349887189182586
+    },
+    "NA-EU east|12 m": {
+      "n": 721,
+      "openRate": 0.005547850208044383,
+      "marginMean": 1.7986297865126344,
+      "marginStd": 6.298453685377696,
+      "pOpenMean": 0.552222458763157
+    },
+    "NA-NA west-east|12 m": {
+      "n": 721,
+      "openRate": 0.361997226074896,
+      "marginMean": 11.195497543337526,
+      "marginStd": 15.075350977472825,
+      "pOpenMean": 0.6917060364099712
+    },
+    "EU-Asia|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": -4.567494872542295,
+      "marginStd": 3.0519002664795694,
+      "pOpenMean": 0.3567171094301364
+    },
+    "NA-Asia|12 m": {
+      "n": 721,
+      "openRate": 0.04022191400832178,
+      "marginMean": 5.193997487326431,
+      "marginStd": 13.752150717537049,
+      "pOpenMean": 0.5889639336585927
+    },
+    "Hawaii-VK|12 m": {
+      "n": 721,
+      "openRate": 0.022191400832177532,
+      "marginMean": 4.797140061137378,
+      "marginStd": 18.945638803915568,
+      "pOpenMean": 0.5582121342431923
+    },
+    "Hawaii-NA|12 m": {
+      "n": 721,
+      "openRate": 0.19833564493758668,
+      "marginMean": 14.4639370955142,
+      "marginStd": 19.10834378979929,
+      "pOpenMean": 0.690184614735322
+    },
+    "Hawaii-JA|12 m": {
+      "n": 721,
+      "openRate": 0.052704576976421634,
+      "marginMean": 10.54789130534849,
+      "marginStd": 18.55872690260464,
+      "pOpenMean": 0.6426647006396973
+    },
+    "EU-South Africa|12 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 5.791723553502007,
+      "marginStd": 19.37348468396687,
+      "pOpenMean": 0.569639451571006
+    },
+    "NA-Brazil|12 m": {
+      "n": 721,
+      "openRate": 0.05409153952843273,
+      "marginMean": 7.740954267502715,
+      "marginStd": 19.565275976858594,
+      "pOpenMean": 0.5920314349807463
+    },
+    "EU-Brazil|12 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": 7.6016034041158305,
+      "marginStd": 19.45741974717964,
+      "pOpenMean": 0.5935779029181046
+    },
+    "VK-EU|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 1.0102917507872458,
+      "marginStd": 17.65966425278027,
+      "pOpenMean": 0.5100409282456122
+    },
+    "VK-EU west|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": -1.5758103665402103,
+      "marginStd": 17.54078069738798,
+      "pOpenMean": 0.47725644975477177
+    },
+    "VK-NA|12 m": {
+      "n": 721,
+      "openRate": 0.11095700416088766,
+      "marginMean": 1.8060477816143257,
+      "marginStd": 18.400709738991768,
+      "pOpenMean": 0.5219471679997008
+    },
+    "JA-VK|12 m": {
+      "n": 721,
+      "openRate": 0.21636615811373092,
+      "marginMean": 6.069401548862373,
+      "marginStd": 19.96133680544494,
+      "pOpenMean": 0.5691280339697395
+    },
+    "JA-EU|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 3.1113318029690324,
+      "marginStd": 10.356823531156767,
+      "pOpenMean": 0.5656139689499103
+    },
+    "NA-Argentina|12 m": {
+      "n": 721,
+      "openRate": 0.2274618585298197,
+      "marginMean": 6.273467050975315,
+      "marginStd": 18.904329409160656,
+      "pOpenMean": 0.5750683416615523
+    },
+    "EU-Argentina|12 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": 4.691261919288504,
+      "marginStd": 19.21849390267486,
+      "pOpenMean": 0.5558947819450458
+    },
+    "Polar W-UA|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 0.5659078403066389,
+      "marginStd": 4.5850396966799325,
+      "pOpenMean": 0.5183591788579707
+    },
+    "Polar W6-EU|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": -4.768487620913325,
+      "marginStd": 1.8361008228700486,
+      "pOpenMean": 0.3474969324971825
+    },
+    "Polar W-NA|12 m": {
+      "n": 721,
+      "openRate": 0.361997226074896,
+      "marginMean": 11.19549754333752,
+      "marginStd": 15.075350977472818,
+      "pOpenMean": 0.6917060364099713
+    },
+    "Equator NA|12 m": {
+      "n": 721,
+      "openRate": 0.008321775312066574,
+      "marginMean": 1.199767962677926,
+      "marginStd": 19.086355273504417,
+      "pOpenMean": 0.5154748367705799
+    },
+    "Asia-VK|12 m": {
+      "n": 721,
+      "openRate": 0.008321775312066574,
+      "marginMean": 5.326819110048818,
+      "marginStd": 19.602055723578314,
+      "pOpenMean": 0.5611026676079041
+    },
+    "Asia-EU short|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 4.5449271515800795,
+      "marginStd": 10.727092321211101,
+      "pOpenMean": 0.5982817961908488
+    },
+    "NVIS DE-NL|12 m": {
+      "n": 721,
+      "openRate": 0.9930651872399445,
+      "marginMean": 27.01589985953719,
+      "marginStd": 12.26751622313278,
+      "pOpenMean": 0.9478386351201116
+    },
+    "NVIS GB-FR|12 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 32.07519532956157,
+      "marginStd": 13.197117829263002,
+      "pOpenMean": 0.9717141205571109
+    },
+    "NVIS US-CA|12 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 28.702259455998206,
+      "marginStd": 14.83564524767097,
+      "pOpenMean": 0.9385887447559449
+    },
+    "NA-IT|12 m": {
+      "n": 721,
+      "openRate": 0.0651872399445215,
+      "marginMean": 5.466512236119935,
+      "marginStd": 11.009615860741008,
+      "pOpenMean": 0.6165334498511713
+    },
+    "EU-Mid-East|12 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 15.742273152786431,
+      "marginStd": 18.237007593273614,
+      "pOpenMean": 0.7211622887314825
+    },
+    "ZL-W6|12 m": {
+      "n": 721,
+      "openRate": 0.3855755894590846,
+      "marginMean": 3.002399847370479,
+      "marginStd": 18.287111062329192,
+      "pOpenMean": 0.5326605116991893
+    },
+    "EU-EU short|10 m": {
+      "n": 721,
+      "openRate": 0.038834951456310676,
+      "marginMean": 7.675208609118074,
+      "marginStd": 13.94426477561746,
+      "pOpenMean": 0.6377822892142617
+    },
+    "EU-EU west|10 m": {
+      "n": 721,
+      "openRate": 0.20943134535367544,
+      "marginMean": 10.988438483170574,
+      "marginStd": 12.941836315300224,
+      "pOpenMean": 0.7159941335977493
+    },
+    "EU-EU east|10 m": {
+      "n": 721,
+      "openRate": 0.019417475728155338,
+      "marginMean": 9.853709266994072,
+      "marginStd": 12.933518213199001,
+      "pOpenMean": 0.6930828961033279
+    },
+    "EU-NA mid|10 m": {
+      "n": 721,
+      "openRate": 0.17198335644937587,
+      "marginMean": 3.020757584432773,
+      "marginStd": 11.194334670439005,
+      "pOpenMean": 0.5614611639195864
+    },
+    "EU-NA north|10 m": {
+      "n": 721,
+      "openRate": 0.21914008321775313,
+      "marginMean": 1.0507944295635503,
+      "marginStd": 6.019903489463531,
+      "pOpenMean": 0.532880920239804
+    },
+    "EU-NA south|10 m": {
+      "n": 721,
+      "openRate": 0.1262135922330097,
+      "marginMean": 3.4336895016951887,
+      "marginStd": 14.963904431056037,
+      "pOpenMean": 0.5462191871586787
+    },
+    "NA-EU east|10 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": -2.9474514791730053,
+      "marginStd": 5.147827412012284,
+      "pOpenMean": 0.41198303391492613
+    },
+    "NA-NA west-east|10 m": {
+      "n": 721,
+      "openRate": 0.2288488210818308,
+      "marginMean": 5.178273058940152,
+      "marginStd": 13.59024082448851,
+      "pOpenMean": 0.5939088063221645
+    },
+    "EU-Asia|10 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": -8.485935103780065,
+      "marginStd": 2.8994158620802,
+      "pOpenMean": 0.24614781839750705
+    },
+    "NA-Asia|10 m": {
+      "n": 721,
+      "openRate": 0.026352288488210817,
+      "marginMean": -0.5138992896814921,
+      "marginStd": 12.126534442217014,
+      "pOpenMean": 0.4751117076903197
+    },
+    "Hawaii-VK|10 m": {
+      "n": 721,
+      "openRate": 0.260748959778086,
+      "marginMean": 1.0285742602226506,
+      "marginStd": 19.21035254051488,
+      "pOpenMean": 0.49790889926452725
+    },
+    "Hawaii-NA|10 m": {
+      "n": 721,
+      "openRate": 0.42579750346740636,
+      "marginMean": 10.443924217905694,
+      "marginStd": 20.20495511991939,
+      "pOpenMean": 0.6182337596273706
+    },
+    "Hawaii-JA|10 m": {
+      "n": 721,
+      "openRate": 0.21081830790568654,
+      "marginMean": 7.220936340788972,
+      "marginStd": 19.72157345047716,
+      "pOpenMean": 0.5830764590882351
+    },
+    "EU-South Africa|10 m": {
+      "n": 721,
+      "openRate": 0.024965325936199722,
+      "marginMean": 2.7017603798206484,
+      "marginStd": 20.459129893705562,
+      "pOpenMean": 0.5175499021879186
+    },
+    "NA-Brazil|10 m": {
+      "n": 721,
+      "openRate": 0.42857142857142855,
+      "marginMean": 4.755170583610953,
+      "marginStd": 20.812986029801177,
+      "pOpenMean": 0.5394206456860802
+    },
+    "EU-Brazil|10 m": {
+      "n": 721,
+      "openRate": 0.27184466019417475,
+      "marginMean": 4.699519695808555,
+      "marginStd": 20.656614226242585,
+      "pOpenMean": 0.5423823090833445
+    },
+    "VK-EU|10 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": -1.7651758786239065,
+      "marginStd": 18.470980903372823,
+      "pOpenMean": 0.46214242554526214
+    },
+    "VK-EU west|10 m": {
+      "n": 721,
+      "openRate": 0.026352288488210817,
+      "marginMean": -4.814342290536698,
+      "marginStd": 17.970096003150875,
+      "pOpenMean": 0.4171755697816614
+    },
+    "VK-NA|10 m": {
+      "n": 721,
+      "openRate": 0.31900138696255204,
+      "marginMean": -2.142069821643824,
+      "marginStd": 18.405709785080536,
+      "pOpenMean": 0.4555719784549589
+    },
+    "JA-VK|10 m": {
+      "n": 721,
+      "openRate": 0.29403606102635227,
+      "marginMean": 2.6039240592681625,
+      "marginStd": 20.958907792214728,
+      "pOpenMean": 0.5135978627123735
+    },
+    "JA-EU|10 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": -3.0498563325053936,
+      "marginStd": 7.467799402296269,
+      "pOpenMean": 0.41662838850736356
+    },
+    "NA-Argentina|10 m": {
+      "n": 721,
+      "openRate": 0.47295423023578365,
+      "marginMean": 3.4785814563675683,
+      "marginStd": 19.941855734993954,
+      "pOpenMean": 0.5247784008475873
+    },
+    "EU-Argentina|10 m": {
+      "n": 721,
+      "openRate": 0.07073509015256588,
+      "marginMean": 1.8197279759252576,
+      "marginStd": 20.296401417705663,
+      "pOpenMean": 0.5069480360110218
+    },
+    "Polar W-UA|10 m": {
+      "n": 721,
+      "openRate": 0.0027739251040221915,
+      "marginMean": -3.7917500096389167,
+      "marginStd": 3.9656436405006077,
+      "pOpenMean": 0.3830877027352741
+    },
+    "Polar W6-EU|10 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": -8.791503078277437,
+      "marginStd": 1.850016131824252,
+      "pOpenMean": 0.23459833187052878
+    },
+    "Polar W-NA|10 m": {
+      "n": 721,
+      "openRate": 0.2288488210818308,
+      "marginMean": 5.178273058940142,
+      "marginStd": 13.590240824488495,
+      "pOpenMean": 0.5939088063221645
+    },
+    "Equator NA|10 m": {
+      "n": 721,
+      "openRate": 0.016643550624133148,
+      "marginMean": -1.7276580425545225,
+      "marginStd": 19.998020267647778,
+      "pOpenMean": 0.4670928620302235
+    },
+    "Asia-VK|10 m": {
+      "n": 721,
+      "openRate": 0.07766990291262135,
+      "marginMean": 0.9678017230549125,
+      "marginStd": 19.803627510808997,
+      "pOpenMean": 0.49554934266652567
+    },
+    "Asia-EU short|10 m": {
+      "n": 721,
+      "openRate": 0.0013869625520110957,
+      "marginMean": -1.72056523657137,
+      "marginStd": 8.0201513928591,
+      "pOpenMean": 0.45482710170018525
+    },
+    "NVIS DE-NL|10 m": {
+      "n": 721,
+      "openRate": 0.9986130374479889,
+      "marginMean": 19.99927851718432,
+      "marginStd": 9.32897874330637,
+      "pOpenMean": 0.9036990786720912
+    },
+    "NVIS GB-FR|10 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 25.031574075897858,
+      "marginStd": 10.375446918634172,
+      "pOpenMean": 0.9438645533364446
+    },
+    "NVIS US-CA|10 m": {
+      "n": 721,
+      "openRate": 1,
+      "marginMean": 22.212751656806265,
+      "marginStd": 13.06531027285078,
+      "pOpenMean": 0.893561417625743
+    },
+    "NA-IT|10 m": {
+      "n": 721,
+      "openRate": 0.052704576976421634,
+      "marginMean": -0.8521208726315453,
+      "marginStd": 7.842232937911931,
+      "pOpenMean": 0.4769003752729995
+    },
+    "EU-Mid-East|10 m": {
+      "n": 721,
+      "openRate": 0,
+      "marginMean": 11.578571261471655,
+      "marginStd": 19.23618748877582,
+      "pOpenMean": 0.6446221488329891
+    },
+    "ZL-W6|10 m": {
+      "n": 721,
+      "openRate": 0.36615811373092927,
+      "marginMean": -0.6446253050092022,
+      "marginStd": 18.509078713821957,
+      "pOpenMean": 0.47016886428858573
+    }
+  }
+}

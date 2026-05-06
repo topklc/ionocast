@@ -1,0 +1,47 @@
+name: tests (daily, all suites)
+
+# Runs every non-heavy suite once a day. Catches network-dependent
+# regressions (harness Brier, calibration, RBN, PSKReporter, VOACAP
+# cross-check, drift detection) that the per-push fast workflow
+# (test.yml) skips for speed.
+#
+# Cadence: 07:00 UTC daily. After wspr-baselines.yml (06:00 UTC) so
+# the latest auto-committed baseline is in the checked-out tree.
+#
+# Failure modes:
+#   - upstream API unreachable (SWPC / wspr.live / kc2g): suite fails
+#     with a network error. Re-run via workflow_dispatch.
+#   - drift detector exceeds (path, band) thresholds: harness suite
+#     fails; investigate via the uploaded tests.report.json artifact.
+#   - any individual suite fails: workflow fails loud. No auto-retry
+#     so spurious failures stay visible.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+jobs:
+  daily:
+    name: all suites (no heavy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run all non-heavy suites
+        run: node scripts/tests.mjs --suite=all
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-report-daily
+          path: scripts/outputs/tests.report.json
+          if-no-files-found: warn
+          retention-days: 30

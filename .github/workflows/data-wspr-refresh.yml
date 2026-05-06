@@ -1,0 +1,54 @@
+name: wspr-baselines refresh
+
+# Refreshes src/data/spot-baselines.mjs daily from wspr.live's last
+# 30 days, replacing the previous "every few months" manual cadence.
+# The 30-day window is itself sliding (the SQL inside
+# scripts/harness.mjs wspr-baselines uses INTERVAL 30 DAY relative
+# to the run time), so a daily run gives a true sliding 30-day
+# baseline that tracks solar-cycle progression and seasonal shifts
+# without manual intervention.
+#
+# Failure modes:
+#   - wspr.live unreachable: workflow fails, baselines stay stale
+#     (acceptable; the runtime falls back to the existing module).
+#   - Diff is empty: no commit, exit clean.
+#   - Diff is non-empty: commits to main with a bot identity. The
+#     change is auto-generated and tracked, so reviewers can audit
+#     the diff post-hoc rather than gate on a PR.
+#
+# To pause: comment out the schedule trigger or disable the workflow
+# in the GitHub UI. Manual dispatch (workflow_dispatch) stays
+# available either way.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # 06:00 UTC daily — after wspr.live's UTC-day rollover settles
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Refresh WSPR spot baselines
+        run: node scripts/harness.mjs wspr-baselines
+
+      - name: Commit if changed
+        run: |
+          git config user.name "ionocast-bot"
+          git config user.email "noreply@anthropic.com"
+          if git diff --quiet src/data/spot-baselines.mjs; then
+            echo "[wspr-baselines] no change; nothing to commit"
+            exit 0
+          fi
+          git add src/data/spot-baselines.mjs
+          git commit -m "refresh WSPR baselines (auto, daily-sliding)"
+          git push

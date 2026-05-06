@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="34 38 292 76">
+
+  <!-- Mark: slim stem sits at Inter letter rhythm; arc terminals land just above x-height -->
+  <circle cx="58" cy="56" r="6.5" fill="#000"/>
+  <rect x="53" y="69" width="10" height="36" rx="2" fill="#000"/>
+
+  <!-- Concentric arcs around (58,56), ±40°, radii 12 & 18, stroke 3.8 -->
+  <path d="M 67.19,48.29 A 12,12 0 0,1 67.19,63.71" fill="none" stroke="#000" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M 71.79,44.43 A 18,18 0 0,1 71.79,67.57" fill="none" stroke="#000" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M 48.81,48.29 A 12,12 0 0,0 48.81,63.71" fill="none" stroke="#000" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M 44.21,44.43 A 18,18 0 0,0 44.21,67.57" fill="none" stroke="#000" stroke-width="3.8" stroke-linecap="round"/>
+
+  <!-- Wordmark: sits at natural letter spacing from the mark stem -->
+  <text x="72" y="105"
+        font-family="'Inter', 'Helvetica Neue', Arial, sans-serif"
+        font-size="68"
+        font-weight="600"
+        letter-spacing="-1.8"
+        fill="#000">onocast</text>
+
+</svg>

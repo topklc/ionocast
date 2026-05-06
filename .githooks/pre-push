@@ -1,0 +1,43 @@
+#!/bin/sh
+# .githooks/pre-push
+#
+# Runs the fast test suite before a push. Blocks the push if any unit
+# test fails or i18n drift is detected. Mirrors what GitHub Actions does
+# on the server side (see .github/workflows/test.yml), but locally so
+# you find out before the push leaves your machine.
+#
+# One-time enable:
+#   git config core.hooksPath .githooks
+# Skip for a single push:
+#   git push --no-verify
+# Disable entirely:
+#   git config --unset core.hooksPath
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT" || exit 1
+
+echo "[pre-push] running fast test suite..."
+node scripts/tests.mjs --suite=physics-unit,harness-unit,derive-unit,i18n
+status=$?
+
+if [ "$status" -ne 0 ]; then
+  echo
+  echo "[pre-push] FAIL: unit tests or i18n drift detected. Push blocked."
+  echo "[pre-push] Fix and retry, or push with --no-verify to skip."
+  exit 1
+fi
+
+# Parse-check matches the CI step. Cheap (~1 s) and catches syntax
+# errors that would otherwise only surface in CI.
+echo "[pre-push] parse-checking ES modules..."
+find src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 \
+  | xargs -0 -n1 node --check
+status=$?
+
+if [ "$status" -ne 0 ]; then
+  echo "[pre-push] FAIL: parse error in src/ or scripts/. Push blocked."
+  exit 1
+fi
+
+echo "[pre-push] OK"
+exit 0

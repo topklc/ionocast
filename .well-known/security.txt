@@ -1,0 +1,4 @@
+Contact: mailto:ta1but@toprakkilic.com
+Expires: 2027-05-05T00:00:00.000Z
+Preferred-Languages: en, tr
+Canonical: https://ionocast.org/.well-known/security.txt

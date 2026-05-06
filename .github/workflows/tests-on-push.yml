@@ -1,0 +1,44 @@
+name: tests
+
+# Run on every push to any branch, every PR, and manual triggers. Catches
+# failures on feature branches before a PR is opened, not after.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fast:
+    name: fast (unit + i18n + parse-check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: unit tests + i18n
+        run: node scripts/tests.mjs --suite=physics-unit,harness-unit,derive-unit,i18n
+
+      - name: parse-check ES modules
+        run: |
+          # Glob all *.js / *.mjs under src/ and scripts/ so newly
+          # added modules (e.g. the builders/ subdirectory) are picked
+          # up automatically without editing this workflow.
+          #
+          # Use `node --input-type=module --check` per file (read from
+          # stdin) instead of `node --check file.js`. Node 20+ silently
+          # exits 0 on `.js` ESM syntax errors when invoked the latter
+          # way (auto-detect-module fallback hides real bugs); the
+          # stdin form forces strict ESM parsing and propagates exit 1
+          # on any syntax error. Verified 2026-05-06 against a known-
+          # bad ESM input.
+          fail=0
+          while IFS= read -r f; do
+            node --input-type=module --check < "$f" || fail=$((fail + 1))
+          done < <(find src scripts -type f \( -name '*.js' -o -name '*.mjs' \))
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::$fail file(s) failed parse-check"
+            exit 1
+          fi
