@@ -149,6 +149,44 @@ update paper text to document the actually-implemented order. Either is
 acceptable; the deciding factor is which side the calibration sweeps
 were performed against.
 
+### Empirical-claims verification deferred from 2026-05-06 audit
+
+**Where:** paper §3.10 / §4.2 / §8.1, plus harness scoring code.
+
+**Status (2026-05-06 audit, item 5 of "what's still uncovered"):**
+three quantitative claims in the paper require harness extensions
+or full-year data to verify:
+
+1. **Override-firing rate "5 to 10 % of (band, hour) cells per day"**
+   (paper line 4564). Requires an override-counting mode in the
+   harness that compares live observations against
+   `1.3 × spotBaselineMean` and tallies firings. Not currently
+   emitted.
+
+2. **Winter-anomaly ratio 1.12 ± 0.03** (paper line 2143).
+   Requires GIRO foF2 over a full annual cycle at the 10 listed
+   midlat stations to compute the winter-vs-summer daytime foF2
+   ratio. Today's harness cache is a 30-day rolling window, so
+   the seasonal ratio cannot be reproduced from current data
+   without an archive accumulator.
+
+3. **WSPR coefficient of variation 0.3 to 1.5** (paper line
+   4549 to 4554). Requires per-cell time-series variance
+   computation across the 30-day window for every (band,
+   UTC-hour) cell. The cache stores per-row spots but no
+   per-cell CV is tabulated.
+
+**Path to closure:** small harness extensions could emit each of
+these (override-counter, seasonal aggregator, per-cell CV) but
+the work is "validation infrastructure" rather than physics or
+calibration. Estimated 5 to 10 hours combined.
+
+**Why deferred:** none of the three numbers feed the verdict
+pipeline. They are paper claims that justify methodology choices
+(why 1.3×, why A_win = 0.12, why over-dispersed Poisson). Until
+a reader formally challenges one, the cost-benefit favours
+leaving these as documented-but-unverified.
+
 ### Atmospheric noise floor clamp vs paper formula
 
 **Where:** `src/physics/loss.js:612-614`, paper Eq.~\ref{eq:noise} +

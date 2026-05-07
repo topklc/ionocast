@@ -95,18 +95,14 @@ export const THEME_LABEL = {
 //
 // Conversion of WSJT-X published thresholds (always at 2500 Hz reference)
 // to mode-native BW:  S_native = S_2500 + 10·log10(2500 / B_mode):
-//   FT8:  -21 (2500) + 17.0 = -4 (50 Hz)
-//   FT4:  -17 (2500) + 14.0 = -3 (100 Hz)        [rounded from -3.5]
-//   WSPR: -28 (2500) + 20.0 = -8 (25 Hz)
-//   CW:    0 (500)                              [trained-ear native]
-//   SSB:  10 (2500)                             [comfortable-copy native]
-//
-// These supersede the earlier values (-6 / 0 / -6 / 0 / 10) which were
-// approximately 2 dB pessimistic on FT8/FT4 and 2 dB optimistic on
-// WSPR; the BW math now factors out cleanly.
+//   FT8:  -21   (2500) + 17.0 = -4   (50 Hz)
+//   FT4:  -16.4 (2500) + 14.0 = -2.4 (100 Hz, rounded to -2)
+//   WSPR: -28   (2500) + 20.0 = -8   (25 Hz)
+//   CW:    0    (500)                            [trained-ear native, ARRL Handbook]
+//   SSB:  10    (2500)                           [comfortable-copy native, ARRL Handbook]
 export const MODE_SNR_DB = {
   ft8:  -4,     // at  50 Hz, from -21 dB / 2500 Hz
-  ft4:  -3,     // at 100 Hz, from -17 dB / 2500 Hz (rounded)
+  ft4:  -2,     // at 100 Hz, from -16.4 dB / 2500 Hz (WSJT-X published, rounded)
   wspr: -8,     // at  25 Hz, from -28 dB / 2500 Hz
   cw:    0,     // at 500 Hz, trained-ear threshold
   ssb:  10      // at 2500 Hz, comfortable-copy threshold

@@ -5,7 +5,7 @@
 import {
   TEP_MIN_DIP_LAT, TEP_LOCAL_HOUR_START, TEP_LOCAL_HOUR_END,
   TEP_BOND_F_MAX_MHZ, TEP_BONUS_DB,
-  GRAYLINE_SUNRISE_DB, GRAYLINE_SUNSET_DB
+  D_REGION_PREFACTOR
 } from "../constants.js";
 import { dipLatitude, solarCosZenith } from "./geometry.js";
 
@@ -269,30 +269,60 @@ export function heuristicTier(groupName, sfi, kIndex, cosZ) {
   return pack("fair");
 }
 
-// Gray-line / terminator bonus. Paths whose reflection is at the
-// sunrise/sunset line see reduced D-region absorption + enhanced F-region
-// density during the transition. Asymmetric: sunrise gets a larger bonus
-// than sunset because D-region recovers more slowly at dusk than the
-// rising F-region enhancement lasts at dawn, so the daybreak window
-// is cleaner for low-band DX.
-//   cosZ ≈ 0  → full bonus
-//   |cosZ| > 0.1 → zero
-// Sign of d(cosZ)/dt picks sunrise (rising) vs sunset (falling); sampled
-// 5 min ahead.
+// Gray-line / terminator bonus. Paired physics rewrite landed
+// 2026-05-07 (S0 #2): replaces the per-band sunrise/sunset table with
+// a continuous formula keyed on D_REGION_PREFACTOR (the same constant
+// that anchors lAbsDiurnalDb in loss.js). Reads as the D-region
+// absorption refund relative to local-noon overhead:
+//
+//   bonus = dayLoss(f) * (1 - cos^0.7(zenith))
+//
+// where dayLoss(f) = D_REGION_PREFACTOR / (f_MHz + 0.5)^2.
+//
+// The bonus is ADDITIVE on top of lAbsDiurnalDb (which charges
+// dayLoss * cos^0.7 on the day side); at the terminator the
+// combination produces a net D-region credit consistent with the
+// empirically strong gray-line propagation operators report on the
+// low / mid HF bands.
+//
+// Frequency window: 1.8-30 MHz (was: <= 14 MHz, which excluded 20 m
+// at 14.097; closes audit finding #2). Below 1.8 MHz the budget does
+// not predict; above 30 MHz the D-region term is operationally
+// negligible.
+//
+// Floor at 0.2 dB suppresses sub-decibel "noise" bonuses on bands
+// where dayLoss(f) is already small (12 m / 10 m daytime).
+//
+// Cap at 25 dB prevents the 160 m terminator bonus (which would
+// otherwise reach ~36 dB at the gray line) from inflating the budget
+// past the per-path 50 dB ionospheric ceiling.
+//
+// Asymmetry: rising cosZ (sunrise) gets the full bonus; falling
+// cosZ (sunset) gets 0.5x because D-region recovery lags the F-region
+// enhancement at dusk so the empirical sunset window is shorter and
+// less generous. Matches the prior Table 6 ~2:1 sunrise:sunset ratio
+// without the per-band buckets.
+//
+// Night gate: cosZ < 0 returns the formula's full dayLoss (because
+// max(0, cosZ)^0.7 = 0). This is the documented "physics correctness"
+// trade-off: the formula gives a generous credit at night that pairs
+// with lAbsDiurnalDb's zero-charge at night. Operationally this is
+// where the cap binds hard on the low bands. Future calibration may
+// introduce a separate night gate; for now the cap is the defence.
 export function grayLineBonusDb(midLat, midLon, fMHz, date) {
   if (midLat == null || !date || fMHz == null) return 0;
-  if (fMHz > 14) return 0;
+  if (fMHz < 1.8 || fMHz > 30) return 0;
   var cosZ = solarCosZenith(midLat, midLon, date);
-  var proximity = 1 - Math.min(1, Math.abs(cosZ) / 0.1);
-  if (proximity <= 0) return 0;
+  var dayLoss = D_REGION_PREFACTOR / Math.pow(fMHz + 0.5, 2);
+  var factor = Math.pow(Math.max(0, cosZ), 0.7);
+  var bonus = dayLoss * (1 - factor);
+  if (bonus < 0.2) return 0;
+  // Sunrise vs sunset asymmetry. Sample 5 min ahead to determine the
+  // sign of d(cosZ)/dt (positive = rising, sunrise side; negative =
+  // falling, sunset side).
   var future = new Date(date.getTime() + 5 * 60 * 1000);
   var cosZFuture = solarCosZenith(midLat, midLon, future);
   var rising = cosZFuture > cosZ;
-  var table = rising ? GRAYLINE_SUNRISE_DB : GRAYLINE_SUNSET_DB;
-  var bandAmp;
-  if (fMHz <= 4)       bandAmp = table.lower;  // 160m, 80m
-  else if (fMHz <= 8)  bandAmp = table.mid;    // 60m, 40m
-  else if (fMHz <= 11) bandAmp = table.upper;  // 30m
-  else                 bandAmp = table.top;    // 20m
-  return bandAmp * proximity;
+  if (!rising) bonus *= 0.5;
+  return Math.min(25, bonus);
 }

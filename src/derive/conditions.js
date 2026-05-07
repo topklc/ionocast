@@ -131,9 +131,14 @@ export function deriveConditions(ctx) {
   }
 
   // Forecast σ inflation: precompute once and forward through bandOpts.
-  // Pass the current Kp so the forecast bump phases out as it catches up
-  // (avoids quadrature double-counting with the current-Kp storm σ).
-  var forecastSigmaDb = forecastKpPenaltyDb(kpForecast, nowDateForStorm, kpNow);
+  // Pass the storm-lagged effective Kp (not raw kpNow) so the forecast
+  // bump phases out as the F-region thermosphere actually catches up to
+  // the predicted peak, matching the K_p^eff-keyed σ_storm branch in
+  // physics.js. Using the live 3-hour Kp here would step the forecast
+  // bump down on each 3-hour tick rather than smoothly hand off to
+  // σ_storm, briefly inflating the in-quadrature σ at the catch-up
+  // moment (per whitepaper §7.3.1).
+  var forecastSigmaDb = forecastKpPenaltyDb(kpForecast, nowDateForStorm, kpEffective);
 
   var opts = snrOpts();              // tx power, antenna, mode, noise env
 

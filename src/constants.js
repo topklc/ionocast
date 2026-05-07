@@ -253,13 +253,33 @@ export function bandSigmaDb(fMHz) {
 // at midlatitudes (35° to 60°) vs summer. Driven by O/N2 seasonal shift.
 export const WINTER_ANOMALY_AMP = 0.12;
 
-// ---- Gray-line asymmetry -------------------------------------------------
-// Sunrise (rising sun, d(cosZ)/dt > 0): stronger enhancement, D-region
-// has not rebuilt yet while F-region has started ionizing.
-// Sunset: weaker, D-region decays faster than F-region enhancement lasts.
-// Amplitudes are dB, per low-band group.
-export const GRAYLINE_SUNRISE_DB = { lower: 6, mid: 5, upper: 3, top: 1.5 };
-export const GRAYLINE_SUNSET_DB  = { lower: 3, mid: 3, upper: 1.5, top: 1.0 };
+// ---- D-region absorption + grayline (B6 paired rewrite, 2026-05-07) ------
+// The diurnal D-region absorption term and the grayline bonus share a
+// single physics base via D_REGION_PREFACTOR. Both lAbsDiurnalDb and
+// grayLineBonusDb in src/physics/{loss,modes}.js compute their "day-side
+// loss" anchor as
+//
+//   dayLoss(f) = D_REGION_PREFACTOR / (f_MHz + 0.5)^2     (dB)
+//
+// then:
+//   lAbsDiurnalDb       = dayLoss(f) * cos^0.7(zenith)        (charge)
+//   grayLineBonusDb     = dayLoss(f) * (1 - cos^0.7(zenith))  (refund)
+//
+// The cos^0.7 exponent (gentler than the prior cos^1.3) plus the
+// k/(f+0.5)^2 frequency dependence are the physics-correctness rewrite
+// requested at S0-#2; they replace the discrete tables (Table 2's
+// A_base anchors and Table 6's per-band sunrise/sunset bucket values)
+// with a continuous formula across 1.8-30 MHz.
+//
+// Prefactor K = 200 chosen to land 160m noon ≈ 36.6 dB ("somewhere in
+// between" the prior table value 28 and the K=250 literal-grayline.md
+// value 45.7). Calibration re-fit deferred per S0 framing; expect
+// per-band sigma_g and L_iono retunes after the next harness pass.
+//
+// Sunrise/sunset asymmetry (D-region rebuilds slower at dusk than the
+// F-region enhancement lasts at dawn) is preserved as a 0.5x multiplier
+// applied to the grayline bonus when d(cosZ)/dt < 0 (sunset).
+export const D_REGION_PREFACTOR = 200;
 
 // ---- Polar cap absorption (PCA) ------------------------------------------
 // Sauer-Wilkinson-style: active when GOES >=10 MeV proton flux exceeds the
@@ -309,6 +329,13 @@ export const GROUND_AVG_SIGMA         = 0.005;
 // degenerate values on paths where every hop maxes out a mechanism.
 export const PATH_ABSD_CAP_DB = 50;
 export const PATH_AUR_CAP_DB  = 50;
+
+// Per-hop cap on the auroral absorption term. Mirrors PCA_PER_HOP_CAP_DB
+// so the three D-region absorption mechanisms (PCA, aurora, flare) share
+// a documented per-hop ceiling. Aurora caps at 30 dB per hop (same as
+// PCA); flare caps at 40 dB because the strongest X-class events produce
+// essentially total HF blackout on sunlit hops.
+export const AUR_PER_HOP_CAP_DB = 30;
 
 // ---- Noise-BW scaling ----------------------------------------------------
 // Atmospheric noise (galactic + thermal + distant-lightning) scales with

@@ -154,12 +154,19 @@ const HF_BANDS = [
           maxDelta <= 4, `max jump ${maxDelta.toFixed(2)} dB at ${atF?.toFixed(2)} MHz`);
   }
 
-  // lAbsDiurnalDb base values: 28→18→10→6→2→0.5→0. Largest step is the
-  // 28→18 at 2 MHz boundary (10 dB raw → ~4 dB after cosZ^1.3 mult).
+  // lAbsDiurnalDb (post-S0-#2 rewrite, 2026-05-07) is now the continuous
+  // formula `dayLoss(f) · cos^0.7(zenith)` with `dayLoss(f) = K/(f+0.5)²`,
+  // K=200. The function is mathematically smooth across the full
+  // 1-50 MHz sweep; the largest 0.1-MHz step is at the bottom of the
+  // range where the inverse-square form is steepest:
+  //   f=1.0→1.1: dayLoss 88.9→78.1 dB; at cosZ=0.5 (cos^0.7=0.616):
+  //     54.7→48.1 dB → 6.6 dB step.
+  // Bound at 8 dB to allow the steep low-f slope while still catching
+  // any future re-introduction of a discrete cliff.
   {
     const { maxDelta, atF } = maxJump(f => lAbsDiurnalDb(f, 0.5), 1, 50, 0.1);
-    check("lAbsDiurnalDb: bounded step ≤ 5 dB at cosZ=0.5 (band-tier table)",
-          maxDelta <= 5, `max jump ${maxDelta.toFixed(3)} dB at ${atF?.toFixed(2)} MHz`);
+    check("lAbsDiurnalDb: continuous, bounded local slope ≤ 8 dB / 0.1 MHz at cosZ=0.5",
+          maxDelta <= 8, `max jump ${maxDelta.toFixed(3)} dB at ${atF?.toFixed(2)} MHz`);
   }
 
   // lFlareDb has a small internal step structure due to the recovery

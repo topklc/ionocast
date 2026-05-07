@@ -225,9 +225,9 @@ export const DEFINITIONS = {
     name: "Margin (SNR budget margin)",
     def: "Achieved SNR minus required SNR, in dB, for the configured station on the best-margin reference path. Positive = comfortable, zero = at the decoder threshold, negative = below threshold. The tier converts this into a reliability bucket via the per-band sigma; the same margin can yield different tiers depending on path uncertainty."
   },
-  "Confidence": {
-    name: "Confidence (verdict confidence)",
-    def: "How sure the model is that the Tier label is correct, computed as Φ(σ-distance to the nearest tier boundary). 50% means the prediction sits right on a tier boundary and a small shift in conditions would flip the verdict; 84% means 1σ inside the bucket (the verdict has comfortable margin from either neighbouring tier); ≥97% means 2σ inside (essentially locked-in). Bucket-width-independent: a centred Fair verdict reads the same as a centred Excellent verdict if both sit equally far from their nearest boundary. A high Confidence does not mean the band is open, that's what Tier says, it means the Tier label itself is unlikely to change."
+  "Stability": {
+    name: "Stability (verdict stability)",
+    def: "How likely the Tier label is to stay put if the true margin moves to its expected value. Computed as Φ(σ-distance to the nearest tier boundary). 50% means the prediction sits right on a tier boundary and a small shift in conditions would flip the verdict; 84% means 1σ inside the bucket (the verdict has comfortable margin from either neighbouring tier); ≥97% means 2σ inside (essentially locked-in). Bucket-width-independent: a centred Fair verdict reads the same as a centred Excellent verdict if both sit equally far from their nearest boundary. A high Stability does not mean the band is open, that's what Tier says, it means the Tier label itself is unlikely to change."
   },
   "Mode": {
     name: "Mode (winning propagation mechanism)",

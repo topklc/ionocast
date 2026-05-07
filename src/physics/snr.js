@@ -3,7 +3,7 @@
 // it sums every loss term, applies condition-dependent sigma penalties, and
 // returns a {margin, sigma, ...breakdown} object.
 
-import { bandSigmaDb } from "../constants.js";
+import { bandSigmaDb, AUR_PER_HOP_CAP_DB } from "../constants.js";
 export { bandSigmaDb };
 import {
   refDistanceHfKm, hopsForDistance, takeoffAngleDeg,
@@ -165,6 +165,59 @@ function _verticalRelGainDb(h_m, elevDeg, fMHz, floorDb) {
   return rel < floorDb ? floorDb : rel;
 }
 
+// Condition-dependent σ in dB, RSS of per-band base σ_g(f) plus seven
+// situational penalties:
+//   - near-MUF: f/MUF > 0.85 → fading / multipath inflation, +4 dB at MUF
+//   - storm: K_p^eff ≥ 5 → ionospheric irregularities, +3 dB at K_p=5,
+//     scaling to +6 dB at K_p=9
+//   - forecast: SWPC 3-day Kp peak ≥ 5 within next 6 h, precomputed
+//     additively as opts.forecastSigmaDb
+//   - cross-terminator: |cosZpath| ≤ 0.15 → +3 dB; smooth ramp to 0 at
+//     |cosZpath| ≥ 0.20
+//   - night-time low/mid HF: cosZpath < 0 and f ≤ 16 MHz → +3 dB
+//     (closes a documented under-prediction on night 160-30 m where the
+//     base σ_g table sits at its 6 dB floor)
+//   - storm-recovery TID: stormPhase = "recovery" → +4 dB across all
+//     paths (LSTID ripple after main phase)
+//   - Es-active: caller passes opts.esModeActive → adds (2 dB)² in
+//     quadrature for the patchy / aspect-sensitive Es propagation channel
+//
+// Shared between snrMarginHf (F2) and snrMarginHfEs (Es-mode) so an Es
+// opening on a stormy day correctly reads a higher σ than on a quiet day.
+function _conditionalSigmaDb(fMHz, muf, opts, cosZpath) {
+  var sigBase = bandSigmaDb(fMHz);
+  var sigSq = sigBase * sigBase;
+  if (muf != null && muf > 0) {
+    var fRatio = fMHz / muf;
+    if (fRatio > 0.85) {
+      var mufPenalty = 4 * Math.min(1, (fRatio - 0.85) / 0.15);
+      sigSq += mufPenalty * mufPenalty;
+    }
+  }
+  if (opts.kp != null && opts.kp >= 5) {
+    var stormPenalty = 3 + 0.75 * (opts.kp - 5);
+    sigSq += stormPenalty * stormPenalty;
+  }
+  if (opts.forecastSigmaDb != null && opts.forecastSigmaDb > 0) {
+    sigSq += opts.forecastSigmaDb * opts.forecastSigmaDb;
+  }
+  if (cosZpath != null) {
+    var aCos = Math.abs(cosZpath);
+    if (aCos <= 0.15)      sigSq += 9;
+    else if (aCos < 0.20)  sigSq += 9 * (0.20 - aCos) / 0.05;
+  }
+  if (cosZpath != null && cosZpath < 0 && fMHz <= 16) {
+    sigSq += 9;
+  }
+  if (opts.stormPhase === "recovery") {
+    sigSq += 16;
+  }
+  if (opts.esModeActive) {
+    sigSq += 4;
+  }
+  return Math.sqrt(sigSq);
+}
+
 /**
  * @typedef {Object} SnrMarginHfOpts
  * Operator + environment + geometry inputs to snrMarginHf. Every field
@@ -293,13 +346,17 @@ export function snrMarginHf(fMHz, muf, opts) {
   // a geomagnetic storm the auroral oval expands equatorward and the
   // particle precipitation that drives auroral D/E absorption is
   // strongest; the steady-state Kp-keyed lAuroralDb under-counts that.
-  // 40 % bump on lAur is the conservative version of what ITU-R P.533
-  // (and operator experience) describes as a 3-6 dB extra on
-  // high-latitude paths during peak Dst depression. Recovery and quiet
-  // phases keep the steady-state value. Initial phase is rare and short
-  // (sudden compression); we hold the steady-state for it too.
+  // S0-#29 decision (2026-05-07): replaced the prior `lAur * 1.4`
+  // multiplier with an additive `lAur + 4` because 1.4x of a 25 dB
+  // base term gives +10 dB extra, well past the 3-6 dB range ITU-R
+  // P.533 and operator experience attribute to main-phase polar
+  // amplification. Additive +4 dB is the midpoint of the cited range
+  // and binds against the per-hop cap (AUR_PER_HOP_CAP_DB = 30) the
+  // same way the multiplier did. Recovery and quiet phases keep the
+  // steady-state value; initial phase is rare and short (sudden
+  // compression), held at steady-state too.
   if (opts.stormPhase === "main" && lAur > 0) {
-    lAur = lAur * 1.4;
+    lAur = Math.min(AUR_PER_HOP_CAP_DB, lAur + 4);
   }
 
   // Global absorption-sum saturation. The four ionospheric absorption
@@ -332,77 +389,7 @@ export function snrMarginHf(fMHz, muf, opts) {
   var lIono  = nHops * L_IONO_HF_DB;
   var margin = pTx + gAnt - lFs - lAbs - lAbsD - lPca - lAur - lMuf - lIono - lLow - lHop - lEs - n - snrReq;
 
-  // Condition-dependent sigma. The base is now per-band (R6 calibration)
-  // rather than the prior fixed 8 dB DEFAULT_SIGMA_DB: low/mid bands sit
-  // at 6 dB (model is reliable there), upper bands at 10-12 dB (model
-  // often wrong near MUF). bandSigmaDb falls back to 8 if frequency is
-  // outside the table.
-  // The four condition-dependent penalties (near-MUF, storm, forecast,
-  // cross-terminator) still add in quadrature on top.
-  var sigBase = bandSigmaDb(fMHz);
-  var sigSq = sigBase * sigBase;
-  // Near-MUF penalty: f/MUF > 0.85 → approaching the skip zone where
-  // fading and multipath intensify. +4 dB σ at MUF, +2 dB at FOT.
-  if (muf != null && muf > 0) {
-    var fRatio = fMHz / muf;
-    if (fRatio > 0.85) {
-      var mufPenalty = 4 * Math.min(1, (fRatio - 0.85) / 0.15);
-      sigSq += mufPenalty * mufPenalty;
-    }
-  }
-  // Storm penalty: Kp ≥ 5 → ionospheric irregularities increase
-  // path variance. +3 dB σ at Kp=5, scaling up to +6 at Kp=9.
-  if (opts.kp != null && opts.kp >= 5) {
-    var stormPenalty = 3 + 0.75 * (opts.kp - 5);
-    sigSq += stormPenalty * stormPenalty;
-  }
-  // Forecast storm penalty: SWPC 3-day Kp shows a disturbance arriving
-  // within ~6 h. Sharp electron-density gradients build hours before the
-  // index reading, so σ should widen ahead. Precomputed in derive.js
-  // (forecastKpPenaltyDb). Stored as additive σ in dB; convert to
-  // variance contribution. Already attenuated for forecast confidence.
-  if (opts.forecastSigmaDb != null && opts.forecastSigmaDb > 0) {
-    sigSq += opts.forecastSigmaDb * opts.forecastSigmaDb;
-  }
-  // Cross-terminator penalty: when the path midpoint is near the
-  // sunrise/sunset line, sharp electron-density gradients increase
-  // variance. Linear ramp on the *variance* contribution from 9 dB²
-  // (full +3 dB σ in quadrature) at |cosZ| ≤ 0.15, down to 0 at
-  // |cosZ| ≥ 0.20. Closes the tier-confidence cliff the bare binary
-  // form produced at the 0.15 boundary while leaving the in-window
-  // penalty unchanged. Same smooth-ramp philosophy applied at every
-  // other gate (auroral c(φ), Bz bump, twilight r, near-MUF, Es).
-  if (cosZpath != null) {
-    var aCos = Math.abs(cosZpath);
-    if (aCos <= 0.15)      sigSq += 9;
-    else if (aCos < 0.20)  sigSq += 9 * (0.20 - aCos) / 0.05;
-  }
-  // Night-time σ inflation on low/mid HF. ITU-R P.533 within-month
-  // variability for night-time multi-Mm paths on 160-30 m runs
-  // ~8-10 dB; the per-band table holds those bands at 6 dB (a
-  // quiet-day floor). Without this bump, an "excellent" verdict at
-  // +11 dB margin on quiet night-time 30 m / 20 m over-claims
-  // reliability by ~1 tier. Add 3 dB in quadrature when the path
-  // midpoint is in darkness (cosZpath < 0) and the band is at or
-  // below 17 m (16 MHz), where the underlying σ table is at the
-  // 6 dB floor. Above 17 m the tabulated σ already reflects the
-  // higher near-MUF variability and additional inflation would
-  // double-count.
-  if (cosZpath != null && cosZpath < 0 && fMHz <= 16) {
-    sigSq += 9;  // 3² = 9
-  }
-  // Storm-recovery TID penalty: during the recovery phase of a
-  // geomagnetic storm, large-scale travelling ionospheric disturbances
-  // ripple through the F-region for several hours after Kp returns to
-  // quiet. The mean margin is no longer suppressed (auroral oval has
-  // contracted, ring current is decaying) but the path variance is
-  // visibly elevated in WSPR / sounder data. +4 dB sigma during
-  // recovery is the conservative version of typical TID-driven
-  // fading bursts; tier boundaries widen accordingly.
-  if (opts.stormPhase === "recovery") {
-    sigSq += 16;  // 4² = 16
-  }
-  var sigma = Math.sqrt(sigSq);
+  var sigma = _conditionalSigmaDb(fMHz, muf, opts, cosZpath);
 
   return {
     margin: margin,
@@ -488,9 +475,20 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
   var lLow = lLowBandExtraDb(fMHz);
   var margin = pTx + gAnt - lFs - lAbs - lAbsD - lPca - lMuf - L_IONO_ES_DB - lLow - n - snrReq;
 
-  // Sigma: Es is more variable than F2 (layer is patchy, fast-fading);
-  // add a fixed +2 dB on top of DEFAULT_SIGMA_DB base.
-  var sigma = Math.sqrt(DEFAULT_SIGMA_DB * DEFAULT_SIGMA_DB + 4);
+  // Sigma: full RSS using the per-band σ_g(f) plus the same situational
+  // penalties the F2 budget applies (near-MUF on f/(5·foEs), storm,
+  // forecast, terminator, recovery, night-low/mid), with σ_Es² = (2 dB)²
+  // added in quadrature for the patchy / aspect-sensitive Es channel.
+  // Pre-S0-#18 form was sqrt(σ_default² + 4) ≈ 8.25 dB regardless of band
+  // or storm phase, which lost both per-band sensitivity and storm-σ
+  // inflation on Es-mode verdicts. The shared _conditionalSigmaDb helper
+  // restores both.
+  var cosZpathEs = opts.cosZenithPath != null ? opts.cosZenithPath : opts.cosZenithNow;
+  var sigma = _conditionalSigmaDb(
+    fMHz, esMuf,
+    Object.assign({}, opts, { esModeActive: true }),
+    cosZpathEs
+  );
   return {
     margin: margin, sigma: sigma,
     lFs: lFs, lAbs: lAbs, lAbsD: lAbsD, lPca: lPca, lFlare: lFlare, lMuf: lMuf,

@@ -1213,7 +1213,7 @@ async function runWsprBaselines() {
   const WINDOW_DAYS_WSPR = 30;
   const SQL = `
     SELECT band, hour_utc,
-           sum(hourly_count) / ${WINDOW_DAYS_WSPR}.0 AS avg
+           sum(hourly_count) / ${WINDOW_DAYS_WSPR}.0 AS avg_spots
     FROM (
       SELECT band, toStartOfHour(time) AS h, toHour(time) AS hour_utc, count() AS hourly_count
       FROM wspr.rx
@@ -1236,7 +1236,7 @@ async function runWsprBaselines() {
   for (const row of rows) {
     const name = intToBandName(Number(row.band));
     const hour = Number(row.hour_utc);
-    const avg  = Number(row.avg);
+    const avg  = Number(row.avg_spots);
     if (!name || !Number.isFinite(hour) || !Number.isFinite(avg)) continue;
     cells[name][hour] = Math.round(avg);
   }

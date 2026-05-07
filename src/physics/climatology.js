@@ -82,26 +82,6 @@ export function foF2Climatology(f107A, cosZ, latAbs, lat, lon, date) {
   var polarFactor  = 1 / (1 + Math.exp((lat - 73) / 8));
   var dayBump = 4.0 * midlatFactor * polarFactor;
 
-  // Night decay (Eq 38): when cosZ < 0 the base value attenuates as
-  // F-region recombination proceeds. Linear from full base at sunset
-  // (cosZ=0) to 60% of base at solar antipode (cosZ=-1). Captures the
-  // observed midlat midnight foF2 ~3-4 MHz at F10.7A ~120 (with Eq 38
-  // dropped, midnight stays at base ≈ 5.5 MHz, ~1.5 MHz too high).
-  //
-  // 2026-04-26 sanity check, Eq 37 (memory lag) and Eq 38 (base decay)
-  // were briefly suspected of being a redundant double-mechanism.
-  // Diurnal-curve sweep at 50°N confirms they cover non-overlapping
-  // ranges:
-  //   sunset → +3h: lag dominates (driver ~0.5, base unchanged), keeps
-  //                 foF2 in the 6-7 MHz evening tail
-  //   +3h → sunrise: lag dies (cosZ_{-3h} also negative); only Eq 38
-  //                  base attenuation operates, decaying to ~3.3 MHz
-  //                  near midnight and recovering toward sunrise
-  // Both kept; the suspected redundancy is a misread.
-  if (cosZ < 0) {
-    base = base * Math.max(0.6, 1 + 0.4 * cosZ);
-  }
-
   // F-region "memory" lag for evening tail (Eq 37): peak foF2 lags
   // peak cosZ by ~2-3 h because recombination timescale is hours.
   // Without full geometry, fall back to instantaneous cosZ.
@@ -111,7 +91,29 @@ export function foF2Climatology(f107A, cosZ, latAbs, lat, lon, date) {
     var cosZlagged = solarCosZenith(lat, lon, lagDate);
     driver = Math.max(driver, 0.7 * Math.max(0, cosZlagged));
   }
-  var foF2 = Math.max(2, base + dayBump * driver);
+  var foF2 = base + dayBump * driver;
+
+  // Night decay (Eq 38): when cosZ < 0 the constructed foF2 attenuates
+  // as F-region recombination proceeds. Wraps the entire b = floor +
+  // dayBump · driver so recombination depletes the daytime
+  // contribution that the lag-driver still carries into the early
+  // evening, not just the floor. (Pre-S0-decision form multiplied
+  // only the floor; that under-decayed the early-evening tail.)
+  // Linear from full b at sunset (cosZ=0) to 60% of b at solar
+  // antipode (cosZ=-1). Captures observed midlat midnight foF2 ~3-4
+  // MHz at F10.7A ~120 (without this term, midnight stays at base ≈
+  // 5.5 MHz, ~1.5 MHz too high).
+  //
+  // 2026-04-26 sanity check: Eq 37 (memory lag) and Eq 38 (post-decay)
+  // cover non-overlapping ranges and both kept.
+  //   sunset → +3h: lag dominates (driver ~0.5, multiplier ≈ 1)
+  //   +3h → sunrise: lag dies (cosZ_{-3h} negative); only the
+  //                  multiplier operates, decaying to ~3.3 MHz near
+  //                  midnight and recovering toward sunrise.
+  if (cosZ < 0) {
+    foF2 = foF2 * Math.max(0.6, 1 + 0.4 * cosZ);
+  }
+  foF2 = Math.max(2, foF2);
 
   var cosZday = Math.max(0, cosZ);
 

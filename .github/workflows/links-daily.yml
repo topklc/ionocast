@@ -51,7 +51,7 @@ jobs:
             --retry-wait-time 5
             --accept 200,203,206,301,302,304,403,429,503
             --exclude ^https://db1\.wspr\.live/?$
-            --exclude ^https://github\.com/e46401ff/ionocast/?$
+            --exclude ^https://github\.com/topklc/ionocast/?$
             ./README.md
             ./licenses.html
             ./index.html
@@ -62,7 +62,7 @@ jobs:
           #   db1.wspr.live (bare endpoint): always 400 with body
           #     "DB::Exception: Empty query" because ClickHouse
           #     requires ?query=...; runtime never hits the bare URL.
-          #   github.com/e46401ff/ionocast: 404 to unauthenticated
+          #   github.com/topklc/ionocast: 404 to unauthenticated
           #     visitors because the repo is private. Linked from
           #     licenses.html and README; replace exclude with the
           #     real public URL when / if the repo goes public.

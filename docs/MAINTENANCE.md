@@ -3,6 +3,9 @@
 What to do (or not do) so ionocast keeps running with minimal touch over the
 months and years. Skim this whenever you come back after a long break.
 
+For the *every-constant-by-time-horizon* reference (1 week to 5+ years),
+see `docs/DRIFT-HORIZON.md`.
+
 The site is mostly self-running because every panel degrades gracefully when
 its upstream is unreachable: an unreachable proxy turns into a "Pending."
 note, never a broken page. So the failure mode you should worry about most

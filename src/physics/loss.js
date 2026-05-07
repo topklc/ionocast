@@ -9,7 +9,8 @@ import {
   FLARE_DB_AT_M1_AT_7MHZ, FLARE_DB_PER_DECADE,
   FLARE_PER_HOP_CAP_DB, FLARE_PATH_CAP_DB,
   DEFOCUS_DB_PER_EXTRA_HOP, GROUND_AVG_EPS_R, GROUND_AVG_SIGMA,
-  PATH_ABSD_CAP_DB, PATH_AUR_CAP_DB
+  PATH_ABSD_CAP_DB, PATH_AUR_CAP_DB, AUR_PER_HOP_CAP_DB,
+  D_REGION_PREFACTOR
 } from "../constants.js";
 import { gcPointAtFraction } from "./qth.js";
 import { hopsForDistance, hopCeilingKm, solarCosZenith, cgmLatAbs } from "./geometry.js";
@@ -128,78 +129,46 @@ export function lLowBandExtraDb(fMHz) {
   return 0;
 }
 
-// Diurnal D-region absorption baseline (quiet-sun ionization). ITU-R
-// P.533 §A.2 simplified: `A = base(f) · cos(χ)^1.3` where χ is the solar
-// zenith at the reflection point. Peaks at local noon, zero at night.
-// `lAbsDb` above only captures SWPC D-RAP flare-enhanced absorption;
-// this fills in the missing ordinary-daytime D-region loss that makes
-// low bands unusable at midday (the reason 80m/160m are night bands).
+// Diurnal D-region absorption (quiet-sun ionization). Continuous formula
+// rewrite landed at 2026-05-07 (S0 #2 paired with grayLineBonusDb in
+// modes.js). Replaces the prior per-band A_base table + cos^1.3
+// dependence with
 //
-// Base values calibrated 2026-04-30 against P.533 §A.2 quiet-day
-// non-deviative absorption formula L_a(f) ≈ 677 / (f + f_L)^1.98 where
-// f_L ≈ 1.4 MHz (gyrofrequency). The P.533 form is per-hop at vertical
-// incidence; typical oblique HF paths (5-15° takeoff) see ~1/1.6 of
-// vertical-incidence absorption, so ionocast values target
-// L_P.533(f) / 1.6 to match real-path obliquity.
+//   lAbsDiurnalDb(f, cosZ) = dayLoss(f) * cos^0.7(zenith)
 //
-//   band  f_MHz  P.533/hop  /1.6   ionocast (this table)
-//   160m  1.838     66.1    41.3       28
-//   80m   3.570     28.3    17.7       18
-//   60m   5.366     15.4     9.6       10
-//   40m   7.040      9.9     6.2        6
-//   30m  10.140      5.3     3.3        3
-//   20m  14.097      3.0     1.9        1.5
-//   17m  18.106      1.9     1.2        0.8
-//   15m  21.096      1.4     0.9        0.5
-//   12m  24.924      1.0     0.65       0.3
-//   10m  28.126      0.8     0.52       0.2
+// where dayLoss(f) = D_REGION_PREFACTOR / (f_MHz + 0.5)^2.
 //
-// History: previous values (160m=28, 80m=18, ..., 20m=0.5, 15m+=0)
-// were eyeballed from K9LA / ARRL ranges and hit lower bands well
-// but had upper bands as essentially zero. P.533 derivation says
-// 17m / 15m / 12m / 10m all have ~0.5-1.2 dB / hop in midlat noon
-// summer; the prior zero return was a meaningful under-prediction on
-// daytime upper-band paths. Multi-hop daytime DX on 20m / 17m now
-// gets 1-3 dB more absorption than before. cosZ < 0.05 still treated
-// as night (zero return).
-// Smooth log-frequency / log-magnitude interpolation through the
-// P.533-anchored band-centre calibration values. Continuous and
-// monotone over the HF range; no more 8 dB cliff at the f=4 MHz
-// boundary that the prior step-function had.
-var _LABSD_ANCHORS = [
-  [1.838, 28],
-  [3.570, 18],
-  [5.366, 10],
-  [7.040, 6],
-  [10.140, 3],
-  [14.097, 1.5],
-  [18.106, 0.8],
-  [21.096, 0.5],
-  [24.924, 0.3],
-  [28.126, 0.2],
-];
-function _lAbsDiurnalBase(fMHz) {
-  if (fMHz <= _LABSD_ANCHORS[0][0]) return _LABSD_ANCHORS[0][1];
-  if (fMHz >= _LABSD_ANCHORS[_LABSD_ANCHORS.length - 1][0]) {
-    return _LABSD_ANCHORS[_LABSD_ANCHORS.length - 1][1];
-  }
-  for (var i = 1; i < _LABSD_ANCHORS.length; i++) {
-    if (fMHz <= _LABSD_ANCHORS[i][0]) {
-      var fA = _LABSD_ANCHORS[i - 1][0], vA = _LABSD_ANCHORS[i - 1][1];
-      var fB = _LABSD_ANCHORS[i][0],     vB = _LABSD_ANCHORS[i][1];
-      // Log-space interp in both axes (both v>0 across the table, so
-      // the geometric mean is well-defined and tracks the underlying
-      // P.533 ν^-2 form better than linear-in-v).
-      var t = (Math.log(fMHz) - Math.log(fA)) / (Math.log(fB) - Math.log(fA));
-      return Math.exp(Math.log(vA) + t * (Math.log(vB) - Math.log(vA)));
-    }
-  }
-  return _LABSD_ANCHORS[_LABSD_ANCHORS.length - 1][1];
-}
+// Compared to the retired table:
+//   band  f_MHz  noon-old (cos^1.3=1)  noon-new (formula)
+//   160m  1.838     28                 200/5.466 = 36.6
+//   80m   3.570     18                 200/16.56 = 12.1
+//   60m   5.366     10                 200/34.49 = 5.80
+//   40m   7.040      6                 200/56.85 = 3.52
+//   30m  10.140      3                 200/113.4 = 1.76
+//   20m  14.097     1.5                200/213.2 = 0.94
+//   17m  18.106     0.8                200/345.9 = 0.58
+//   15m  21.096     0.5                200/465.2 = 0.43
+//   12m  24.924     0.3                200/645.7 = 0.31
+//   10m  28.126     0.2                200/818.0 = 0.24
+//
+// 160m noon climbs (28 → 37 dB), 80m noon drops (18 → 12). Calibration
+// retune deferred per S0 framing (harness re-run later). The cos^0.7
+// exponent is gentler than cos^1.3, which charges more absorption at
+// moderate zenith (e.g. cosZ=0.5: cos^0.7 = 0.616 vs cos^1.3 = 0.406)
+// and closes the ~1-3 dB residual on multi-hop midday DX paths the prior
+// form under-predicted on. cosZ < 0.05 still returns 0 (night).
+//
+// Pairs with grayLineBonusDb: at the terminator the grayline bonus
+// refunds dayLoss * (1 - cos^0.7), so the budget gives a net D-region
+// credit equal to dayLoss * (1 - cos^0.7) at near-terminator hops on
+// top of zero charge from this term — operationally consistent with
+// the empirically-strong gray-line propagation operators report
+// (capped at 25 dB in modes.js).
 export function lAbsDiurnalDb(fMHz, cosZ) {
   if (cosZ == null || isNaN(cosZ) || cosZ < 0.05) return 0;
   if (fMHz == null || !isFinite(fMHz) || fMHz <= 0) return 0;
-  return _lAbsDiurnalBase(fMHz) * Math.pow(cosZ, 1.3);
+  var dayLoss = D_REGION_PREFACTOR / Math.pow(fMHz + 0.5, 2);
+  return dayLoss * Math.pow(Math.max(0, cosZ), 0.7);
 }
 
 // Per-hop ground reflection loss for horizontal polarisation at grazing
@@ -269,16 +238,20 @@ export function lHopGroundReflectionDb(fMHz, elevDeg) {
 // step on the auroral oval expansion, both retired.
 //
 // Now computes the extra-hop multiplier as a continuous function of
-// distance: extraHops = max(0, dKm/4000 - 1). The dKm overload preserves
-// backward-compat for callers that still pass the integer hop count
-// (which falls back to (nHops-1) * perHop).
-export function lMultiHopDb(nHopsOrDKm, fMHz, elevDeg) {
+// distance: extraHops = max(0, dKm/d_hop_max(hF) - 1). The hop ceiling
+// d_hop_max(hF) tracks live F2 height via hopCeilingKm() (geometry.js)
+// so a high-flux day with hmF2 ≈ 340 km lifts the 1-hop ceiling to
+// ~4258 km, matching the geometry that hopsForDistance and the antenna
+// elevation pattern already use. The dKm overload preserves backward-
+// compat for callers that still pass the integer hop count (which
+// falls back to (nHops-1) * perHop).
+export function lMultiHopDb(nHopsOrDKm, fMHz, elevDeg, hF) {
   if (nHopsOrDKm == null || !isFinite(nHopsOrDKm)) return 0;
   var perHop = lHopGroundReflectionDb(fMHz, elevDeg) + DEFOCUS_DB_PER_EXTRA_HOP;
   // Heuristic: values >= 100 are interpreted as dKm (smooth path); values
   // < 100 are integer hop counts (legacy callers / tests).
   if (nHopsOrDKm >= 100) {
-    var extraHops = Math.max(0, nHopsOrDKm / 4000 - 1);
+    var extraHops = Math.max(0, nHopsOrDKm / hopCeilingKm(hF) - 1);
     return extraHops * perHop;
   }
   if (nHopsOrDKm < 2) return 0;
@@ -332,7 +305,7 @@ export function lAuroralDb(fMHz, kp, hpGw, cgmLatAbsValue) {
   var driver = Math.max(kpDriver, hpDriver);
   if (driver <= 0) return 0;
   var L = driver * (30 / fMHz) * cgmFac;
-  return Math.min(30, L);
+  return Math.min(AUR_PER_HOP_CAP_DB, L);
 }
 
 // Active during SEP events: solar protons precipitate into the polar cap

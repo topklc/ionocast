@@ -119,7 +119,7 @@ clickable link.
 
 ## Resolved (no action needed)
 
-### 3. github.com/e46401ff/ionocast 404 (§1.5)
+### 3. github.com/topklc/ionocast 404 (§1.5)
 
 **Confirmed by user 2026-05-06:** the GitHub repo is private. 404 is
 the expected response GitHub returns to unauthenticated visitors for

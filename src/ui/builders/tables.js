@@ -17,8 +17,8 @@ export const tableBuilders = {
     // columns sit between the band frequency and the observation cells
     // unique to each scope.
     var headers = hf
-      ? ["Band","f (MHz)","Tier","Margin","Confidence","Mode","Best Path","WSPR SNR","WSPR N/h","f/MUF","D-RAP"]
-      : ["Band","f (MHz)","Tier","Margin","Confidence","Mode","Best Path","foEs (MHz)","Es MUF/f","Aurora HP","Tropo dN/dh"];
+      ? ["Band","f (MHz)","Tier","Margin","Stability","Mode","Best Path","WSPR SNR","WSPR N/h","f/MUF","D-RAP"]
+      : ["Band","f (MHz)","Tier","Margin","Stability","Mode","Best Path","foEs (MHz)","Es MUF/f","Aurora HP","Tropo dN/dh"];
 
     // Format a margin number as a signed dB string. Uses U+2212 minus
     // for the negative sign so the cell isn't ambiguous with a hyphen.

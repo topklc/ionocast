@@ -14,8 +14,12 @@ import {
 } from "../harness.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const CACHE_PATH = resolve(HERE, "../.cache/harness.json");
-const PATHS_PATH = resolve(HERE, "../paths.json");
+// harness.mjs writes the cache to scripts/data/.cache/harness.json; tune-r7
+// previously read from scripts/.cache/harness.json (a stale path), so the
+// --heavy suite was silently un-runnable. Same for paths.json — canonical
+// location is scripts/data/paths.json.
+const CACHE_PATH = resolve(HERE, "../data/.cache/harness.json");
+const PATHS_PATH = resolve(HERE, "../data/paths.json");
 
 const FULL_GRID = {
   lIonoHfDb:            [0, 0.5, 1, 2, 4, 6, 8],
