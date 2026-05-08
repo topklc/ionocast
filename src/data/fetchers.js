@@ -101,10 +101,25 @@ export function fetchSwpcRegions() {
       var mProb = r.m_flare_probability != null ? r.m_flare_probability : (r.m_class_probability || 0);
       var mag = (r.mag_class || "").trim();
       var spots = r.number_spots != null ? r.number_spots : 0;
+      // Hale magnetic class shorthand to readable label. SWPC abbreviates
+      // alpha/beta/gamma/delta as "A"/"B"/"G"/"D" and combinations as
+      // "BG"/"BGD"; the one-letter form is opaque to operators not
+      // already fluent in Hale's classification.
+      var magLabel = "";
+      if (mag === "A") magLabel = "Alpha";
+      else if (mag === "B") magLabel = "Beta";
+      else if (mag === "BG") magLabel = "Beta-Gamma";
+      else if (mag === "BGD") magLabel = "Beta-Gamma-Delta";
+      else if (mag) magLabel = mag;        // unknown but non-empty
+      var spotLabel = spots + (spots === 1 ? " spot" : " spots");
+      // Leading bullet on desc only when meta exists; otherwise the
+      // line would start with a stray "\u00b7 M 5%..." that reads worse
+      // than just "M 5%...".
+      var descPrefix = magLabel ? " \u00b7 " : "";
       items.push({
         time: "AR " + r.region,
-        meta: mag || "?",
-        desc: "M <b>" + mProb + "%</b> \u00b7 X <b>" + xProb + "%</b> \u00b7 " + spots + " spots."
+        meta: magLabel,
+        desc: descPrefix + "M <b>" + mProb + "%</b> \u00b7 X <b>" + xProb + "%</b> \u00b7 " + spotLabel + "."
       });
     });
     items.sort(function(a, b) {

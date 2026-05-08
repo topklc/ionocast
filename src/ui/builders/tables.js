@@ -235,10 +235,16 @@ export const tableBuilders = {
         }
         var ul = el("ul", { className: "outlook-list" });
         items.forEach(function(it) {
+          // desc is rendered via html: because fetchers prepare trusted
+          // markup in it (e.g. <b>...</b> emphasis on swpc-regions, the
+          // "see SWPC daily report" anchor on the truncation row).
+          // Sources are listed in src/data/fetchers.js; all are
+          // hardcoded templates over upstream-numeric fields, no
+          // user-controllable strings.
           ul.appendChild(el("li", null, [
             el("time", { text: it.time || "" }),
             el("span", { className: "meta", text: it.meta || "" }),
-            el("span", { className: "desc", text: it.desc || "" })
+            el("span", { className: "desc", html: it.desc || "" })
           ]));
         });
         content.appendChild(ul);
