@@ -2,11 +2,11 @@
 /apple-touch-icon-precomposed.png  /assets/apple-touch-icon.png  200
 /security.txt                      /.well-known/security.txt     301
 
-# Tropo grid: cross-domain proxy (status 200) from the renderer's
-# expected /src/tropo/data/grid.bin path to the R2 bucket "ionocast"
-# served at data.ionocast.org/tropo/grid.bin.  CF Pages issues a
-# server-side fetch and serves the bytes back at the original URL,
-# so the renderer sees a same-origin response and no CSP change is
-# required.  Local dev still resolves /src/tropo/data/grid.bin to
-# the file on disk; production goes via this rewrite to R2.
-/src/tropo/data/grid.bin           https://data.ionocast.org/tropo/grid.bin   200
+# Tropo grid: same-domain rewrite from the renderer's expected
+# /src/tropo/data/grid.bin path to the Pages Function at
+# /tropo/grid.bin (functions/tropo/grid.bin.js), which proxies the
+# R2 bucket served at data.ionocast.org.  Same-domain so the
+# rewrite actually proxies (cross-domain rewrites in _redirects
+# fall through to the SPA fallback, not what we want).  Local dev
+# still resolves /src/tropo/data/grid.bin to the file on disk.
+/src/tropo/data/grid.bin           /tropo/grid.bin               200

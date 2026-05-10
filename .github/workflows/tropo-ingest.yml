@@ -60,6 +60,15 @@ jobs:
       - name: Pack binary
         run: node src/tropo/pack-binary.mjs
 
+      - name: Verify R2 access (lists buckets the token can see)
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Account ID prefix: ${CLOUDFLARE_ACCOUNT_ID:0:6}…"
+          echo "Buckets visible to this token:"
+          npx --yes wrangler@4 r2 bucket list
+
       - name: Upload to Cloudflare R2
         env:
           CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -67,6 +76,7 @@ jobs:
           R2_BUCKET:             ${{ vars.R2_BUCKET }}
           R2_KEY:                ${{ vars.R2_KEY }}
         run: |
+          echo "Uploading to bucket: '$R2_BUCKET' key: '$R2_KEY'"
           npx --yes wrangler@4 r2 object put \
             "$R2_BUCKET/$R2_KEY" \
             --file=src/tropo/data/grid.bin \
