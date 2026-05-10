@@ -1,20 +1,24 @@
-name: tests (daily, all suites)
+name: tests (daily, all suites + link check)
 
-# Runs every non-heavy suite once a day. Catches network-dependent
-# regressions (harness Brier, calibration, RBN, PSKReporter, VOACAP
-# cross-check, drift detection) that the per-push fast workflow
-# (test.yml) skips for speed.
+# Runs every non-heavy test suite plus a lychee scan of upstream URLs
+# referenced in the codebase (data-source CREDITS, sections.js image
+# links, README, licenses page, paper bibliography).
 #
-# Cadence: 07:00 UTC daily. After wspr-baselines.yml (06:00 UTC) so
+# The two jobs run in parallel.  A single workflow keeps the daily
+# cadence in one place rather than spreading it across multiple
+# scheduled YAMLs; failures show side-by-side in the run summary.
+#
+# Cadence: 07:00 UTC daily.  After wspr-baselines.yml (06:00 UTC) so
 # the latest auto-committed baseline is in the checked-out tree.
+# Off-peak for most upstream services.
 #
 # Failure modes:
-#   - upstream API unreachable (SWPC / wspr.live / kc2g): suite fails
-#     with a network error. Re-run via workflow_dispatch.
-#   - drift detector exceeds (path, band) thresholds: harness suite
-#     fails; investigate via the uploaded tests.report.json artifact.
-#   - any individual suite fails: workflow fails loud. No auto-retry
-#     so spurious failures stay visible.
+#   - tests suite: upstream API unreachable, drift detector exceeded,
+#     etc.  Investigate via the uploaded tests.report.json artifact.
+#   - lychee: dead link (404 / 410 / DNS fail).  Either update the
+#     reference (sections.js / CREDITS / paper bibliography) or
+#     remove the dead source.  Rate-limited / transient (429 / 503)
+#     and 403 (CI-user-agent block) accepted as success.
 #
 # Manual run: workflow_dispatch in the GitHub UI.
 
@@ -24,15 +28,27 @@ on:
   workflow_dispatch:
 
 jobs:
-  daily:
+  suites:
     name: all suites (no heavy)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      # The harness suites (harness, calibration, wspr-snr, rbn, psk,
+      # scatter-fusion, tune-*, storm-split, day-night, hops, sigma)
+      # all consume scripts/data/.cache/harness.json, which is
+      # gitignored (regenerated from upstream API calls).  CI runners
+      # start clean, so we prime the cache first.  Without this step
+      # 14 of the 22 suites fail with "missing harness.json" before
+      # even running.  --window-days=30 matches the weekly run for
+      # consistency; takes ~5-15 minutes to fetch from WSPR + Kp +
+      # F10.7 + GIRO upstreams.
+      - name: Prime harness cache
+        run: node scripts/harness.mjs --window-days=30 --no-cache
 
       - name: Run all non-heavy suites
         run: node scripts/tests.mjs --suite=all
@@ -45,3 +61,51 @@ jobs:
           path: scripts/outputs/tests.report.json
           if-no-files-found: warn
           retention-days: 30
+
+  links:
+    name: lychee scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Scope: docs (README + licenses page + paper bibliography)
+          # plus the one JS file that hosts the CREDITS array and the
+          # SECTIONS image URLs.  Other src/* files reference /api/*
+          # paths only, no external URLs worth checking.
+          args: |
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --max-retries 3
+            --retry-wait-time 5
+            --accept 200,203,206,301,302,304,403,429,503
+            --base https://ionocast.org/
+            --exclude ^https://db1\.wspr\.live/?$
+            --exclude ^https://github\.com/topklc/ionocast/?$
+            ./README.md
+            ./licenses.html
+            ./index.html
+            ./src/ui/sections.js
+            ./paper/ionocast-methodology.tex
+          fail: true
+          # --exclude rationale (verified 2026-05-06):
+          #   db1.wspr.live (bare endpoint): always 400 with body
+          #     "DB::Exception: Empty query" because ClickHouse
+          #     requires ?query=...; runtime never hits the bare URL.
+          #   github.com/topklc/ionocast: 404 to unauthenticated
+          #     visitors because the repo is private. Linked from
+          #     licenses.html and README; replace exclude with the
+          #     real public URL when / if the repo goes public.
+
+      - name: Upload lychee report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: ./lychee/out.md
+          if-no-files-found: warn
+          retention-days: 14
