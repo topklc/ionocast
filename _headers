@@ -1,5 +1,5 @@
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src * data: blob:; frame-src https://pskreporter.info https://www.reversebeacon.net; connect-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src * data: blob:; frame-src https://pskreporter.info https://www.reversebeacon.net; connect-src 'self' https://data.ionocast.org; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
   X-Frame-Options: DENY

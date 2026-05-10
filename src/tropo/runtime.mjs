@@ -18,8 +18,22 @@
 import { t, currentLocale } from "../i18n.js";
 
 const VENDOR_BASE  = "/src/tropo/vendor";
-const DATA_BASE    = "/src/tropo/data";
 const OUTLINE_BASE = "/src/tropo";
+
+// Paths the renderer tries in order when fetching the grid.  The
+// first hit wins.  Production is the R2 bucket served at
+// data.ionocast.org/tropo/grid.bin (cross-origin, allowed by the
+// CSP entry in _headers and the bucket's CORS rule).  Local dev
+// is /src/tropo/data/... (file on disk, served by python
+// http.server from the repo root).
+const GRID_BIN_PATHS = [
+  "https://data.ionocast.org/tropo/grid.bin",
+  "/src/tropo/data/grid.bin",
+];
+const GRID_JSON_PATHS = [
+  "https://data.ionocast.org/tropo/grid.json",
+  "/src/tropo/data/grid.json",
+];
 
 const MAPLIBRE_JS  = VENDOR_BASE + "/maplibre-gl.js";
 const MAPLIBRE_CSS = VENDOR_BASE + "/maplibre-gl.css";
@@ -442,43 +456,41 @@ export async function mountTropoMap(container) {
     return;
   }
 
-  // Try the packed binary first (production, ~2 MB), then fall back
-  // to the raw JSON (local dev, ~20 MB).  Each step is independently
-  // resilient: a 200 response with an HTML body (e.g. a Cloudflare
-  // Pages SPA-fallback page when neither file is deployed) gets
-  // caught by parseGridBinary's magic-byte check and we still fall
-  // through to the JSON branch.
-  let data, binErr = null, jsonErr = null;
-  try {
-    const r = await fetch(DATA_BASE + "/grid.bin", { cache: "no-cache" });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const ct = r.headers.get("content-type") || "";
-    if (/text\/html|application\/xhtml/i.test(ct)) {
-      throw new Error("got HTML (likely a 404 or SPA fallback page; check that the binary is deployed)");
-    }
-    data = parseGridBinary(await r.arrayBuffer());
-  } catch (e) {
-    binErr = e.message;
-  }
-  if (!data) {
+  // Walk the candidate paths in order, trying binary first then JSON.
+  // Each fetch is independently resilient: a 200 response with an
+  // HTML body (e.g. a Cloudflare Pages SPA-fallback page when the
+  // path isn't routed) is caught by content-type check or by
+  // parseGridBinary's magic bytes, and we move on to the next
+  // candidate.  Reports the per-path error trail if everything fails.
+  let data;
+  const errors = [];
+  async function tryFetch(url, kind) {
     try {
-      const r = await fetch(DATA_BASE + "/grid.json", { cache: "no-cache" });
+      const r = await fetch(url, { cache: "no-cache" });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const ct = r.headers.get("content-type") || "";
       if (/text\/html|application\/xhtml/i.test(ct)) {
-        throw new Error("got HTML (likely a 404 or SPA fallback page)");
+        throw new Error("got HTML (path not routed)");
       }
-      data = await r.json();
+      if (kind === "bin") return parseGridBinary(await r.arrayBuffer());
+      return await r.json();
     } catch (e) {
-      jsonErr = e.message;
+      errors.push(`${url}: ${e.message}`);
+      return null;
+    }
+  }
+  for (const u of GRID_BIN_PATHS) {
+    data = await tryFetch(u, "bin");
+    if (data) break;
+  }
+  if (!data) {
+    for (const u of GRID_JSON_PATHS) {
+      data = await tryFetch(u, "json");
+      if (data) break;
     }
   }
   if (!data) {
-    showError(
-      "Could not load tropo grid from " + DATA_BASE
-      + ". grid.bin: " + binErr
-      + ". grid.json: " + jsonErr + "."
-    );
+    showError("Could not load tropo grid. " + errors.join(" · "));
     return;
   }
 

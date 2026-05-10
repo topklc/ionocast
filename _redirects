@@ -2,11 +2,3 @@
 /apple-touch-icon-precomposed.png  /assets/apple-touch-icon.png  200
 /security.txt                      /.well-known/security.txt     301
 
-# Tropo grid: same-domain rewrite from the renderer's expected
-# /src/tropo/data/grid.bin path to the Pages Function at
-# /tropo/grid.bin (functions/tropo/grid.bin.js), which proxies the
-# R2 bucket served at data.ionocast.org.  Same-domain so the
-# rewrite actually proxies (cross-domain rewrites in _redirects
-# fall through to the SPA fallback, not what we want).  Local dev
-# still resolves /src/tropo/data/grid.bin to the file on disk.
-/src/tropo/data/grid.bin           /tropo/grid.bin               200
