@@ -234,8 +234,8 @@ export const DEFINITIONS = {
     def: "The propagation mechanism that produces the highest margin on this band: F2 for ordinary skywave, NVIS for short low-band paths, Es for sporadic-E (single 2000 km hop off the E layer), Aurora for VHF auroral-E scatter, MS for meteor scatter. The model evaluates each mode in parallel and the winner drives the verdict."
   },
   "Best Path": {
-    name: "Best Path (highest-margin reference destination)",
-    def: "Of the five reference paths from your QTH (NYC, São Paulo, Johannesburg, Tokyo, Sydney) plus their long-path counterparts, the one with the highest predicted SNR margin on this band. Tells you which direction to point: the band is most viable to that destination right now."
+    name: "Best Path (highest-margin direction)",
+    def: "Of the 72 paths sampled around your QTH (12 compass bearings × 6 distance rings: 2500 / 4000 / 6000 / 9000 / 12000 / 16000 km), the one with the highest predicted SNR margin on this band, labelled by compass direction and distance. Tells you which way to point and how far you can usefully reach: the band is most viable in that direction right now. Sub-2500 km contacts (NVIS) are handled separately, not in this basket."
   },
 
   // ---- band table: HF ----

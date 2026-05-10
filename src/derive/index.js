@@ -18,6 +18,7 @@ export {
 } from "./showers.js";
 export {
   computePaths,
+  selectDisplayPaths,
   deriveTec,
 } from "./paths.js";
 export {

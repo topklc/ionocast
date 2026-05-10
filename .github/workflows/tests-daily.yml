@@ -72,6 +72,11 @@ jobs:
       - name: Run lychee
         uses: lycheeverse/lychee-action@v2
         with:
+          # Suppress the action's GitHub job-summary (the emoji-laden
+          # markdown table on the workflow run page).  The same data
+          # is in the lychee-report.zip artifact uploaded below; the
+          # run page already shows pass/fail without the table.
+          jobSummary: false
           # Scope: docs (README + licenses page + paper bibliography)
           # plus the one JS file that hosts the CREDITS array and the
           # SECTIONS image URLs.  Other src/* files reference /api/*

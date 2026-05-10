@@ -209,3 +209,28 @@ export function gcPointAtFraction(lat1, lon1, lat2, lon2, f) {
   var lon = Math.atan2(y, x) * 180/Math.PI;
   return [lat, ((lon + 540) % 360) - 180];
 }
+
+// Destination point at a given true bearing and great-circle distance
+// from (lat, lon).  bearingDeg measured clockwise from true north
+// (0 = N, 90 = E, etc.); distKm is the spherical surface distance.
+// Used by the radial path basket in src/derive/paths.js to anchor
+// 12 bearings × 6 distance rings around the operator's QTH.
+//
+// Standard spherical-trig formula:
+//   lat2 = asin(sin(lat1)cos(d/R) + cos(lat1)sin(d/R)cos(brg))
+//   lon2 = lon1 + atan2(sin(brg)sin(d/R)cos(lat1),
+//                        cos(d/R) - sin(lat1)sin(lat2))
+// where d is the surface distance, R the Earth radius.
+export function gcDestination(lat, lon, bearingDeg, distKm) {
+  var R = 6371;
+  var p1 = lat * Math.PI/180;
+  var l1 = lon * Math.PI/180;
+  var br = bearingDeg * Math.PI/180;
+  var dr = distKm / R;
+  var sinP1 = Math.sin(p1), cosP1 = Math.cos(p1);
+  var sinDr = Math.sin(dr), cosDr = Math.cos(dr);
+  var p2 = Math.asin(sinP1 * cosDr + cosP1 * sinDr * Math.cos(br));
+  var l2 = l1 + Math.atan2(Math.sin(br) * sinDr * cosP1,
+                           cosDr - sinP1 * Math.sin(p2));
+  return [p2 * 180/Math.PI, ((l2 * 180/Math.PI + 540) % 360) - 180];
+}

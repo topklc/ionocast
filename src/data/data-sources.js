@@ -12,7 +12,7 @@ import {
   fetchSolarWindPlasma, fetchProtonFlux
 } from "./fetchers.js";
 import {
-  computePaths, deriveTec, computeImoShowers,
+  computePaths, selectDisplayPaths, deriveTec, computeImoShowers,
   computeBandsHf, deriveVhfBands, deriveConditions
 } from "../derive.js";
 
@@ -34,7 +34,15 @@ function _fetchData(name) {
                                   .then(function(d) { return cacheSet(name, d); });
     case "tec":           return fetchData("kc2g").then(function(k) { return cacheSet(name, deriveTec(k.stations, currentQth())); });
     case "kc2g":          return fetchKc2gStations().then(function(s) { return cacheSet(name, { stations: s }); });
-    case "paths":         return fetchData("kc2g").then(function(k) { return cacheSet(name, computePaths(k.stations, currentQth())); });
+    case "paths":         return fetchData("kc2g").then(function(k) {
+                                  var p = computePaths(k.stations, currentQth());
+                                  // displayPaths: ≤12-row subset for the path-table UI
+                                  // (longest viable ring per bearing).  The full 72-path
+                                  // basket stays in `paths` for the per-band best-path
+                                  // selector in deriveConditions.
+                                  p.displayPaths = selectDisplayPaths(p.paths);
+                                  return cacheSet(name, p);
+                                });
     case "swpc-regions":  return fetchSwpcRegions().then(function(d) { return cacheSet(name, d); });
     case "swpc-3day-prob":
     case "swpc-kp-forecast":

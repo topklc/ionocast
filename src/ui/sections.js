@@ -172,7 +172,7 @@ export const SECTIONS = [
         [
           { type: "heading", text: "Reference paths from QTH" },
           { type: "path-table", source: "paths",
-            interp: "MUF on five reference great-circle paths from QTH plus their long-path counterparts where a station near the antipodal midpoint reports usable MUF. Midpoint values from the kc2g IRI-assimilated grid. f/MUF ≤ 0.85 = stable (FOT), ≤ 1.0 = marginal, > 1.0 = no F2 support." }
+            interp: "MUF on a radial basket of paths sampled relative to QTH: 12 bearings × 6 distance rings (2.5 / 4 / 6 / 9 / 12 / 16 Mm), 72 paths total. The shortest ring sits at the geometric minimum for a single F2 hop; below that propagation is NVIS-mode (handled separately) rather than F2-hop. The longest-viable ring per bearing is shown here for readability; the band-table's per-band best-path selector consumes the full basket. Midpoint MUF from the kc2g IRI-assimilated grid. f/MUF ≤ 0.85 = stable (FOT), ≤ 1.0 = marginal, > 1.0 = no F2 support." }
         ]
       ]},
 

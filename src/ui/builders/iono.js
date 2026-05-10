@@ -101,7 +101,14 @@ export const ionoBuilders = {
           { html: abbr("foF2 mid") },
           { label: t("Sonde") }
         ];
-        var rows = (data.paths || []).map(function(p) {
+        // The radial basket has 72 paths (12 bearings × 6 rings).
+        // Show only the longest viable ring per bearing so the table
+        // stays scannable; the band-table's per-band best-path
+        // selector consumes the full 72-path basket separately.
+        var display = (data.displayPaths && data.displayPaths.length)
+          ? data.displayPaths
+          : (data.paths || []);
+        var rows = display.map(function(p) {
           var sondeColor = p.sondeDistKm != null && p.sondeDistKm > 1500 ? "q-warn" : "";
           return [
             { text: p.name },
