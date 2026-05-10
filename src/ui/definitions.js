@@ -235,7 +235,7 @@ export const DEFINITIONS = {
   },
   "Best Path": {
     name: "Best Path (highest-margin direction)",
-    def: "Of the 72 paths sampled around your QTH (12 compass bearings × 6 distance rings: 2500 / 4000 / 6000 / 9000 / 12000 / 16000 km), the one with the highest predicted SNR margin on this band, labelled by compass direction and distance. Tells you which way to point and how far you can usefully reach: the band is most viable in that direction right now. Sub-2500 km contacts (NVIS) are handled separately, not in this basket."
+    def: "Of the 72 paths sampled around your QTH (12 compass bearings × 6 distance rings: 2500 / 4000 / 6000 / 9000 / 12000 / 16000 km), the one with the highest predicted SNR margin on this band, labelled by compass direction and distance. The distance is shown in megametres (1 Mm = 1000 km, so 9.0 Mm = 9000 km), more compact than \"9000 km\" in a narrow column. Tells you which way to point and how far you can usefully reach: the band is most viable in that direction right now. Sub-2500 km contacts (NVIS) are handled separately, not in this basket."
   },
 
   // ---- band table: HF ----

@@ -118,14 +118,17 @@ Key contributions:
 \item \emph{Elevation-dependent antenna gain} from
       hop-geometry-derived takeoff angles, plus \emph{NVIS detection}
       for short paths using local foF2.
-\item Verdicts mapped to ITU-R P.842 reliability buckets in
-      $\sigma$-units rather than fixed dB widths, so the tier
-      boundary scales with each band's prediction uncertainty.
+\item Verdicts mapped to fixed dB tier cuts (+18 / +6 / -5 / -14)
+      that don't scale with sigma; calibrated against on-air
+      operator experience after a sigma-percentile experiment ran
+      optimistic in real-world contests (Section~\ref{sec:tiers}).
 \end{itemize}
 
-Both short-path and long-path great circles are evaluated per
-destination.  All computation is deterministic, repeatable, and
-inspectable; no machine-learning black boxes.
+Paths are sampled radially around the operator's QTH on a
+12-bearing $\times$ 6-distance-ring grid (Section~\ref{sec:kc2gobs}),
+so every QTH gets identical 72-point coverage with no fixed-city
+geographic bias.  All computation is deterministic, repeatable,
+and inspectable; no machine-learning black boxes.
 
 \paragraph{Source and reproducibility.} The full ionocast
 implementation --- browser code, Cloudflare Worker handlers, and
@@ -240,9 +243,10 @@ operator-configurable, and privacy-preserving (operator QTH stays
 on-device in \texttt{localStorage} between requests, and is sent
 to the proxy worker only at request time for nearest-station
 resolution; see Section~\ref{sec:privacy}).  The QTH parameterises
-ten reference propagation paths (five short-path destinations
-plus their long-path counterparts); the SNR budget runs per band,
-per path, at the current time.  A forward-projection MUF pipeline (solar-zenith
+a radial basket of 72 propagation paths (12 compass bearings $\times$
+6 distance rings: 2.5 / 4 / 6 / 9 / 12 / 16\,Mm) sampled relative
+to the operator's location; the SNR budget runs per band, per path,
+at the current time.  A forward-projection MUF pipeline (solar-zenith
 analogy, storm depression, seasonal correction, sporadic-E
 persistence; Section~\ref{sec:projection}) is documented but not
 yet surfaced in the runtime; the Upcoming Disruptions panel
@@ -2094,18 +2098,68 @@ same sampling, which \emph{is} active, and the
 calibration result that closed this branch).  The two-source consensus
 is what ships.
 
-\subsection{kc2g Observed MUF}
+\subsection{kc2g Observed MUF}\label{sec:kc2gobs}
 
 The kc2g network publishes MUF(3000F2) from each ionosonde.  For
-each of ten reference paths --- great circles from the operator's
-QTH to five canonical short-path destinations (New York, S\~ao
-Paulo, Johannesburg, Tokyo, Sydney) and their five long-path
-counterparts, midpoints recomputed per-QTH on each reload ---
-ionocast selects the nearest ionosonde to that path's midpoint.
-A \emph{freshness gate} discards observations older than
-\SI{30}{\minute}.  The distance from each path midpoint to its nearest
-ionosonde is displayed in the path table so operators can gauge data
-confidence; stations beyond 1500\,km are flagged.
+each of 72 radial paths sampled relative to the operator's QTH
+(12 bearings every 30\textdegree{} $\times$ 6 distance rings:
+2500, 4000, 6000, 9000, 12000, 16000\,km, recomputed per-QTH on
+each reload), ionocast selects the nearest ionosonde to that path's
+midpoint.  A \emph{freshness gate} discards observations older than
+\SI{30}{\minute}.  The distance from each path midpoint to its
+nearest ionosonde is displayed in the path table so operators can
+gauge data confidence; stations beyond 1500\,km are flagged.
+
+\paragraph{Why radial sampling rather than fixed cities.}  The
+earlier basket was 5 fixed destinations (New York, S\~ao Paulo,
+Johannesburg, Tokyo, Sydney) plus their long-path counterparts,
+ten paths total.  That worked for QTHs in Europe (where every
+named destination is a reasonable F2-hop distance away) but
+produced two structural failure modes elsewhere:
+\begin{enumerate}[nosep]
+  \item \textbf{QTH = destination.}  An operator at PM85 (Tokyo)
+        saw a ``QTH$\to$Tokyo'' path of \SI{0}{\km}, which the
+        SNR budget treated as a trivial-distance F2 hop with no
+        multi-hop loss, no auroral exposure, no D-region
+        absorption.  Margins ran to \SI{+50}{\dB} and the verdict
+        pinned at Excellent regardless of conditions.
+  \item \textbf{QTH near destination.}  EM87 (Tennessee) at
+        ${\sim}\!944$\,km from FN30 (NYC) sat in the gap between
+        NVIS and proper F2-hop distances; the F2-hop budget
+        undercount made every band look ``good to NYC'' even
+        when no other destination was viable.
+\end{enumerate}
+Both are symptoms of the same problem: a fixed basket of 5 points
+cannot sample the (distance, bearing) plane evenly for every
+QTH.  Radial sampling fixes this by anchoring the basket to the
+operator instead of a city list.  Every QTH gets identical
+72-point coverage; no zero-length self-paths, no geographic
+skew, no need to maintain a destination table.
+
+\paragraph{Why the shortest ring is 2500\,km.}  A single F2 hop
+has a geometric minimum distance of $\sim 2500$\,km set by the
+F2-peak height $h_{\text{F2}} \in [250, 350]$\,km and the
+antenna's lowest usable launch elevation ($\sim 5\text{--}15$\textdegree).
+Below that there is a propagation dead zone where neither NVIS
+(which fades above $\sim 1500$\,km as the reflection becomes too
+oblique for the secant approximation) nor a low-elevation F2
+hop is fully valid.  The budget's F2-hop math mis-models that
+dead zone as a trivial-distance hop with very low loss.  Starting
+the basket at 2500\,km keeps every sample in F2-hop territory
+where the budget produces honest margins; sub-2500\,km
+NVIS-mode contacts are a separate planned UI surface that
+shares the budget's NVIS branch (Section~\ref{sec:nvisdetect})
+but does not enter the radial-basket best-margin computation.
+
+\paragraph{Long-path coverage.}  The previous basket included
+explicit long-path counterparts for each of the five short-path
+destinations (antipodal-midpoint lookups).  In the radial
+basket, every bearing has its $\pm 180\textdegree$ partner
+sampled at the same six distance rings, so long-path geometries
+are captured implicitly.  The deepest ring (16\,Mm) is short
+of the antipodal distance ($\sim 20$\,Mm) by design; a path at
+16\,Mm sweeps the same midpoint band as a 4\,Mm path going the
+other way around the Earth, so the redundancy is intentional.
 
 \subsection{foF2 Climatology (Simplified P.1239)}\label{sec:climo}
 
@@ -2576,7 +2630,7 @@ fallback is removed entirely (Section~\ref{sec:limits}), both
 the $F = 0.4$ literal and Eq.~\ref{eq:nightfloor} can be
 retired together.
 
-\subsection{NVIS Detection for Short Paths}
+\subsection{NVIS Detection for Short Paths}\label{sec:nvisdetect}
 
 For paths shorter than \SI{500}{\km} the signal travels at
 near-vertical incidence (NVIS).  The relevant frequency limit is
@@ -2638,21 +2692,20 @@ geometry-aware NVIS MUF
 The dynamic gate covers 30\,m / 17\,m NVIS at solar maximum and
 naturally degrades below the foF2 reading at solar minimum.
 
-\subsection{Short-Path vs.\ Long-Path Evaluation}
+\subsection{Short-Path vs.\ Long-Path Coverage}
 
-Between any two points on Earth there are two great-circle paths.  The
-long path (LP) traverses the opposite side of the globe and can be open
-when the short path (SP) is closed, particularly at dawn and dusk on
-20\,m and 17\,m.
-
-For each of the five reference destinations, ionocast computes both the
-SP and LP midpoints, finds the nearest kc2g ionosonde for each, and
-evaluates margins on both paths.  The LP midpoint is the antipode of the
-SP midpoint: $(\!-\!\phi_{\text{mid}},\; \lambda_{\text{mid}} + 180\degree)$,
-with the longitude wrapped back into $[-180\degree, +180\degree]$ before
-the lookup so the kc2g grid index is well-defined.
-Both paths compete for the best-margin verdict, so an open LP beats a
-closed SP whenever it offers a better budget.
+Between any two points on Earth there are two great-circle paths,
+and the long path (LP) can be open when the short path (SP) is
+closed --- particularly at dawn and dusk on 20\,m and 17\,m.  In
+the radial basket (Section~\ref{sec:kc2gobs}) the LP/SP distinction
+is implicit rather than special-cased: every compass bearing has
+its $\pm 180\textdegree$ partner sampled, so a path travelling
+``the other way around'' from an operator at IO87 (Edinburgh) to
+QF56 (Sydney) shows up as the long-distance ring on the bearing
+toward south-east Asia rather than the ring toward Australia
+direct.  Both compete on equal footing in the per-band best-margin
+comparison; whichever has the higher budget wins, with no separate
+SP/LP code path or antipodal-midpoint arithmetic.
 
 % ── MUF diurnal curve ───────────────────────────────────────────────
 \begin{figure}[H]
@@ -4188,9 +4241,12 @@ Pure physics drives the verdict; the N0NBH-style
 is retained as an independent reference predictor (and is what
 \texttt{tune-blend.mjs} exercises as a regression canary) but
 does not enter the verdict path.  Tier verdicts are defined by
-ITU-R P.842 reliability buckets in $\sigma$-units rather than by
-a fixed dB-width tier scheme, so the per-band absolute margin
-bias has no constant width to fit against.
+fixed dB cuts (+18 / +6 / -5 / -14, Section~\ref{sec:tiers}) and
+do not scale with sigma; the per-band absolute margin bias is
+therefore meaningful as a fixed reference, but the harness
+deliberately does not fit to it because that would couple the
+verdict labels to the WSPR-truth artefact rather than the
+underlying physics.
 
 \subsection{Offline Constant Calibration}\label{sec:calibrate}
 
@@ -4269,10 +4325,11 @@ verdict, not a calibration target: WSPR-spot activity and link
 viability for the configured station are correlated but not
 identical, so binary accuracy is reported with that caveat
 (see~Section~\ref{sec:tiers}).  An earlier per-band tier-midpoint
-residual emitter targeted a WSPR-percentile tier truth; that target
-was retired in favour of ITU-R P.842 reliability buckets defined by
-the model's own $\sigma$, so per-band absolute-margin biases are no
-longer fitted.  In its place the harness writes a per-(path, band)
+residual emitter targeted a WSPR-percentile tier truth; that
+target was retired when the verdict moved to fixed dB cuts
+(Section~\ref{sec:tiers}), since fitting per-band absolute
+margins to WSPR percentiles couples the verdict labels to the
+WSPR-truth artefact rather than the underlying physics.  In its place the harness writes a per-(path, band)
 margin/$\sigma$ baseline and flags any cell that drifts more than
 \SI{2}{\dB} in mean margin or 5\,pp in $P(\text{open})$ across runs
 --- a self-consistency regression detector that needs no external
@@ -4428,11 +4485,14 @@ where $\Phi$ is the standard normal CDF.  JavaScript has no built-in
 $\Phi$, so the runtime evaluates it via the Abramowitz \& Stegun
 26.2.17 rational approximation (\texttt{src/physics/tier.js},
 \texttt{normCdf}); maximum absolute error is ${\sim}\!7.5\times 10^{-8}$
-in the tails, well below the verdict-relevant resolution at the
-ionocast tier boundaries ($z = \pm 1.2816, +0.2533, -0.3853$, where
-$\partial R/\partial z = \varphi(z) \approx 0.18, 0.39, 0.37$
-respectively).  The approximation choice is therefore not a
-budget-shaping parameter; it is fixed for reproducibility.
+in the tails, well below the verdict-relevant resolution near the
+fixed-dB tier boundaries ($M = +18, +6, -5, -14$\,\si{\dB}, which
+sit at $z = M/\sigma = +1.5$ to $+2.25$, $+0.5$ to $+0.75$, $-0.4$
+to $-0.6$, and $-1.2$ to $-1.75$ respectively for typical per-band
+$\sigma$ in 8 to 12\,\si{\dB}; $\partial R/\partial z = \varphi(z)$
+at those points runs 0.10 to 0.40).  The approximation choice is
+therefore not a budget-shaping parameter; it is fixed for
+reproducibility.
 Eq.~\ref{eq:reliability} is the Gaussian-spread basic-circuit-
 reliability model that underlies ITU-R P.842~\cite{itup842}: the
 recommendation itself presents the calculation in piecewise /
@@ -4458,29 +4518,31 @@ ionocast evaluates the same algebra with live data --- the
 current-hour observed kc2g MUF, the live F\textsubscript{10.7A},
 $K_p^{\text{eff}}$ from the past 7\,d --- and so $R$ answers
 ``what is the probability the link is viable \emph{right now}, given
-the model's residual uncertainty?''  Both questions use the P.842
-formula and a P.842-grade $\sigma$, but they are not the same
-question.  An operator deciding whether to call CQ at this minute
-wants the latter; a frequency-coordination engineer planning circuit
-allocations across a season wants the former.  ionocast surfaces the
-nowcast interpretation, and the $\sigma$ widenings of
-\S\ref{sec:tier-confidence} (near-MUF, storm, forecast storm,
-cross-terminator, storm-recovery TID) plus the Es-active
-contribution defined in \S\ref{sec:es-prop-mode} capture the
-within-hour spread that P.842's static day-to-day $\sigma$ does
-not.  The verdict bucket boundaries (Table~\ref{tab:tiers}) use the same
-$R = \Phi(M/\sigma)$ formula as P.842 but apply ionocast-specific
-reliability targets ($0.90 / 0.60 / 0.35 / 0.10$) chosen for
-operator failure-rate intuition rather than the classical
-$0.95 / 0.80 / 0.50 / 0.20$ schedule; see Table~\ref{tab:tiers}.
+the model's residual uncertainty?''  Both questions use the same Gaussian-spread machinery, but they
+are not the same question.  An operator deciding whether to call
+CQ at this minute wants the latter; a frequency-coordination
+engineer planning circuit allocations across a season wants the
+former.  ionocast surfaces the nowcast interpretation; $R$ is
+exposed as a side metric for callers that want it (e.g.\ the
+\emph{Stability} percentage in Section~\ref{sec:tier-confidence})
+but does not drive the tier label.
 
-Tier thresholds (Section~\ref{sec:tiers}) are themselves expressed as
-constant levels of $R$, so the boundary in dB scales with the band's
-$\sigma$ rather than being pinned to a hand-set number.  This makes
-the verdict self-consistent with the model's own uncertainty: a band
-whose $\sigma$ is small (low-band, climatology dominated) reaches
-``excellent'' at a smaller dB margin than a band whose $\sigma$ is
-large (10\,m near MUF, where prediction spread is intrinsic).
+Tier thresholds (Section~\ref{sec:tiers}) are pinned to fixed dB
+margins ($+18 / +6 / -5 / -14$) that do not scale with the band's
+$\sigma$.  This is a deliberate revert from an earlier
+sigma-percentile cut scheme that ran optimistic in real-world
+contests: the percentile boundaries placed Good at $+0.25\sigma$,
+which corresponds to a $\sim$2\,\si{\dB} margin on lower HF
+($\sigma_g = 8\,\si{\dB}$) and routinely disappeared under the
+3 to 6\,\si{\dB} of QRM that contest environments add on top of the
+ITU-R P.372 baseline noise the model assumes.  The fixed-dB cuts
+take operator intuition as primary: $+6\,\si{\dB}$ Good means the
+model expects to clear required SNR by 6\,\si{\dB} \emph{before}
+real-world noise adds anything, which lines up with what an
+operator calls a usable band on-air.  Per-band $\sigma_g$
+continues to drive the Stability and Confidence metrics defined
+in Section~\ref{sec:tier-confidence}, just not the boundary
+labels.
 
 \paragraph{What $R$ does and does not measure.}  $R$ is the
 probability that the \emph{physics} of the link permits a QSO at
@@ -4519,11 +4581,10 @@ lower because operators do not attempt every available
 The band-table surfaces a per-band \emph{Stability} percentage,
 defined as
 \begin{equation}\label{eq:tierstab}
-  S(M, \sigma) = \Phi\!\bigl(\min_{b \in \mathcal{B}} |z - b|\bigr),
-  \quad z = M/\sigma,
+  S(M, \sigma) = \Phi\!\bigl(\min_{b \in \mathcal{B}} |M - b| / \sigma\bigr),
 \end{equation}
-where $\mathcal{B} = \{-1.2816, -0.3853, +0.2533, +1.2816\}$ is the
-set of tier boundaries in $z$-space (Table~\ref{tab:tiers}).
+where $\mathcal{B} = \{-14, -5, +6, +18\}\,\si{\dB}$ is the set
+of fixed-dB tier boundaries (Table~\ref{tab:tiers}).
 Operator reading:
 \emph{how likely is the verdict to NOT cross its nearest tier
 boundary if the true margin moves to its expected value?} The
@@ -4890,67 +4951,24 @@ fit there).}
 \end{tabular}
 \end{table}
 
-\paragraph{$\sigma_g$ sensitivity.}  $\sigma_g$ is held at the
-P.533 anchor rather than fitted, on the grounds that machine-fitted
-$\sigma$ would chase the WSPR-truth structural ceiling
+\paragraph{$\sigma_g$ sensitivity.}  Under the current fixed-dB
+tier cuts (+18 / +6 / -5 / -14, Section~\ref{sec:tiers}), the
+verdict label itself is independent of $\sigma_g$: the same
+margin produces the same tier on every band regardless of
+whether 10\,m's $\sigma_g$ is 10 or 12\,\si{\dB}.  $\sigma_g$
+enters only the per-band Stability metric (the dB-distance to the
+nearest fixed boundary, divided by $\sigma_g$, fed through $\Phi$;
+Eq.~\ref{eq:tierstab}) and the side-metric reliability $R$.  This
+is a deliberate trade-off against the earlier sigma-percentile
+scheme, where a $\pm \SI{2}{\dB}$ miscalibration in $\sigma_g$
+could flip the tier label on near-boundary bands; under fixed-dB
+cuts the label is invariant to that calibration uncertainty and
+$\sigma_g$ controls only the operator's read of how confident
+the label is.  $\sigma_g$ is held at the P.533 anchor rather
+than fitted, on the grounds that machine-fitted $\sigma$ would
+chase the WSPR-truth structural ceiling
 (Section~\ref{sec:limits}~\#9) instead of physical day-to-day
-spread.  The cost of the fixed-$\sigma$ choice is that any
-miscalibration in $\sigma_g$ propagates directly into the
-tier-boundary placement, which matters most for verdicts that
-already sit close to a tier boundary.  Table~\ref{tab:sigmasens}
-reports the verdict shift on the three near-MUF upper bands when
-$\sigma_g$ is swept by $\pm \SI{2}{\dB}$ around its assigned value,
-holding the nominal margin at $M = +\SI{2.5}{\dB}$, chosen to land
-17\,m's verdict near the Fair/Good boundary at $z = 0.2533$, where
-the $\sigma$ leverage is concentrated.  At any value deep inside a
-bucket the table would show all-zero flips on every band; at any
-value near a boundary the band whose $\sigma_g \cdot 0.2533$
-Fair/Good gap is narrowest in dB will flip first.
-
-\begin{table}[H]
-\centering
-\caption{Verdict-bucket shift on 17\,m / 15\,m / 12\,m at
-$M = +\SI{2.5}{\dB}$ when $\sigma_g$ moves $\pm \SI{2}{\dB}$ around
-its assigned value (per Table~\ref{tab:bandsigma}: $\sigma_g{=}9$
-on 17\,m, $\sigma_g{=}10$ on 15\,m, $\sigma_g{=}12$ on 12\,m).
-``$\Delta$ tier (full sweep)'' counts the tier flips across the
-three sweep points.  17\,m and 15\,m both flip; 12\,m does not.
-At 17\,m the Fair/Good boundary at the assigned $\sigma_g{=}9$
-sits at $z \cdot \sigma_g = 0.2533 \cdot 9 = \SI{2.28}{\dB}$, so
-$M = +\SI{2.5}{\dB}$ lands just inside Good ($z = 0.278$,
-$R = 0.61$); at $\sigma{+}2{=}11$ the boundary moves to
-\SI{2.79}{\dB} and the same $M$ falls into Fair ($z = 0.227$,
-$R = 0.59$).  At 15\,m the boundary at $\sigma_g{=}10$ sits at
-\SI{2.53}{\dB}, just above $M = +\SI{2.5}{\dB}$ ($z = 0.25$,
-$R = 0.60$, Fair); at $\sigma{-}2{=}8$ the boundary tightens to
-\SI{2.03}{\dB} and $M = +\SI{2.5}{\dB}$ lands above it
-($z = 0.313$, $R = 0.62$, Good).  12\,m has a
-$0.2533 \cdot 12 = \SI{3.04}{\dB}$ Fair/Good gap which
-$M = +\SI{2.5}{\dB}$ sits below at all three sweep points, so it
-reads Fair throughout.}
-\label{tab:sigmasens}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Band} & $\sigma_g - 2$ & assigned $\sigma_g$ & $\sigma_g + 2$ & $\Delta$ tier (full sweep) \\
-\midrule
-17\,m & $\sigma=\phantom{0}7$, $R=0.64$, Good  & $\sigma=\phantom{0}9$, $R=0.61$, Good & $\sigma=11$, $R=0.59$, Fair & 1 tier (Good $\to$ Fair) \\
-15\,m & $\sigma=\phantom{0}8$, $R=0.62$, Good  & $\sigma=10$, $R=0.60$, Fair & $\sigma=12$, $R=0.58$, Fair & 1 tier (Good $\to$ Fair) \\
-12\,m & $\sigma=10$, $R=0.60$, Fair            & $\sigma=12$, $R=0.58$, Fair & $\sigma=14$, $R=0.57$, Fair & 0 tiers \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The takeaway is that $\sigma_g$ leverage is concentrated where
-$M$ is close to a tier boundary; deep inside a bucket the verdict
-is robust to $\sigma_g \pm \SI{2}{\dB}$ on every band.
-17\,m has the narrowest Fair/Good gap in dB
-($0.2533 \cdot \sigma_g = \SI{2.28}{\dB}$ at $\sigma_g{=}9$) of
-the three near-MUF bands, so it crosses a boundary at lower $M$
-values than 15\,m or 12\,m and is the most sensitive to
-$\sigma_g$ miscalibration in practice.  This makes 17\,m the prime candidate for re-anchoring
-once per-pair WSPR ground truth is wired (\S\ref{sec:limits}~\#9)
-and a fitted $\sigma_g$ becomes defensible without exploiting the
-structural ceiling.
+spread.
 
 % ── Tier probability figure ──────────────────────────────────────────
 \begin{figure}[H]
@@ -4968,87 +4986,83 @@ structural ceiling.
   grid=major,
   grid style={gray!30},
   title={Tier Probability Distribution ($M=+3$\,dB, $\sigma=8$\,dB,
-         ionocast 0.90/0.60/0.35/0.10 boundaries)},
+         fixed-dB boundaries +18 / +6 / -5 / -14)},
   title style={font=\small\bfseries},
   axis on top,
 ]
 
 % Gaussian PDF, mu=3, sigma=8.
-% Post 2026-04-30 second-pass tier boundaries in sigma-units:
-%   excellent at +1.2816 sigma = +10.25 dB
-%   good      at +0.2533 sigma =  +2.03 dB
-%   fair      at -0.3853 sigma =  -3.08 dB
-%   poor      at -1.2816 sigma = -10.25 dB
+% Fixed-dB tier boundaries (post 2026-05-10 revert from sigma-percentile):
+%   excellent at +18 dB
+%   good      at  +6 dB
+%   fair      at  -5 dB
+%   poor      at -14 dB
 \pgfmathsetmacro{\mmu}{3}
 \pgfmathsetmacro{\sig}{8}
-\pgfmathsetmacro{\bExc}{1.2816*\sig}       % +10.25
-\pgfmathsetmacro{\bGood}{0.2533*\sig}      %  +2.03
-\pgfmathsetmacro{\bFair}{-0.3853*\sig}     %  -3.08
-\pgfmathsetmacro{\bPoor}{-1.2816*\sig}     % -10.25
 
 \addplot[name path=pdf,black,very thick,domain=-35:35,samples=200]
   {1/(\sig*sqrt(2*pi))*exp(-(x-\mmu)^2/(2*\sig^2))};
 
 \addplot[name path=zero,draw=none,domain=-35:35,samples=2] {0};
 
-% Closed: < -10.25
-\addplot[name path=pdfC,draw=none,domain=-35:-10.25,samples=100]
+% Closed: < -14
+\addplot[name path=pdfC,draw=none,domain=-35:-14,samples=100]
   {1/(\sig*sqrt(2*pi))*exp(-(x-\mmu)^2/(2*\sig^2))};
-\addplot[name path=zeroC,draw=none,domain=-35:-10.25,samples=2] {0};
+\addplot[name path=zeroC,draw=none,domain=-35:-14,samples=2] {0};
 \addplot[red!30] fill between[of=pdfC and zeroC];
 
-% Poor: -10.25 to -3.08
-\addplot[name path=pdfP,draw=none,domain=-10.25:-3.08,samples=100]
+% Poor: -14 to -5
+\addplot[name path=pdfP,draw=none,domain=-14:-5,samples=100]
   {1/(\sig*sqrt(2*pi))*exp(-(x-\mmu)^2/(2*\sig^2))};
-\addplot[name path=zeroP,draw=none,domain=-10.25:-3.08,samples=2] {0};
+\addplot[name path=zeroP,draw=none,domain=-14:-5,samples=2] {0};
 \addplot[orange!30] fill between[of=pdfP and zeroP];
 
-% Fair: -3.08 to +2.03
-\addplot[name path=pdfF,draw=none,domain=-3.08:2.03,samples=100]
+% Fair: -5 to +6
+\addplot[name path=pdfF,draw=none,domain=-5:6,samples=100]
   {1/(\sig*sqrt(2*pi))*exp(-(x-\mmu)^2/(2*\sig^2))};
-\addplot[name path=zeroF,draw=none,domain=-3.08:2.03,samples=2] {0};
+\addplot[name path=zeroF,draw=none,domain=-5:6,samples=2] {0};
 \addplot[yellow!30] fill between[of=pdfF and zeroF];
 
-% Good: +2.03 to +10.25
-\addplot[name path=pdfG,draw=none,domain=2.03:10.25,samples=100]
+% Good: +6 to +18
+\addplot[name path=pdfG,draw=none,domain=6:18,samples=100]
   {1/(\sig*sqrt(2*pi))*exp(-(x-\mmu)^2/(2*\sig^2))};
-\addplot[name path=zeroG,draw=none,domain=2.03:10.25,samples=2] {0};
+\addplot[name path=zeroG,draw=none,domain=6:18,samples=2] {0};
 \addplot[green!30] fill between[of=pdfG and zeroG];
 
-% Excellent: > +10.25
-\addplot[name path=pdfE,draw=none,domain=10.25:35,samples=100]
+% Excellent: > +18
+\addplot[name path=pdfE,draw=none,domain=18:35,samples=100]
   {1/(\sig*sqrt(2*pi))*exp(-(x-\mmu)^2/(2*\sig^2))};
-\addplot[name path=zeroE,draw=none,domain=10.25:35,samples=2] {0};
+\addplot[name path=zeroE,draw=none,domain=18:35,samples=2] {0};
 \addplot[blue!20] fill between[of=pdfE and zeroE];
 
-% Threshold lines (sigma-relative)
-\draw[gray,thin,dashed] (axis cs:-10.25,0) -- (axis cs:-10.25,0.065);
-\draw[gray,thin,dashed] (axis cs:-3.08,0)  -- (axis cs:-3.08,0.065);
-\draw[gray,thin,dashed] (axis cs:2.03,0)   -- (axis cs:2.03,0.065);
-\draw[gray,thin,dashed] (axis cs:10.25,0)  -- (axis cs:10.25,0.065);
+% Threshold lines (fixed-dB)
+\draw[gray,thin,dashed] (axis cs:-14,0) -- (axis cs:-14,0.065);
+\draw[gray,thin,dashed] (axis cs:-5,0)  -- (axis cs:-5,0.065);
+\draw[gray,thin,dashed] (axis cs:6,0)   -- (axis cs:6,0.065);
+\draw[gray,thin,dashed] (axis cs:18,0)  -- (axis cs:18,0.065);
 
 % Region labels
-\node[font=\scriptsize,red!70!black]    at (axis cs:-20,0.008)  {Closed};
-\node[font=\scriptsize,orange!80!black] at (axis cs:-6.7,0.020) {Poor};
-\node[font=\scriptsize,olive]           at (axis cs:-0.5,0.045) {Fair};
-\node[font=\scriptsize,green!50!black]  at (axis cs:6.1,0.040)  {Good};
-\node[font=\scriptsize,blue!60!black]   at (axis cs:18,0.018)   {Excellent};
+\node[font=\scriptsize,red!70!black]    at (axis cs:-22,0.005)  {Closed};
+\node[font=\scriptsize,orange!80!black] at (axis cs:-9.5,0.014) {Poor};
+\node[font=\scriptsize,olive]           at (axis cs:0.5,0.040)  {Fair};
+\node[font=\scriptsize,green!50!black]  at (axis cs:12,0.022)   {Good};
+\node[font=\scriptsize,blue!60!black]   at (axis cs:25,0.005)   {Excellent};
 
-% Probabilities for M=+3, sigma=8 under post 2026-04-30 boundaries:
-%   z_p = (-10.25 - 3) / 8 = -1.6566 ; Phi = 0.0488
-%   z_f = ( -3.08 - 3) / 8 = -0.7603 ; Phi = 0.2236
-%   z_g = ( +2.03 - 3) / 8 = -0.1218 ; Phi = 0.4515
-%   z_e = (+10.25 - 3) / 8 = +0.9066 ; Phi = 0.8177
-%   P(Closed)    = 0.0488        ->  5 %
-%   P(Poor)      = 0.2236 - 0.0488 = 0.1748 -> 17 %
-%   P(Fair)      = 0.4515 - 0.2236 = 0.2279 -> 23 %
-%   P(Good)      = 0.8177 - 0.4515 = 0.3662 -> 37 %
-%   P(Excellent) = 1 - 0.8177    = 0.1823 -> 18 %
-\node[font=\scriptsize,anchor=north] at (axis cs:-20,0.006)  {5\%};
-\node[font=\scriptsize,anchor=north] at (axis cs:-6.7,0.018) {17\%};
-\node[font=\scriptsize,anchor=north] at (axis cs:-0.5,0.042) {23\%};
-\node[font=\scriptsize,anchor=north] at (axis cs:6.1,0.037)  {37\%};
-\node[font=\scriptsize,anchor=north] at (axis cs:18,0.016)   {18\%};
+% Probabilities for M=+3, sigma=8 under fixed-dB boundaries:
+%   z_p = (-14 - 3) / 8 = -2.125 ; Phi = 0.0168
+%   z_f = ( -5 - 3) / 8 = -1.000 ; Phi = 0.1587
+%   z_g = ( +6 - 3) / 8 = +0.375 ; Phi = 0.6462
+%   z_e = (+18 - 3) / 8 = +1.875 ; Phi = 0.9696
+%   P(Closed)    = 0.0168                ->  2 %
+%   P(Poor)      = 0.1587 - 0.0168 = 0.1419 -> 14 %
+%   P(Fair)      = 0.6462 - 0.1587 = 0.4875 -> 49 %
+%   P(Good)      = 0.9696 - 0.6462 = 0.3234 -> 32 %
+%   P(Excellent) = 1 - 0.9696      = 0.0304 ->  3 %
+\node[font=\scriptsize,anchor=north] at (axis cs:-22,0.0035) {2\%};
+\node[font=\scriptsize,anchor=north] at (axis cs:-9.5,0.012) {14\%};
+\node[font=\scriptsize,anchor=north] at (axis cs:0.5,0.038)  {49\%};
+\node[font=\scriptsize,anchor=north] at (axis cs:12,0.020)   {32\%};
+\node[font=\scriptsize,anchor=north] at (axis cs:25,0.0035)  {3\%};
 
 % Mean marker
 \draw[black,thick,->] (axis cs:3,0.058) -- (axis cs:3,0.0510);
@@ -5057,22 +5071,20 @@ structural ceiling.
 \end{axis}
 \end{tikzpicture}
 \caption{Tier probability distribution for a margin of
-         $+3$\,dB with $\sigma=8$\,dB under the tier boundaries
-         in Table~\ref{tab:tiers}. The Fair band sits at
-         $z \in [-0.385, +0.253]$ ($-3.08$\,\si{\dB} to
-         $+2.03$\,\si{\dB} at $\sigma=8$, asymmetric); the
-         Excellent / Closed cutoffs are symmetric at
-         $\pm 1.282\sigma$ ($\pm 10.25$\,\si{\dB}). Most likely tier is Good
-         (37\%), with 18\% Excellent and 23\% Fair --- the
-         distribution is asymmetric because $M=+3$ sits squarely
-         inside Good. The $\sigma = \SI{8}{\dB}$
-         shown here is the 6\,m / 2\,m placeholder value
-         (Table~\ref{tab:bandsigma}); the HF bands use $\sigma_g
-         \in \{8, 9, 10, 12\}$\,dB depending on band.  Read the figure
-         as a tier-distribution illustration at an in-between
-         $\sigma$ rather than as a representative HF prediction;
-         tier widths scale with $\sigma$ and the corresponding
-         dB-space boundaries shift accordingly.}
+         $+3$\,dB with $\sigma=8$\,dB under the fixed-dB tier
+         boundaries in Table~\ref{tab:tiers}.  Boundaries sit at
+         $-14, -5, +6, +18$\,\si{\dB} and do not move with $\sigma$.
+         The Fair band is widest at $11$\,\si{\dB} ($-5$ to $+6$);
+         Good is $12$\,\si{\dB} wide ($+6$ to $+18$); Excellent and
+         Closed are open-ended.  At $M=+3$ the most likely true
+         tier is Fair (49\%), then Good (32\%): $M$ sits in the
+         Fair bucket but only $3$\,\si{\dB} below the Good
+         boundary, so a positive Gaussian fluctuation of $0.4\sigma$
+         flips the verdict.  The $\sigma = \SI{8}{\dB}$ shown is the
+         6\,m / 2\,m placeholder (Table~\ref{tab:bandsigma}); HF
+         bands use $\sigma_g \in \{8, 9, 10, 12\}$\,dB.  $\sigma$
+         changes the within-bucket density profile but not the
+         bucket boundaries.}
 \label{fig:tierprob}
 \end{figure}
 
@@ -5080,35 +5092,39 @@ structural ceiling.
 \section{Tier Mapping}\label{sec:tiers}
 
 Verdicts are computed \emph{per band} (160\,m through 10\,m
-individually, plus 6\,m and 2\,m for VHF), not in groups.  For each
-band the SNR margin is evaluated on every reference path (short and
-long, across all five destinations); the \textbf{best-margin} path
-wins and its margin drives the verdict, while the reason string and
-\texttt{openDirs} list record which destination that was.  If a single
-path is viable, the band is not ``closed'' --- it is open to that
-destination, which is material information for the operator.  A
-median-margin aggregation would dominate the verdict with the
-failing long paths because most reference paths are long
-transcontinental hops that are routinely over-MUF or
-night-crossing, burying genuinely open short paths (e.g.\ a
-944\,km EM79--NYC path reporting \SI{+27}{\dB} margin would have
-its verdict overwritten by the median of eight failing long
-paths).
+individually, plus 6\,m and 2\,m for VHF), not in groups.  For
+each band the SNR margin is evaluated on every path in the radial
+basket (12 bearings $\times$ 6 distance rings = 72 paths,
+Section~\ref{sec:kc2gobs}); the \textbf{best-margin} path wins and
+its margin drives the verdict, while the reason string and
+\texttt{openDirs} list record which compass direction that was.
+If a single path is viable, the band is not ``closed'' --- it is
+open in that direction, which is material information for the
+operator.  A median-margin aggregation would dominate the verdict
+with the failing long paths because the basket samples six
+distance rings out to 16\,Mm, most of which are over-MUF or
+night-crossing at any given moment; the median would bury
+genuinely open shorter paths (a typical mid-cycle daytime
+\SI{2500}{\km} hop reporting \SI{+20}{\dB} margin would have its
+verdict overwritten by the median of dozens of dead long-distance
+samples).
 
 \paragraph{Best-path summary, full-detail companion.}  The
-band-table row shows the best-margin destination only (the
-``Best Path'' column), which is a deliberate compression:
-displaying all ten path columns per row would be visually
-unworkable on small screens.  An operator who wants the
-underlying per-destination breakdown consults the Reference
-Paths panel in the Ionosphere section, which lists the kc2g MUF
-on each of the 10 paths with a colour-coded f/MUF column for
-the band currently selected.  The two surfaces share the same
-underlying budget; the band-table row is the headline, the
-Reference Paths panel is the source-of-truth.  The Best-Path
-column itself is therefore only a hint --- if it reads
-``Tokyo'' on 20\,m and the operator wants Argentina, the
-Reference Paths panel is what to consult next.
+band-table row shows the best-margin direction only (the
+``Best Path'' column, formatted as a 16-point compass label
+plus distance, e.g.\ ``WNW 9.0\,Mm''), which is a deliberate
+compression: displaying all 72 path columns per row would be
+visually unworkable.  An operator who wants the underlying
+per-direction breakdown consults the Reference Paths panel in
+the Ionosphere section, which lists the kc2g MUF on a 12-row
+display subset (the longest viable ring per bearing) of the
+72-path basket, with a colour-coded f/MUF column for the band
+currently selected.  The two surfaces share the same underlying
+budget; the band-table row is the headline, the Reference Paths
+panel is the source-of-truth.  The Best-Path column itself is
+therefore only a hint --- if it reads ``WNW 9\,Mm'' on 20\,m and
+the operator wants south-east Asia, the Reference Paths panel
+is what to consult next.
 
 The continuous margin is discretised into five tiers using
 fixed-dB cuts (Table~\ref{tab:tiers}).  The cuts are absolute and
@@ -5555,9 +5571,10 @@ surfaced across an eight-panel web UI:
   \item \textbf{Ionosphere}: nearest-GIRO-station digisonde
         readings (foF2 / foEs / hmF2), GNSS TEC, 30\,MHz cosmic
         noise, the Reference Paths panel --- the per-QTH path
-        table listing kc2g MUF on the five short-path destinations
-        and their long-path counterparts, ten paths total ---
-        plus the kc2g global foF2 map and the GloTEC TEC map.
+        table listing kc2g MUF on the longest viable ring per
+        bearing in the radial basket (up to 12 rows summarising
+        the 72-path 12 bearings $\times$ 6 distance rings basket)
+        --- plus the kc2g global foF2 map and the GloTEC TEC map.
         The Reference Paths panel is the source-of-truth that
         Section~\ref{sec:tiers}'s band-table Best-Path column
         compresses; an operator who wants per-destination detail
@@ -5598,14 +5615,18 @@ that this section documents:
         is just a transposition of those into table rows.
   \item the \emph{Reference Paths} sub-panel (inside the
         Ionosphere panel) computes per-QTH great-circle midpoints
-        for five canonical destinations and their long-path
-        counterparts (10 paths total), looks up the nearest
-        kc2g ionosonde for each midpoint subject to a
-        \SI{30}{\minute} freshness gate, and renders the
-        per-path MUF with a colour-coded f/MUF column for the
-        band currently selected by the band table.  This is the
-        full-detail companion to the band table's compressed
-        Best Path column (Section~\ref{sec:tiers}).
+        for the 72-path radial basket (12 bearings $\times$ 6
+        distance rings, Section~\ref{sec:kc2gobs}), looks up the
+        nearest kc2g ionosonde for each midpoint subject to a
+        \SI{30}{\minute} freshness gate, and renders the per-path
+        MUF with a colour-coded f/MUF column for the band
+        currently selected by the band table.  The display is
+        filtered to the longest viable ring per bearing
+        ($\le 12$ rows) so the table stays scannable; the band
+        table's per-band best-path selector still consumes the
+        full 72-path basket.  This is the full-detail companion
+        to the band table's compressed Best Path column
+        (Section~\ref{sec:tiers}).
 \end{itemize}
 The remaining five panels (Upcoming Disruptions, the rest of
 Ionosphere outside Reference Paths, Geomagnetic, Solar, Links)
