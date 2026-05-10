@@ -1,3 +1,11 @@
 /apple-touch-icon.png              /assets/apple-touch-icon.png  200
 /apple-touch-icon-precomposed.png  /assets/apple-touch-icon.png  200
 /security.txt                      /.well-known/security.txt     301
+
+# Tropo grid: rewrite (status 200) the renderer's expected
+# /src/tropo/data/grid.bin path onto /tropo/grid.bin, which falls
+# through to the R2 bucket "ionocast" (key: tropo/grid.bin) since
+# Pages has no asset at that path.  Same-origin so no CSP change is
+# required and the renderer code stays identical between local dev
+# (file on disk under src/tropo/data/) and production (R2).
+/src/tropo/data/grid.bin           /tropo/grid.bin               200

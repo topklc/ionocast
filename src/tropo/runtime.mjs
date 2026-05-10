@@ -442,20 +442,42 @@ export async function mountTropoMap(container) {
     return;
   }
 
-  let data;
+  // Try the packed binary first (production, ~2 MB), then fall back
+  // to the raw JSON (local dev, ~20 MB).  Each step is independently
+  // resilient: a 200 response with an HTML body (e.g. a Cloudflare
+  // Pages SPA-fallback page when neither file is deployed) gets
+  // caught by parseGridBinary's magic-byte check and we still fall
+  // through to the JSON branch.
+  let data, binErr = null, jsonErr = null;
   try {
-    const binResp = await fetch(DATA_BASE + "/grid.bin", { cache: "no-cache" });
-    if (binResp.ok) {
-      data = parseGridBinary(await binResp.arrayBuffer());
-    } else {
-      const jsonResp = await fetch(DATA_BASE + "/grid.json", { cache: "no-cache" });
-      if (!jsonResp.ok) throw new Error("HTTP " + jsonResp.status);
-      data = await jsonResp.json();
+    const r = await fetch(DATA_BASE + "/grid.bin", { cache: "no-cache" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const ct = r.headers.get("content-type") || "";
+    if (/text\/html|application\/xhtml/i.test(ct)) {
+      throw new Error("got HTML (likely a 404 or SPA fallback page; check that the binary is deployed)");
     }
+    data = parseGridBinary(await r.arrayBuffer());
   } catch (e) {
+    binErr = e.message;
+  }
+  if (!data) {
+    try {
+      const r = await fetch(DATA_BASE + "/grid.json", { cache: "no-cache" });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const ct = r.headers.get("content-type") || "";
+      if (/text\/html|application\/xhtml/i.test(ct)) {
+        throw new Error("got HTML (likely a 404 or SPA fallback page)");
+      }
+      data = await r.json();
+    } catch (e) {
+      jsonErr = e.message;
+    }
+  }
+  if (!data) {
     showError(
-      "Could not load tropo grid (tried grid.bin then grid.json) from " + DATA_BASE
-      + ": " + e.message
+      "Could not load tropo grid from " + DATA_BASE
+      + ". grid.bin: " + binErr
+      + ". grid.json: " + jsonErr + "."
     );
     return;
   }
