@@ -46,12 +46,39 @@ export const TIER_DB_FAIR      = -5;
 
 export const TIER_DB_POOR      = -14;
 
-export function tierFromMargin(margin /*, sigma */) {
+// Reach gate: Excellent additionally requires that the best-margin
+// path is at least this distance.  Without it, the radial basket's
+// 2500 km ring naturally clears +18 dB on most days because short
+// F2 hops have low path loss; that's true physics but it doesn't
+// match what an operator means by "20m is excellent" (which means
+// "DX is open", not "any low-loss path exists").  6000 km is the
+// threshold for one full continent crossing on most QTHs, which
+// is the operator-intuitive boundary for DX.
+//
+// When the best-margin path clears +18 dB but is shorter than
+// TIER_DX_MIN_KM, the verdict downgrades to Good.  Other tiers
+// are unaffected — Good/Fair/Poor/Closed don't have a reach gate.
+export const TIER_DX_MIN_KM    = 6000;
+
+export function tierFromMargin(margin, dKm) {
   if (margin == null || isNaN(margin)) return null;
-  if (margin >= TIER_DB_EXCELLENT) return "excellent";
-  if (margin >= TIER_DB_GOOD)      return "good";
-  if (margin >= TIER_DB_FAIR)      return "fair";
-  if (margin >= TIER_DB_POOR)      return "poor";
+  if (margin >= TIER_DB_EXCELLENT) {
+    // Reach gate: Excellent requires DX-distance reach.  If the
+    // path that produced this margin is shorter than the DX
+    // threshold, the band is "good" (regional or short-DX) but
+    // not "excellent" (continental DX open).  When dKm is
+    // unknown (caller didn't pass it; e.g. legacy test paths),
+    // we default-allow the Excellent label rather than
+    // demoting it, on the principle that absence-of-distance-
+    // info shouldn't be treated as evidence-of-short-distance.
+    if (dKm != null && isFinite(dKm) && dKm < TIER_DX_MIN_KM) {
+      return "good";
+    }
+    return "excellent";
+  }
+  if (margin >= TIER_DB_GOOD) return "good";
+  if (margin >= TIER_DB_FAIR) return "fair";
+  if (margin >= TIER_DB_POOR) return "poor";
   return "closed";
 }
 

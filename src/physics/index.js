@@ -71,6 +71,7 @@ export {
   TIER_DB_GOOD,
   TIER_DB_FAIR,
   TIER_DB_POOR,
+  TIER_DX_MIN_KM,
   tierFromMargin,
   tierRank,
   reliability,

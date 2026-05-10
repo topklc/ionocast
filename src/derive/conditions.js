@@ -488,10 +488,14 @@ export function deriveConditions(ctx) {
         bestPerBand[name] = {
           margin: m.margin,
           sigma:  m.sigma,
-          tier:   tierFromMargin(m.margin, m.sigma),
+          // tierFromMargin reach-gates Excellent on dKm: a +18 dB
+          // margin from a short F2 hop reads "good" not "excellent"
+          // because it doesn't represent open DX — see tier.js.
+          tier:   tierFromMargin(m.margin, pathCtx.dKm),
           confidence: tierStability(m.margin, m.sigma),
           mode:   mode,
           dest:   pathCtx.destShort || null,
+          dKm:    pathCtx.dKm || null,
         };
       }
 
@@ -499,6 +503,7 @@ export function deriveConditions(ctx) {
       var candidate = {
         name: name, freq: f, muf: effMuf, ratio: f / effMuf,
         m: m, esOpen: esOpen, dest: pathCtx.destShort,
+        dKm: pathCtx.dKm || null,
         glBonus: glBonus, tepBonus: tepBonus, scatterBonus: scatterBonus,
         mode: mode,
         mufSource: consensus.source,
@@ -562,7 +567,11 @@ export function deriveConditions(ctx) {
       // heuristicTier stays exported in physics.js for the scenarios
       // diagnostic harness but is no longer in the verdict path.
 
-      var tier = tierFromMargin(best.m.margin, best.m.sigma);
+      // best.m carries the physics budget; the path that produced
+      // it is `best`, whose dKm we plumb through for the Excellent
+      // reach gate (Section sec:tiers in the paper, tierFromMargin
+      // in tier.js).
+      var tier = tierFromMargin(best.m.margin, best.dKm);
       if (absorbed && spots < 50) return ["closed", t("D-region absorption blocking signals"), bestPerBand];
 
       // WSPR activity override. One-way only: if observed spots exceed
@@ -703,7 +712,11 @@ export function deriveConditions(ctx) {
         ? ["closed", t("no Es or aurora; tropospheric / meteor scatter only"), noBest]
         : ["closed", t("tropospheric / EME only"), noBest];
     }
-    var tier = tierFromMargin(margin, sigma);
+    // VHF (Es / aurora-E / MS) is inherently regional; the
+    // Excellent reach-gate doesn't apply — pass null dKm so
+    // tierFromMargin skips the gate and lets a strong margin
+    // produce Excellent regardless of distance.
+    var tier = tierFromMargin(margin, null);
     if (tier == null) tier = "closed";
     // MS also rescues closed E/aurora verdicts with low margin.
     if ((tier === "closed" || tier === "poor") && ms.active) {

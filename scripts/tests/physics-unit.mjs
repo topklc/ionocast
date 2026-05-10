@@ -580,34 +580,41 @@ const HF_BANDS = [
   // Fixed-dB tier thresholds (2026-05-10 revert from the
   // sigma-percentile experiment after a field-day audit showed it
   // labelled unworkable bands as good/fair):
-  //   excellent: margin >= +18 dB
-  //   good:      margin >= +6  dB
+  //   excellent: margin >= +18 dB AND dKm >= TIER_DX_MIN_KM (=6000)
+  //   good:      margin >= +6  dB  (or +18 dB with short dKm)
   //   fair:      margin >= -5  dB
   //   poor:      margin >= -14 dB
   //   closed:    margin <  -14 dB
-  // Sigma is no longer used by tierFromMargin; the second argument
-  // is accepted for backward-compat but ignored.
-  const S = 8;
-  eq("tierFromMargin(-30)        = closed",    tierFromMargin(-30, S),    "closed");
-  eq("tierFromMargin(-15)        = closed",    tierFromMargin(-15, S),    "closed");
-  eq("tierFromMargin(-14)        = poor",      tierFromMargin(-14, S),    "poor");
-  eq("tierFromMargin(-6)         = poor",      tierFromMargin(-6, S),     "poor");
-  eq("tierFromMargin(-5)         = fair",      tierFromMargin(-5, S),     "fair");
-  eq("tierFromMargin(0)          = fair",      tierFromMargin(0, S),      "fair");
-  eq("tierFromMargin(5)          = fair",      tierFromMargin(5, S),      "fair");
-  eq("tierFromMargin(6)          = good",      tierFromMargin(6, S),      "good");
-  eq("tierFromMargin(15)         = good",      tierFromMargin(15, S),     "good");
-  eq("tierFromMargin(18)         = excellent", tierFromMargin(18, S),     "excellent");
-  eq("tierFromMargin(50)         = excellent", tierFromMargin(50, S),     "excellent");
+  //
+  // Second argument is dKm (the path's great-circle distance in km)
+  // for the Excellent reach-gate.  Passing null/undefined skips the
+  // gate, treating Excellent as unconditional on margin alone (used
+  // by VHF Es/aurora paths where reach isn't defined).
+  const D_DX = 9000;   // sample DX-class distance, clears the 6000 km gate
+  eq("tierFromMargin(-30, dx)        = closed",    tierFromMargin(-30, D_DX),    "closed");
+  eq("tierFromMargin(-15, dx)        = closed",    tierFromMargin(-15, D_DX),    "closed");
+  eq("tierFromMargin(-14, dx)        = poor",      tierFromMargin(-14, D_DX),    "poor");
+  eq("tierFromMargin(-6,  dx)        = poor",      tierFromMargin(-6,  D_DX),    "poor");
+  eq("tierFromMargin(-5,  dx)        = fair",      tierFromMargin(-5,  D_DX),    "fair");
+  eq("tierFromMargin(0,   dx)        = fair",      tierFromMargin(0,   D_DX),    "fair");
+  eq("tierFromMargin(5,   dx)        = fair",      tierFromMargin(5,   D_DX),    "fair");
+  eq("tierFromMargin(6,   dx)        = good",      tierFromMargin(6,   D_DX),    "good");
+  eq("tierFromMargin(15,  dx)        = good",      tierFromMargin(15,  D_DX),    "good");
+  eq("tierFromMargin(18,  dx)        = excellent", tierFromMargin(18,  D_DX),    "excellent");
+  eq("tierFromMargin(50,  dx)        = excellent", tierFromMargin(50,  D_DX),    "excellent");
 
-  // Sigma is ignored: same dB margin produces the same tier regardless.
-  eq("tierFromMargin(15, 12)     = good",      tierFromMargin(15, 12),    "good");
-  eq("tierFromMargin(20, 12)     = excellent", tierFromMargin(20, 12),    "excellent");
+  // Reach gate: Excellent requires dKm >= 6000 km.  Otherwise +18 dB
+  // margin still produces Good.
+  eq("tierFromMargin(18, 2500)       = good (short)",      tierFromMargin(18, 2500),  "good");
+  eq("tierFromMargin(18, 5999)       = good (just-short)", tierFromMargin(18, 5999),  "good");
+  eq("tierFromMargin(18, 6000)       = excellent (gate)",  tierFromMargin(18, 6000),  "excellent");
+  eq("tierFromMargin(50, 2500)       = good (short, big)", tierFromMargin(50, 2500),  "good");
 
-  // Sigma argument can be omitted entirely.
-  eq("tierFromMargin(0, null)    = fair",      tierFromMargin(0, null),   "fair");
-  eq("tierFromMargin(0)          = fair",      tierFromMargin(0),         "fair");
-  eq("tierFromMargin(20)         = excellent", tierFromMargin(20),        "excellent");
+  // dKm omitted/null: gate skipped, Excellent as unconditional.
+  eq("tierFromMargin(0, null)        = fair",      tierFromMargin(0, null),   "fair");
+  eq("tierFromMargin(0)              = fair",      tierFromMargin(0),         "fair");
+  eq("tierFromMargin(20)             = excellent", tierFromMargin(20),        "excellent");
+  eq("tierFromMargin(20, null)       = excellent", tierFromMargin(20, null),  "excellent");
 
   // Null/NaN margin returns null (preserves caller-side null-check semantics).
   eq("tierFromMargin(null)      = null",      tierFromMargin(null),     null);
