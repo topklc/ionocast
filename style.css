@@ -369,3 +369,60 @@ html.dark #term-popover{background:#0e1116;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   .drivers-val-num{font-size:18px}
   .outlook-list li{grid-template-columns:1fr;gap:2px}
 }
+
+/* ── Tropospheric ducting heatmap ──────────────────────────────
+   Embedded MapLibre + d3-contour panel.  See src/tropo/runtime.mjs
+   and src/ui/builders/tropo-map.js. */
+.tropo-panel{margin-top:8px}
+.tropo-mount{display:block}
+.tropo-map{
+  width:100%;height:520px;
+  border:1px solid var(--border);
+  background:#000;
+  /* MapLibre injects its own absolute-positioned children, so the
+     mount needs to be a positioned containing block. */
+  position:relative;
+}
+.tropo-status{
+  margin-top:8px;font-size:12px;color:#f88;
+  border:1px solid #533;background:#2a1414;padding:8px 10px;border-radius:4px
+}
+.tropo-status[hidden]{display:none}
+.tropo-legend{margin-top:10px}
+.tropo-strip{
+  height:14px;width:360px;border:1px solid var(--border);margin:6px 0 2px;
+  background:linear-gradient(to right,
+    rgb(30,40,110)   0%,    rgb(30,40,110)   6.66%,
+    rgb(35,70,150)   6.66%, rgb(35,70,150)  13.33%,
+    rgb(35,105,185) 13.33%, rgb(35,105,185) 20.00%,
+    rgb(35,140,215) 20.00%, rgb(35,140,215) 26.66%,
+    rgb(35,175,220) 26.66%, rgb(35,175,220) 33.33%,
+    rgb(35,205,205) 33.33%, rgb(35,205,205) 40.00%,
+    rgb(50,220,165) 40.00%, rgb(50,220,165) 46.66%,
+    rgb(90,225,125) 46.66%, rgb(90,225,125) 53.33%,
+    rgb(150,225,90) 53.33%, rgb(150,225,90) 60.00%,
+    rgb(210,220,60) 60.00%, rgb(210,220,60) 66.66%,
+    rgb(245,215,45) 66.66%, rgb(245,215,45) 73.33%,
+    rgb(250,175,30) 73.33%, rgb(250,175,30) 80.00%,
+    rgb(250,120,30) 80.00%, rgb(250,120,30) 86.66%,
+    rgb(240,60,30)  86.66%, rgb(240,60,30)  93.33%,
+    rgb(200,30,30)  93.33%, rgb(200,30,30)  100%
+  );
+}
+.tropo-scale{
+  width:360px;display:flex;justify-content:space-between;
+  font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;
+  margin-bottom:4px
+}
+
+/* MapLibre control restyle to match dark panel aesthetic. */
+.tropo-mount .maplibregl-ctrl-group{
+  background:rgba(20,20,20,0.85)!important;
+  border:1px solid var(--border)!important
+}
+.tropo-mount .maplibregl-ctrl button{background-color:transparent!important}
+.tropo-mount .maplibregl-ctrl button:hover{background-color:rgba(255,255,255,0.08)!important}
+
+@media(max-width:800px){
+  .tropo-map{height:360px}
+}

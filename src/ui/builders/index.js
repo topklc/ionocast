@@ -12,6 +12,7 @@ import { tableBuilders }   from "./tables.js";
 import { chartBuilders }   from "./charts.js";
 import { alertBuilders }   from "./alerts.js";
 import { introBuilders }   from "./intro.js";
+import { tropoMapBuilders } from "./tropo-map.js";
 
 export { registerRefresh, runAllRefreshers } from "./refresh.js";
 
@@ -23,7 +24,8 @@ export const builders = Object.assign({},
   tableBuilders,
   chartBuilders,
   alertBuilders,
-  introBuilders
+  introBuilders,
+  tropoMapBuilders
 );
 
 // `row` is a meta-dispatcher: it lays out a multi-column section and

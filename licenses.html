@@ -48,6 +48,10 @@
     <a href="#uwyo">UWyo</a>
     <a href="#sdo">SDO</a>
     <a href="#imo">IMO</a>
+    <a href="#nomads">NOMADS</a>
+    <a href="#natural-earth">Natural Earth</a>
+    <a href="#maplibre">MapLibre</a>
+    <a href="#d3">d3-contour</a>
     <a href="#commercial-ban" data-i18n="Commercial ban">Commercial ban</a>
     <a href="#source-code" data-i18n="Source code">Source code</a>
     <a href="#privacy" data-i18n="Privacy">Privacy</a>
@@ -213,6 +217,53 @@
   </ul>
 </section>
 
+<section id="nomads">
+  <h2 data-i18n-html="12. NOAA NCEP / NOMADS - &lt;code&gt;nomads.ncep.noaa.gov&lt;/code&gt;">12. NOAA NCEP / NOMADS - <code>nomads.ncep.noaa.gov</code></h2>
+  <p data-i18n-html="Used for: 13-level pressure profile (T, RH, geopotential height, 1000-500 hPa) plus 2 m temperature, 2 m dewpoint, skin temperature, land-sea mask, surface pressure, orography, boundary-layer height, and 10 m winds from the GFS 0.25° forecast. Computed into the global tropospheric ducting heatmap (per-cell &lt;code&gt;tropo_index&lt;/code&gt; per ITU-R P.453 and P.834).">Used for: 13-level pressure profile (T, RH, geopotential height, 1000-500 hPa) plus 2 m temperature, 2 m dewpoint, skin temperature, land-sea mask, surface pressure, orography, boundary-layer height, and 10 m winds from the GFS 0.25° forecast. Computed into the global tropospheric ducting heatmap (per-cell <code>tropo_index</code> per ITU-R P.453 and P.834).</p>
+  <ul>
+    <li data-i18n-html="&lt;strong&gt;License:&lt;/strong&gt; Public domain (17 USC &amp;sect; 105). GFS is a NOAA NCEP operational product."><strong>License:</strong> Public domain (17 USC &sect; 105). GFS is a NOAA NCEP operational product.</li>
+    <li data-i18n-html="&lt;strong&gt;Policy:&lt;/strong&gt; &lt;a href=&quot;https://nomads.ncep.noaa.gov/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;nomads.ncep.noaa.gov&lt;/a&gt;, &lt;a href=&quot;https://www.nco.ncep.noaa.gov/pmb/products/gfs/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;nco.ncep.noaa.gov/pmb/products/gfs&lt;/a&gt;"><strong>Policy:</strong> <a href="https://nomads.ncep.noaa.gov/" target="_blank" rel="noopener">nomads.ncep.noaa.gov</a>, <a href="https://www.nco.ncep.noaa.gov/pmb/products/gfs/" target="_blank" rel="noopener">nco.ncep.noaa.gov/pmb/products/gfs</a></li>
+    <li data-i18n-html="&lt;strong&gt;Personal use:&lt;/strong&gt; yes. &lt;strong&gt;Commercial use:&lt;/strong&gt; yes."><strong>Personal use:</strong> yes. <strong>Commercial use:</strong> yes.</li>
+    <li data-i18n-html="&lt;strong&gt;Attribution required:&lt;/strong&gt; no. Best-practice credit: &lt;code&gt;Forecast data: NOAA GFS via NOMADS&lt;/code&gt;."><strong>Attribution required:</strong> no. Best-practice credit: <code>Forecast data: NOAA GFS via NOMADS</code>.</li>
+    <li data-i18n-html="&lt;strong&gt;Rate limits:&lt;/strong&gt; no published hard cap; NCEP monitors for abuse. We refresh 4&amp;times; daily on the GFS cycle (00 / 06 / 12 / 18 z + ~5 h to clear publish lag) via a GitHub Actions workflow that downloads a NOMADS subset URL (~21 MB filtered to the variables and levels we need, vs ~500 MB unfiltered)."><strong>Rate limits:</strong> no published hard cap; NCEP monitors for abuse. We refresh 4&times; daily on the GFS cycle (00 / 06 / 12 / 18 z + ~5 h to clear publish lag) via a GitHub Actions workflow that downloads a NOMADS subset URL (~21 MB filtered to the variables and levels we need, vs ~500 MB unfiltered).</li>
+    <li data-i18n-html="&lt;strong&gt;Trademarks:&lt;/strong&gt; NOAA / NCEP names and logos are trademark-protected. Do not imply official endorsement."><strong>Trademarks:</strong> NOAA / NCEP names and logos are trademark-protected. Do not imply official endorsement.</li>
+  </ul>
+</section>
+
+<section id="natural-earth">
+  <h2 data-i18n-html="13. Natural Earth - &lt;code&gt;naturalearthdata.com&lt;/code&gt;">13. Natural Earth - <code>naturalearthdata.com</code></h2>
+  <p data-i18n="Used for: 110m / 50m / 10m coastline, country, and state-province outline vectors layered on top of the tropo heatmap. Three-tier LOD with cross-fade transitions between scales as the user zooms.">Used for: 110m / 50m / 10m coastline, country, and state-province outline vectors layered on top of the tropo heatmap. Three-tier LOD with cross-fade transitions between scales as the user zooms.</p>
+  <ul>
+    <li data-i18n-html="&lt;strong&gt;License:&lt;/strong&gt; Public domain. &lt;a href=&quot;https://www.naturalearthdata.com/about/terms-of-use/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;naturalearthdata.com/about/terms-of-use&lt;/a&gt;."><strong>License:</strong> Public domain. <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noopener">naturalearthdata.com/about/terms-of-use</a>.</li>
+    <li data-i18n-html="&lt;strong&gt;Policy:&lt;/strong&gt; &lt;a href=&quot;https://www.naturalearthdata.com/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;naturalearthdata.com&lt;/a&gt;"><strong>Policy:</strong> <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">naturalearthdata.com</a></li>
+    <li data-i18n-html="&lt;strong&gt;Personal use:&lt;/strong&gt; yes. &lt;strong&gt;Commercial use:&lt;/strong&gt; yes."><strong>Personal use:</strong> yes. <strong>Commercial use:</strong> yes.</li>
+    <li data-i18n-html="&lt;strong&gt;Attribution required:&lt;/strong&gt; no, but the project asks for the courtesy credit: &lt;code&gt;Made with Natural Earth&lt;/code&gt;."><strong>Attribution required:</strong> no, but the project asks for the courtesy credit: <code>Made with Natural Earth</code>.</li>
+    <li data-i18n-html="&lt;strong&gt;Hotlinking:&lt;/strong&gt; N/A; the GeoJSON files are vendored locally (slimmed and rounded to per-tier coordinate precision via &lt;code&gt;src/tropo/slim-outlines.mjs&lt;/code&gt;)."><strong>Hotlinking:</strong> N/A; the GeoJSON files are vendored locally (slimmed and rounded to per-tier coordinate precision via <code>src/tropo/slim-outlines.mjs</code>).</li>
+  </ul>
+</section>
+
+<section id="maplibre">
+  <h2 data-i18n-html="14. MapLibre GL JS - &lt;code&gt;maplibre.org&lt;/code&gt;">14. MapLibre GL JS - <code>maplibre.org</code></h2>
+  <p data-i18n-html="Used for: WebGL pan-zoom rendering of the tropo heatmap (filled-contour band layers + isolines) and the Natural Earth outline overlays. Vendored locally rather than served from a CDN; CSP &lt;code&gt;connect-src&lt;/code&gt; stays at &lt;code&gt;'self'&lt;/code&gt;.">Used for: WebGL pan-zoom rendering of the tropo heatmap (filled-contour band layers + isolines) and the Natural Earth outline overlays. Vendored locally rather than served from a CDN; CSP <code>connect-src</code> stays at <code>'self'</code>.</p>
+  <ul>
+    <li data-i18n-html="&lt;strong&gt;License:&lt;/strong&gt; BSD-3-Clause. &lt;a href=&quot;https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;github.com/maplibre/maplibre-gl-js LICENSE.txt&lt;/a&gt;."><strong>License:</strong> BSD-3-Clause. <a href="https://github.com/maplibre/maplibre-gl-js/blob/main/LICENSE.txt" target="_blank" rel="noopener">github.com/maplibre/maplibre-gl-js LICENSE.txt</a>.</li>
+    <li data-i18n-html="&lt;strong&gt;Personal use:&lt;/strong&gt; yes. &lt;strong&gt;Commercial use:&lt;/strong&gt; yes."><strong>Personal use:</strong> yes. <strong>Commercial use:</strong> yes.</li>
+    <li data-i18n-html="&lt;strong&gt;Attribution:&lt;/strong&gt; retain the BSD-3-Clause copyright notice in the redistributed file. The notice is preserved at the top of &lt;code&gt;src/tropo/vendor/maplibre-gl.js&lt;/code&gt;."><strong>Attribution:</strong> retain the BSD-3-Clause copyright notice in the redistributed file. The notice is preserved at the top of <code>src/tropo/vendor/maplibre-gl.js</code>.</li>
+    <li data-i18n-html="&lt;strong&gt;Hotlinking:&lt;/strong&gt; N/A; vendored locally at &lt;code&gt;src/tropo/vendor/maplibre-gl.{js,css}&lt;/code&gt;. Update by re-downloading from &lt;a href=&quot;https://unpkg.com/maplibre-gl@4.7.1/dist/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;unpkg.com/maplibre-gl@4.7.1/dist/&lt;/a&gt;."><strong>Hotlinking:</strong> N/A; vendored locally at <code>src/tropo/vendor/maplibre-gl.{js,css}</code>. Update by re-downloading from <a href="https://unpkg.com/maplibre-gl@4.7.1/dist/" target="_blank" rel="noopener">unpkg.com/maplibre-gl@4.7.1/dist/</a>.</li>
+  </ul>
+</section>
+
+<section id="d3">
+  <h2 data-i18n-html="15. d3-contour, d3-array - &lt;code&gt;d3js.org&lt;/code&gt;">15. d3-contour, d3-array - <code>d3js.org</code></h2>
+  <p data-i18n-html="Used for: marching-squares contour generation that converts the per-cell &lt;code&gt;tropo_index&lt;/code&gt; grid into the filled-band polygons MapLibre paints. &lt;code&gt;d3-array&lt;/code&gt; is a transitive dependency.">Used for: marching-squares contour generation that converts the per-cell <code>tropo_index</code> grid into the filled-band polygons MapLibre paints. <code>d3-array</code> is a transitive dependency.</p>
+  <ul>
+    <li data-i18n-html="&lt;strong&gt;License:&lt;/strong&gt; ISC. &lt;a href=&quot;https://github.com/d3/d3-contour/blob/main/LICENSE&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;github.com/d3/d3-contour LICENSE&lt;/a&gt;, &lt;a href=&quot;https://github.com/d3/d3-array/blob/main/LICENSE&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;d3-array LICENSE&lt;/a&gt;."><strong>License:</strong> ISC. <a href="https://github.com/d3/d3-contour/blob/main/LICENSE" target="_blank" rel="noopener">github.com/d3/d3-contour LICENSE</a>, <a href="https://github.com/d3/d3-array/blob/main/LICENSE" target="_blank" rel="noopener">d3-array LICENSE</a>.</li>
+    <li data-i18n-html="&lt;strong&gt;Personal use:&lt;/strong&gt; yes. &lt;strong&gt;Commercial use:&lt;/strong&gt; yes."><strong>Personal use:</strong> yes. <strong>Commercial use:</strong> yes.</li>
+    <li data-i18n-html="&lt;strong&gt;Attribution:&lt;/strong&gt; retain the ISC copyright notice in the redistributed file. The notices are preserved at the top of &lt;code&gt;src/tropo/vendor/d3-contour.min.js&lt;/code&gt; and &lt;code&gt;src/tropo/vendor/d3-array.min.js&lt;/code&gt;."><strong>Attribution:</strong> retain the ISC copyright notice in the redistributed file. The notices are preserved at the top of <code>src/tropo/vendor/d3-contour.min.js</code> and <code>src/tropo/vendor/d3-array.min.js</code>.</li>
+    <li data-i18n-html="&lt;strong&gt;Hotlinking:&lt;/strong&gt; N/A; vendored locally."><strong>Hotlinking:</strong> N/A; vendored locally.</li>
+  </ul>
+</section>
+
 <section id="commercial-ban">
   <h2 data-i18n="Commercial-use ban">Commercial-use ban</h2>
   <p data-i18n="ionocast must stay free and non-commercial. Adding ads, a paywall, or a paid tier breaks all of these licenses at once:">ionocast must stay free and non-commercial. Adding ads, a paywall, or a paid tier breaks all of these licenses at once:</p>
@@ -242,7 +293,7 @@
 <section id="source-code">
   <h2 data-i18n="Source code">Source code</h2>
   <p data-i18n-html='The full ionocast implementation - browser code, Cloudflare Pages Functions for the upstream proxies, the offline calibration harness, and the LaTeX whitepaper - is open at <a href="https://github.com/topklc/ionocast" target="_blank" rel="noopener">github.com/topklc/ionocast</a>.'>The full ionocast implementation - browser code, Cloudflare Pages Functions for the upstream proxies, the offline calibration harness, and the LaTeX whitepaper - is open at <a href="https://github.com/topklc/ionocast" target="_blank" rel="noopener">github.com/topklc/ionocast</a>.</p>
-  <p data-i18n="The site has no third-party JavaScript libraries, no build step, and no bundler. Everything served to the browser is plain HTML, ES modules, and CSS. There is no telemetry, no analytics, and no tracking.">The site has no third-party JavaScript libraries, no build step, and no bundler. Everything served to the browser is plain HTML, ES modules, and CSS. There is no telemetry, no analytics, and no tracking.</p>
+  <p data-i18n-html="The site has no build step and no bundler. Everything served to the browser is plain HTML, ES modules, and CSS. The only third-party JavaScript is <a href=&quot;#maplibre&quot;>MapLibre GL JS</a> + <a href=&quot;#d3&quot;>d3-contour</a> + d3-array (used solely by the tropospheric ducting heatmap), all vendored locally. No CDN, no telemetry, no analytics, no tracking.">The site has no build step and no bundler. Everything served to the browser is plain HTML, ES modules, and CSS. The only third-party JavaScript is <a href="#maplibre">MapLibre GL JS</a> + <a href="#d3">d3-contour</a> + d3-array (used solely by the tropospheric ducting heatmap), all vendored locally. No CDN, no telemetry, no analytics, no tracking.</p>
   <p data-i18n="Issues, pull requests, or questions can be opened on the GitHub repository.">Issues, pull requests, or questions can be opened on the GitHub repository.</p>
   <p data-i18n-html='ionocast itself is licensed under the <strong>GNU General Public License, version 3 or any later version</strong> (GPL-3.0-or-later). See the <a href="https://github.com/topklc/ionocast/blob/main/LICENSE" target="_blank" rel="noopener">LICENSE</a> file in the repository for the full text.'>ionocast itself is licensed under the <strong>GNU General Public License, version 3 or any later version</strong> (GPL-3.0-or-later). See the <a href="https://github.com/topklc/ionocast/blob/main/LICENSE" target="_blank" rel="noopener">LICENSE</a> file in the repository for the full text.</p>
 </section>

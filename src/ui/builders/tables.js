@@ -242,8 +242,8 @@ export const tableBuilders = {
           // hardcoded templates over upstream-numeric fields, no
           // user-controllable strings.
           ul.appendChild(el("li", null, [
-            el("time", { text: it.time || "" }),
-            el("span", { className: "meta", text: it.meta || "" }),
+            el("time", { html: it.time || "" }),
+            el("span", { className: "meta", html: it.meta || "" }),
             el("span", { className: "desc", html: it.desc || "" })
           ]));
         });

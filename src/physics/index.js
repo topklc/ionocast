@@ -67,10 +67,10 @@ export {
 } from "./snr.js";
 export {
   DEFAULT_SIGMA_DB,
-  TIER_R_EXCELLENT,
-  TIER_R_GOOD,
-  TIER_R_FAIR,
-  TIER_R_POOR,
+  TIER_DB_EXCELLENT,
+  TIER_DB_GOOD,
+  TIER_DB_FAIR,
+  TIER_DB_POOR,
   tierFromMargin,
   tierRank,
   reliability,

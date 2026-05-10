@@ -468,6 +468,64 @@ export const DEFINITIONS = {
     name: "FCAST (sigma inflated by upcoming disturbance)",
     def: "Soft alert: the SWPC 3-day Kp forecast contains disturbed slots in the next 6 to 12 h, which the model translates into widened tier-prediction uncertainty (forecast σ). Verdicts on upper bands soften: a borderline 'good' becomes more like 'good with caveat'. Use this when planning a sked or contest window."
   },
+  // ---- Outlook panel: solar regions, CMEs, showers, 27-day -----------
+  "AR": {
+    name: "AR (NOAA active region number)",
+    def: "NOAA-assigned 4-digit number for a sunspot group. Numbering is monotonic across cycles (does not reset). Used by SWPC to track an individual region's flare history and report its M-class / X-class probabilities."
+  },
+  "Alpha": {
+    name: "Alpha (Hale magnetic class)",
+    def: "Hale magnetic classification for a sunspot group with a single dominant magnetic polarity. Smallest and quietest configuration; near-zero flare probability."
+  },
+  "Beta": {
+    name: "Beta (Hale magnetic class)",
+    def: "Hale magnetic classification for a sunspot group with two distinct opposite-polarity regions cleanly separated. Common configuration; modest flare risk (typically C-class, occasional M)."
+  },
+  "Beta-Gamma": {
+    name: "Beta-Gamma (Hale magnetic class)",
+    def: "Hale magnetic classification for a sunspot group with two opposite polarities but irregular intermixing along the polarity inversion line. Stronger flare risk; M-class flares likely, X-class possible."
+  },
+  "Beta-Gamma-Delta": {
+    name: "Beta-Gamma-Delta (Hale magnetic class)",
+    def: "Hale magnetic classification for the most complex configuration: opposite polarities sharing a single penumbra (delta), intermixed (gamma), within a generally bipolar region (beta). High X-class flare probability; the regions that produce the most extreme flares typically carry this classification."
+  },
+  "ZHR": {
+    name: "ZHR (Zenith Hourly Rate)",
+    def: "Number of meteors a single observer would see per hour at peak shower activity, with the radiant directly overhead and a clear sky to magnitude 6.5. ionocast uses ZHR ≥ 20 as the threshold for upgrading the VHF meteor-scatter floor on 6 m / 2 m during the predawn window."
+  },
+  "halfAngle": {
+    name: "halfAngle (CME angular half-width)",
+    def: "Angular half-width of a coronal mass ejection as fit from coronagraph imagery. A 30° halfAngle CME spans 60° of sky and is more likely to be Earth-directed; very narrow CMEs (< 15°) typically miss Earth. Reported by CCMC's WSA-ENLIL+Cone fit on each DONKI entry."
+  },
+  "no impact study": {
+    name: "no impact study (CME)",
+    def: "CCMC has not yet run a magnetospheric-impact simulation for this CME. Either the event is too recent (impact studies typically post within hours of detection) or the CME is judged not Earth-directed enough to warrant the run. Without an impact study, no Kp peak or arrival time prediction is available."
+  },
+  "Kp peak": {
+    name: "Kp peak (CME impact study)",
+    def: "Predicted peak Kp value the CME is expected to drive at Earth, from the CCMC WSA-ENLIL+Cone simulation attached to the DONKI entry. Quotes only what the model produced; uncertainty is wide (typically ±1 Kp) and arrival timing has ±6-8 h spread."
+  },
+  "active": {
+    name: "active (meteor shower phase)",
+    def: "Meteor shower is within ±2 days of the IMO catalog peak. ionocast applies the meteor-scatter floor lift on 6 m / 2 m during this phase."
+  },
+  "building": {
+    name: "building (meteor shower phase)",
+    def: "Meteor shower is on the leading edge of its activity envelope per the IMO calendar (a few days before the active window). Floor lift fires in this phase too because the catalogued ZHR rises smoothly into peak."
+  },
+  "fading": {
+    name: "fading (meteor shower phase)",
+    def: "Meteor shower is on the trailing edge of its activity envelope per the IMO calendar (a few days past peak). The ZHR is dropping back toward background; ionocast does not apply the floor lift in this phase."
+  },
+  "SFI": {
+    name: "SFI (Solar Flux Index, equivalent to F10.7)",
+    def: "Solar 10.7 cm radio flux in solar flux units, identical to F10.7. Older amateur-radio literature uses ‘SFI’; modern ionospheric models use ‘F10.7’. The 27-day outlook reports daily predicted SFI from the ISES weekly product."
+  },
+  "Ap": {
+    name: "Ap (planetary daily geomagnetic index)",
+    def: "Daily geomagnetic activity index, computed from the eight 3-hour Kp values of the day converted to a linear-scale ap and averaged. Range: 0-7 quiet, 8-15 unsettled, 16-29 active, 30+ storm. Used in the 27-day outlook as the slow-tracker analogue of Kp."
+  },
+
   // ---- prob-table row labels (NOAA R/S/G scales, 3-day forecast) ----
   "R1-R2 blackout": {
     name: "R1-R2 radio blackout probability",

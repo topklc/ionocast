@@ -1,0 +1,74 @@
+name: tropo grid refresh
+
+# Pulls the latest NOAA GFS forecast, computes the tropo_index, packs
+# it to a compact binary, and uploads to Cloudflare R2 so the deployed
+# render-maplibre page can fetch it.  Runs on the GFS cycle schedule:
+# each cycle (00 / 06 / 12 / 18 UTC) publishes ~3-4 h after start, so
+# the cron fires ~5 h after each cycle to give NOMADS a comfortable
+# margin.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN  ; token scoped to "Account · Workers R2
+#                            Storage · Edit" on the target bucket.
+#   CLOUDFLARE_ACCOUNT_ID ; your account ID from the CF dashboard.
+#
+# Required repository variables (Settings → Variables → Actions):
+#   R2_BUCKET  ; the R2 bucket name (e.g. "ionocast-data").
+#   R2_KEY     ; object key for the binary (e.g. "tropo/grid.bin").
+#
+# Failure modes:
+#   - NOMADS unreachable: workflow fails, deployed binary stays on
+#     the previous cycle (acceptable; R2 keeps the last successful
+#     upload until overwritten).
+#   - eccodes apt install fails: workflow fails, no upload.
+#   - Cloudflare upload fails: workflow fails after computing the
+#     binary; no partial upload (wrangler is atomic per object).
+#
+# To pause: comment out the schedule trigger or disable the workflow
+# in the GitHub UI.  Manual dispatch (workflow_dispatch) stays
+# available either way.
+
+on:
+  schedule:
+    # 05, 11, 17, 23 UTC; ~5 h after each GFS cycle (00 / 06 / 12 / 18z).
+    - cron: "0 5,11,17,23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install eccodes
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libeccodes-tools
+          grib_get_data -V 2>&1 | head -1 || true
+
+      - name: Pull GFS and compute tropo grid
+        run: node --max-old-space-size=4096 src/tropo/ingest.mjs
+
+      - name: Pack binary
+        run: node src/tropo/pack-binary.mjs
+
+      - name: Upload to Cloudflare R2
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET:             ${{ vars.R2_BUCKET }}
+          R2_KEY:                ${{ vars.R2_KEY }}
+        run: |
+          npx --yes wrangler@4 r2 object put \
+            "$R2_BUCKET/$R2_KEY" \
+            --file=src/tropo/data/grid.bin \
+            --content-type=application/octet-stream \
+            --remote

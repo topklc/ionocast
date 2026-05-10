@@ -9,6 +9,7 @@
 
 import { jproxy, tproxy } from "./net.js";
 import { currentQth, qthToLatLon } from "../physics/qth.js";
+import { abbr } from "../ui/definitions.js";
 
 // xrayClass: classify W/m^2 as A/B/C/M/X with subdecade suffix.
 export function xrayClass(flux) {
@@ -117,8 +118,11 @@ export function fetchSwpcRegions() {
       // than just "M 5%...".
       var descPrefix = magLabel ? " \u00b7 " : "";
       items.push({
-        time: "AR " + r.region,
-        meta: magLabel,
+        // time renders via text:; embed the AR-link in the meta
+        // column instead so the "AR" is clickable to its definition
+        // alongside the magnetic-class label.
+        time: abbr("AR") + " " + r.region,
+        meta: magLabel ? abbr(magLabel) : "",
         desc: descPrefix + "M <b>" + mProb + "%</b> \u00b7 X <b>" + xProb + "%</b> \u00b7 " + spotLabel + "."
       });
     });
@@ -153,8 +157,8 @@ export function fetch27day() {
       if (!m) return;
       items.push({
         time: m[2] + " " + String(parseInt(m[3], 10)).padStart(2, "0"),
-        meta: "SFI " + m[4],
-        desc: "Ap " + m[5],
+        meta: abbr("SFI") + " " + m[4],
+        desc: abbr("Ap") + " " + m[5],
       });
     });
     return { items: items };
@@ -534,7 +538,9 @@ export function fetchDonkiCme() {
       // Most CMEs in the public DONKI catalog have no enlilList (only
       // CCMC-run impact studies do). Show the Kp peak + arrival time only
       // when known; otherwise note no impact study is available.
-      var kpFragment = kpPeak ? " \u00b7 Kp peak " + escHtml(kpPeak) : " \u00b7 no impact study";
+      var kpFragment = kpPeak
+        ? " \u00b7 " + abbr("Kp peak") + " " + escHtml(kpPeak)
+        : " \u00b7 " + abbr("no impact study");
       var arrivalFragment = "";
       if (arrivalTime) {
         var arrShort = arrivalTime.slice(0, 16).replace("T", " ");
@@ -544,7 +550,8 @@ export function fetchDonkiCme() {
         time: t215 ? "obs " + escHtml(t215) + "Z" : "-",
         meta: speed != null ? "v=" + Math.round(speed) + " km/s" : "-",
         desc: "CME-" + escHtml(cmeShort) +
-              " \u00b7 halfAngle " + (halfAngle != null && !isNaN(halfAngle) ? halfAngle.toFixed(0) : "?") + "\u00b0" +
+              " \u00b7 " + abbr("halfAngle") + " " +
+              (halfAngle != null && !isNaN(halfAngle) ? halfAngle.toFixed(0) : "?") + "\u00b0" +
               kpFragment + arrivalFragment,
       });
     });

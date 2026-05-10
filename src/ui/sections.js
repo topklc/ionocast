@@ -92,12 +92,11 @@ export const SECTIONS = [
         scope: "vhf",
         interp: "Per-band predicted tier, SNR margin, propagation mode (Es / aurora-E / meteor scatter), and best destination from the physics model, alongside foEs from the nearest digisonde, the Es-MUF / band ratio, OVATION aurora hemispheric power, and tropospheric refractivity gradient. Above 2 m is line-of-sight / tropospheric only."
       },
-      { type: "heading", text: "Tropospheric ducting (radiosonde dN/dh)" },
-      {
-        type: "ducting-table",
-        interp: "Direct-measurement ducting status from the University of Wyoming radiosonde network. dN/dh is the refractivity gradient over the lowest 1 km of each sounding: below -157 N/km the layer traps VHF signals into a duct, -79 to -157 is super-refractive (extended range), above -79 is standard atmosphere. Soundings release at 00 Z and 12 Z and post ~3 h later."
-      },
-      { type: "caption", text: "Sounding data: University of Wyoming, weather.uwyo.edu (Department of Atmospheric Science)." }
+      // Hepburn-class tropo forecast heatmap.  GFS-derived, refreshed
+      // 4× daily on the GFS cycle (00 / 06 / 12 / 18 z + 5 h).  Lives
+      // inside the VHF section since the band-table column for tropo
+      // dN/dh is the per-station summary and this is the global view.
+      { type: "tropo-map" }
     ]
   },
 
@@ -322,4 +321,8 @@ export const CREDITS = [
   { label: "NASA / SDO",                   url: "https://sdo.gsfc.nasa.gov/",                       note: "courtesy of NASA/SDO and the AIA, EVE, and HMI science teams" },
   { label: "International Meteor Organization",
                                            url: "https://www.imo.net/",                             note: "meteor-shower calendar" },
+  { label: "NOAA NCEP / NOMADS",           url: "https://nomads.ncep.noaa.gov/",                    note: "GFS 0.25° forecast (public domain) for the global tropospheric ducting heatmap" },
+  { label: "Natural Earth",                url: "https://www.naturalearthdata.com/",                note: "coastline / country / state-province outlines (public domain)" },
+  { label: "MapLibre GL JS",               url: "https://maplibre.org/",                            note: "WebGL pan-zoom renderer (BSD-3-Clause), vendored locally" },
+  { label: "d3-contour, d3-array",         url: "https://d3js.org/",                                note: "marching-squares contour generation (ISC), vendored locally" },
 ];

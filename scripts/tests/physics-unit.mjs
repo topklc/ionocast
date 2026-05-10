@@ -577,33 +577,37 @@ const HF_BANDS = [
 // 15. Tier classification (ITU-R P.842 reliability buckets)
 // ════════════════════════════════════════════════════════════════════
 {
-  // Boundaries scale with sigma. Post 2026-04-30 second-pass thresholds, with sigma=8 dB:
-  //   excellent: margin >= 1.2816 * 8 = 10.253 dB  (R >= 90%)
-  //   good:      margin >= 0.2533 * 8 =  2.026 dB  (R >= 60%)
-  //   fair:      margin >= -0.3853 * 8 = -3.082 dB (R >= 35%)
-  //   poor:      margin >= -1.2816 * 8 = -10.253 dB (R >= 10%)
-  //   closed:    margin <  -10.253 dB
+  // Fixed-dB tier thresholds (2026-05-10 revert from the
+  // sigma-percentile experiment after a field-day audit showed it
+  // labelled unworkable bands as good/fair):
+  //   excellent: margin >= +18 dB
+  //   good:      margin >= +6  dB
+  //   fair:      margin >= -5  dB
+  //   poor:      margin >= -14 dB
+  //   closed:    margin <  -14 dB
+  // Sigma is no longer used by tierFromMargin; the second argument
+  // is accepted for backward-compat but ignored.
   const S = 8;
-  eq("tierFromMargin(-30, 8)     = closed",    tierFromMargin(-30, S),    "closed");
-  eq("tierFromMargin(-10.5, 8)   = closed",    tierFromMargin(-10.5, S),  "closed");
-  eq("tierFromMargin(-10, 8)     = poor",      tierFromMargin(-10, S),    "poor");
-  eq("tierFromMargin(-4, 8)      = poor",      tierFromMargin(-4, S),     "poor");
-  eq("tierFromMargin(-3, 8)      = fair",      tierFromMargin(-3, S),     "fair");
-  eq("tierFromMargin(0, 8)       = fair",      tierFromMargin(0, S),      "fair");
-  eq("tierFromMargin(2, 8)       = fair",      tierFromMargin(2, S),      "fair");
-  eq("tierFromMargin(2.1, 8)     = good",      tierFromMargin(2.1, S),    "good");
-  eq("tierFromMargin(10, 8)      = good",      tierFromMargin(10, S),     "good");
-  eq("tierFromMargin(10.3, 8)    = excellent", tierFromMargin(10.3, S),   "excellent");
-  eq("tierFromMargin(50, 8)      = excellent", tierFromMargin(50, S),     "excellent");
+  eq("tierFromMargin(-30)        = closed",    tierFromMargin(-30, S),    "closed");
+  eq("tierFromMargin(-15)        = closed",    tierFromMargin(-15, S),    "closed");
+  eq("tierFromMargin(-14)        = poor",      tierFromMargin(-14, S),    "poor");
+  eq("tierFromMargin(-6)         = poor",      tierFromMargin(-6, S),     "poor");
+  eq("tierFromMargin(-5)         = fair",      tierFromMargin(-5, S),     "fair");
+  eq("tierFromMargin(0)          = fair",      tierFromMargin(0, S),      "fair");
+  eq("tierFromMargin(5)          = fair",      tierFromMargin(5, S),      "fair");
+  eq("tierFromMargin(6)          = good",      tierFromMargin(6, S),      "good");
+  eq("tierFromMargin(15)         = good",      tierFromMargin(15, S),     "good");
+  eq("tierFromMargin(18)         = excellent", tierFromMargin(18, S),     "excellent");
+  eq("tierFromMargin(50)         = excellent", tierFromMargin(50, S),     "excellent");
 
-  // Sigma scales the boundary: with sigma=12, excellent needs margin >= 15.38 dB.
+  // Sigma is ignored: same dB margin produces the same tier regardless.
   eq("tierFromMargin(15, 12)     = good",      tierFromMargin(15, 12),    "good");
-  eq("tierFromMargin(16, 12)     = excellent", tierFromMargin(16, 12),    "excellent");
+  eq("tierFromMargin(20, 12)     = excellent", tierFromMargin(20, 12),    "excellent");
 
-  // Sigma defaults to DEFAULT_SIGMA_DB (=8) when omitted or non-positive.
+  // Sigma argument can be omitted entirely.
   eq("tierFromMargin(0, null)    = fair",      tierFromMargin(0, null),   "fair");
   eq("tierFromMargin(0)          = fair",      tierFromMargin(0),         "fair");
-  eq("tierFromMargin(10.5, 0)    = excellent", tierFromMargin(10.5, 0),   "excellent");
+  eq("tierFromMargin(20)         = excellent", tierFromMargin(20),        "excellent");
 
   // Null/NaN margin returns null (preserves caller-side null-check semantics).
   eq("tierFromMargin(null)      = null",      tierFromMargin(null),     null);
@@ -638,32 +642,36 @@ const HF_BANDS = [
 
 // ════════════════════════════════════════════════════════════════════
 // 15c. Tier confidence: P(predicted tier == true tier | margin, sigma)
+//      Fixed-dB boundaries: -14 / -5 / +6 / +18 (closed/poor/fair/good/excellent).
+//      With sigma=8, the corresponding z-boundaries are -1.75 / -0.625 /
+//      +0.75 / +2.25.
 // ════════════════════════════════════════════════════════════════════
 {
-  // Right at a tier boundary: roughly equal probability of being on either side.
-  // Post 2026-04-30 second pass, boundaries at z = -1.282 / -0.385 / +0.253 / +1.282.
-  near("conf at z=1.2816 (good/excellent) ~= 0.500", tierConfidence(1.2816*8, 8), 0.500, 0.01);
-  // At z=0.2533 (good lower boundary): observation just-clears good; mass leaks
-  // into fair below and excellent above. Good band spans [0.2533, 1.2816] = 1.028σ wide.
-  // P(true z in good | z=0.2533) = Phi(1.028) - Phi(0) = 0.848 - 0.500 = 0.348.
-  near("conf at z=0.2533 (fair/good boundary) ~= 0.348", tierConfidence(0.2533*8, 8), 0.348, 0.01);
-  // At z=-0.385 (poor/fair boundary): observation just clears fair; fair band
-  // spans [-0.385, 0.253] = 0.638σ wide. P(true z in fair | z=-0.385) =
-  // Phi(0.638) - Phi(0) = 0.738 - 0.500 = 0.238.
-  near("conf at z=-0.385 (poor/fair boundary) ~= 0.238", tierConfidence(-0.385*8, 8), 0.238, 0.01);
+  // Right at a tier boundary: ~equal probability of being on either side.
+  // At margin=18 (good/excellent boundary), Phi(0)=0.5 leaks above into
+  // excellent which is open-ended, so P(excellent) ≈ 0.5.
+  near("conf at margin=18 (good/excellent boundary) ~= 0.500", tierConfidence(18, 8), 0.500, 0.01);
+  // At margin=6 (fair/good boundary): observation just clears good. Good
+  // band spans [6, 18] = 12 dB wide = 1.5σ.
+  // P(true margin in good | margin_obs=6, σ=8) = Phi(12/8) - Phi(0) = 0.933 - 0.500 = 0.433.
+  near("conf at margin=6 (fair/good boundary) ~= 0.433", tierConfidence(6, 8), 0.433, 0.01);
+  // At margin=-5 (poor/fair boundary): observation just clears fair. Fair
+  // band spans [-5, 6] = 11 dB wide = 1.375σ.
+  // P(true margin in fair | margin_obs=-5, σ=8) = Phi(11/8) - Phi(0) = 0.916 - 0.500 = 0.416.
+  near("conf at margin=-5 (poor/fair boundary) ~= 0.416", tierConfidence(-5, 8), 0.416, 0.01);
 
-  // Deep inside excellent (z=3.0): high confidence the verdict is right.
-  // P(excellent | z=3.0) = 1 - Phi(1.2816 - 3) = 1 - Phi(-1.7184) = 0.957.
-  near("conf at z=3.0 (deep excellent) ~= 0.957", tierConfidence(3*8, 8), 0.957, 0.01);
+  // Deep inside excellent (margin=42, 3σ above the lower edge): high confidence.
+  // P(excellent | margin=42, σ=8) = 1 - Phi((18-42)/8) = 1 - Phi(-3) = 0.999.
+  near("conf at margin=42 (deep excellent) ~= 0.999", tierConfidence(42, 8), 0.999, 0.01);
 
-  // Centered in the fair band: middle of [-0.385, +0.253] is z = -0.066.
-  // P(fair | z=-0.066) = Phi(0.319) - Phi(-0.319) = 0.625 - 0.375 = 0.250.
-  near("conf at z=-0.066 (middle of fair) ~= 0.250", tierConfidence(-0.066*8, 8), 0.250, 0.02);
+  // Centred in the fair band: middle of [-5, +6] is +0.5.
+  // P(fair | margin=0.5, σ=8) = Phi((6-0.5)/8) - Phi((-5-0.5)/8)
+  //   = Phi(0.6875) - Phi(-0.6875) = 0.754 - 0.246 = 0.508.
+  near("conf at margin=0.5 (middle of fair) ~= 0.508", tierConfidence(0.5, 8), 0.508, 0.02);
 
-  // Sigma fallback and null handling.
-  // Post 2026-04-30 second pass, z=0 is in fair (band [-0.385, 0.253], 0.638σ wide).
-  // P(fair | z=0) = Phi(0.253) - Phi(-0.385) = 0.600 - 0.350 = 0.250.
-  near("conf(0, null) ~= 0.250 (defaults sigma=8)", tierConfidence(0, null), 0.250, 0.01);
+  // Sigma fallback: defaults to DEFAULT_SIGMA_DB (=8). At margin=0 (in fair band):
+  // P(fair | 0, 8) = Phi(6/8) - Phi(-5/8) = 0.7734 - 0.2660 = 0.507.
+  near("conf(0, null) ~= 0.507 (defaults sigma=8)", tierConfidence(0, null), 0.507, 0.01);
   eq("conf(null, 8) = 0 (caller null guard)", tierConfidence(null, 8), 0);
 }
 

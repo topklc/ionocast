@@ -5,6 +5,7 @@
 import {
   MS_SHOWER_MIN_ZHR, MS_LOCAL_HOUR_START, MS_LOCAL_HOUR_END
 } from "../constants.js";
+import { abbr } from "../ui/definitions.js";
 
 export function computeImoShowers() {
   var catalog = [
@@ -39,8 +40,13 @@ export function computeImoShowers() {
     var phase = delta > 2 ? "building" : Math.abs(delta) <= 2 ? "active" : "fading";
     items.push({
       time: String(s[2]).padStart(2, "0") + "-" + String(s[3]).padStart(2, "0") + " peak (" + when + ")",
-      meta: s[0] + " ZHR " + s[4],
-      desc: s[1] + " (" + phase + ")",
+      meta: s[0] + " " + abbr("ZHR") + " " + s[4],
+      desc: s[1] + " (" + abbr(phase) + ")",
+      // Non-display fields so meteorScatterActive (below) can read the
+      // ZHR and phase without re-parsing the meta/desc strings (those
+      // now contain abbr()-wrapped <a class="term-link"> markup).
+      _zhr: s[4],
+      _phase: phase,
     });
   });
   return { items: items };
@@ -86,16 +92,32 @@ export function meteorScatterActive(showers, qthLat, qthLon, nowDate) {
   if (showers && showers.items) {
     for (var i = 0; i < showers.items.length; i++) {
       var sh = showers.items[i] || {};
-      var meta = String(sh.meta || "");
-      var m = meta.match(/ZHR\s+(\d+)/i);
-      if (!m) continue;
-      var zhr = parseInt(m[1], 10);
+      // Prefer the structured _zhr / _phase fields (computeImoShowers
+      // sets these); fall back to parsing the display strings for
+      // back-compat with callers / fixtures that pre-date the
+      // abbr() wrapping in meta / desc.
+      var zhr;
+      if (sh._zhr != null) {
+        zhr = parseInt(sh._zhr, 10);
+      } else {
+        var meta = String(sh.meta || "");
+        // \D+? matches any non-digits between "ZHR" and the number,
+        // tolerating intervening HTML tags from abbr().
+        var m = meta.match(/ZHR\D+?(\d+)/i);
+        zhr = m ? parseInt(m[1], 10) : NaN;
+      }
       if (!isFinite(zhr) || zhr < MS_SHOWER_MIN_ZHR) continue;
+      var phase = sh._phase;
       var desc = String(sh.desc || "");
-      // computeImoShowers tags phase as "active" when |delta| <= 2 days,
-      // "building" / "fading" when within the catalog's ±window but outside
-      // the 2-day active window. We gate on active or ±1 day of active.
-      if (desc.indexOf("(active)") >= 0 || desc.indexOf("(building)") >= 0) {
+      if (phase == null) {
+        if (/\(\s*(?:<[^>]+>)?\s*active\b/i.test(desc))         phase = "active";
+        else if (/\(\s*(?:<[^>]+>)?\s*building\b/i.test(desc))  phase = "building";
+        else if (/\(\s*(?:<[^>]+>)?\s*fading\b/i.test(desc))    phase = "fading";
+      }
+      // Gate on active or building (the leading edge); fading does
+      // not lift the floor since the shower is past peak and ZHR is
+      // dropping.
+      if (phase === "active" || phase === "building") {
         var name = (desc.split("(")[0] || "").trim();
         return { active: true, name: name, weight: weight };
       }

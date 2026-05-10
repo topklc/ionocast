@@ -1,85 +1,57 @@
-// ITU-R P.842 reliability buckets: tierFromMargin maps (margin, sigma) to
-// excellent/good/fair/poor/closed via Phi(margin/sigma) percentile bands.
-// reliability and tierConfidence are the operator-readable scalars.
+// Fixed-dB tier thresholds: tierFromMargin maps margin (dB above
+// SNR-required) to excellent/good/fair/poor/closed using absolute dB
+// cuts that don't scale with sigma. Operator-direct ITU-R P.842
+// reliability percentiles are still surfaced via reliability() for
+// callers that want them, but the tier labels themselves are read
+// directly off the dB margin.
 
 // Fixed 1σ for margin predictions. Combines antenna-gain misestimation
 // (~3 dB), path variability (~5 dB), noise-env misestimation (~3 dB), and
 // model residual (~4 dB) in quadrature: sqrt(3²+5²+3²+4²) ≈ 7.7, rounded
 // to 8. Matches the ~10 dB day-to-day circuit spread that ITU-R P.533
 // documents, slightly tighter given our per-path + diurnal corrections.
-// Later batches (harness-driven) can derive per-band sigma from observed
-// prediction error.
+// Used by reliability() and tierStability() but not by tierFromMargin
+// itself (which is now sigma-independent).
 export const DEFAULT_SIGMA_DB    = 8;
 
-// Reliability-bucket tier verdict, ITU-R P.842 style. The SNR budget
-// already produces (margin, sigma) per band; circuit reliability is
-// R = Phi(margin / sigma), the probability the achieved SNR clears the
-// mode's decoder threshold. Bucketing R into tiers makes the labels mean
-// something station-specific and operator-direct (e.g. "good = QSO
-// completes 3 in 5 attempts at this rig"), and the boundaries scale with
-// the model's own uncertainty instead of a fixed dB number.
+// Fixed-dB tier boundaries. The verdict is read off the absolute margin
+// (in dB above SNR-required) without any sigma scaling. These match
+// what an operator means by "open / good / fair / poor / closed":
 //
-//   excellent : R >= 90 %  (margin >= 1.2816 sigma)
-//   good      : R >= 60 %  (margin >= 0.2533 sigma)
-//   fair      : R >= 35 %  (margin >= -0.3853 sigma)
-//   poor      : R >= 10 %  (margin >= -1.2816 sigma)
-//   closed    : R <  10 %
+//   excellent : margin ≥ +18 dB  ("loud and easy, almost any antenna")
+//   good      : margin ≥  +6 dB  ("clear copy, normal QSO")
+//   fair      : margin ≥  -5 dB  ("workable with effort, careful timing")
+//   poor      : margin ≥ -14 dB  ("long shot, weak signals at the floor")
+//   closed    : margin <  -14 dB ("no")
 //
-// The previous hand-set thresholds (+18 / +6 / -5 / -14 dB) implicitly
-// assumed sigma ~ 14 dB; the actual sigma model is 8-12 dB per band, so
-// "excellent" was unreachable on low-sigma bands and trivially reachable
-// on high-sigma bands. The percentile bucket fixes that.
+// Why fixed dB instead of sigma percentiles. The percentile system
+// (margin >= z_p * sigma) was operator-readable on paper but ran
+// optimistic in real-world contests: bands with margin near 0 dB read
+// as "good" (R ≈ 60 %), but on a noisy field-day environment with
+// QRM well above ITU-R P.372 baseline the same band was unworkable.
+// The fixed +6 dB Good threshold corresponds to "the model expects
+// us 6 dB clear of mode-required SNR even before real-world noise
+// adds 3-6 dB on top", which lines up with what operators actually
+// experience as a usable band.
 //
-// Tier-threshold history. The first P.842 cut (2026-04-28) used the
-// classical ±0.84σ / ±1.64σ boundaries (R = 0.95 / 0.80 / 0.50 / 0.20),
-// which were chosen for clean alignment with the standard. Once paired
-// with the post-σ-refit per-band σ_g of 8-12 dB, the Good threshold of
-// 0.80 (≥+0.84σ ≈ +6.7 dB at σ=8) was unreachable on most upper-band
-// paths and the tier distribution went visually flat at Fair. The
-// 2026-04-30 first loosening pulled the boundaries to 0.95 / 0.62 /
-// 0.35 / 0.12, but kept Excellent strict (≥+1.64σ ≈ +13 dB) and the
-// Good z-value at 0.31 was a too-precise number chosen to clear one
-// specific 20m path, so it didn't generalise.
-//
-// 2026-04-30 second pass: reliability-floor framing. An operator
-// thinks of a tier in terms of "how often does the QSO actually
-// complete?". Excellent ≈ 1/10 fail, Good ≈ 4/10 fail, Fair ≈ 5 to
-// 6/10 fail, Poor ≈ 8 to 9/10 fail, Closed ≈ 10/10 fail. That maps to the
-// rounded percentile floors below. Excellent now sits at +1.28σ
-// (≈ +12 dB at σ=9) which is reachable on a strong DX path; Good at
-// +0.25σ (≈ +2.3 dB) clears comfortably with a few-dB margin; Closed
-// at < 0.10 (≈ -1.28σ) symmetric with Excellent. Fair stayed at 0.35
-// because it was already operator-aligned.
-//
-// At σ=9 (typical lower-mid HF after σ refit):
-//   Excellent: margin ≥ +11.5 dB  ("will work, ~9 of 10 attempts")
-//   Good:      margin ≥  +2.3 dB  ("will work most of the time")
-//   Fair:      margin ≥  -3.5 dB  ("coin-flip downward")
-//   Poor:      margin ≥ -11.5 dB  ("long shot")
-//   Closed:    margin <  -11.5 dB ("no")
-export const TIER_R_EXCELLENT = 0.90;
+// The +18 / +6 / -5 / -14 dB cuts predate the sigma-percentile
+// experiment; the percentile branch lived briefly (2026-04-28 to
+// 2026-05-10) and was reverted after a field-day audit showed it
+// labelled unworkable bands as good or fair.
+export const TIER_DB_EXCELLENT = 18;
 
-export const TIER_R_GOOD      = 0.60;
+export const TIER_DB_GOOD      = 6;
 
-export const TIER_R_FAIR      = 0.35;
+export const TIER_DB_FAIR      = -5;
 
-export const TIER_R_POOR      = 0.10;
+export const TIER_DB_POOR      = -14;
 
-const Z_EXCELLENT = 1.2816;   // Phi^-1(0.90)
-
-const Z_GOOD      = 0.2533;   // Phi^-1(0.60)
-
-const Z_FAIR      = -0.3853;  // Phi^-1(0.35)
-
-const Z_POOR      = -1.2816;  // Phi^-1(0.10)
-
-export function tierFromMargin(margin, sigma) {
+export function tierFromMargin(margin /*, sigma */) {
   if (margin == null || isNaN(margin)) return null;
-  var s = (sigma != null && sigma > 0) ? sigma : DEFAULT_SIGMA_DB;
-  if (margin >= Z_EXCELLENT * s) return "excellent";
-  if (margin >= Z_GOOD      * s) return "good";
-  if (margin >= Z_FAIR      * s) return "fair";
-  if (margin >= Z_POOR      * s) return "poor";
+  if (margin >= TIER_DB_EXCELLENT) return "excellent";
+  if (margin >= TIER_DB_GOOD)      return "good";
+  if (margin >= TIER_DB_FAIR)      return "fair";
+  if (margin >= TIER_DB_POOR)      return "poor";
   return "closed";
 }
 
@@ -109,67 +81,49 @@ export function reliability(margin, sigma) {
 }
 
 // Confidence in the predicted tier: P(true tier == predicted tier),
-// computed under the assumption that the true sigma-normalized margin
-// (z) is distributed N(z_obs, 1) where z_obs = margin / sigma. The
-// answer for a given (margin, sigma) is the probability that z ends up
-// in the same tier z-band as z_obs.
+// under the assumption that the true margin is distributed
+// N(margin_obs, sigma). The answer is the probability that the true
+// margin ends up in the same fixed-dB tier band as margin_obs.
 //
-// Operator reading is asymmetric by bucket width (paper §7.3.1):
-//   - Open-ended buckets (Excellent at z≥1.2816, Closed at z<-1.2816)
-//     approach 100 % deep into their tail.
-//   - Middle finite-width buckets (Poor, Fair, Good; widest is Poor at
-//     ~0.90σ wide, narrowest is Fair at ~0.64σ wide) have a peak around
-//     ~30 to 35 % at their centre, dropping further at boundaries. This is
-//     a property of the bucket width itself, not of
-//     the model's certainty: a centred Fair verdict at 32 % is the
-//     model performing exactly to spec, not "uncertain". Read the
-//     finite-width tier values relative to the ~32 % per-bucket
-//     ceiling rather than against an absolute scale; the open-ended
-//     Excellent / Closed values are directly comparable to that
-//     scale. This is mathematically correct under the strict
-//     "P(predicted tier = true tier)" definition.
+// Open-ended buckets (Excellent at margin ≥ +18 dB, Closed at
+// margin < -14 dB) approach 100 % deep into their tail. Middle
+// finite-width buckets (Poor, Fair, Good) have a width-dependent
+// peak inside their range that's well below 100 % even when the
+// observation sits exactly in the middle, because sigma still
+// allows the true margin to drift across boundaries. That is a
+// property of the bucket width relative to sigma, not a model
+// uncertainty signal; read the middle-tier confidence values
+// against the bucket-width ceiling rather than an absolute scale.
 //
-// Distinct from `reliability` (the actual circuit reliability Phi(z));
-// confidence is about the verdict label, reliability about link viability.
-//
-// Tier z-boundaries (post 2026-04-30 second pass):
-//   closed | Z_POOR (-1.28) | poor | Z_FAIR (-0.39) | fair | Z_GOOD (+0.25) | good | Z_EXCELLENT (+1.28) | excellent.
+// Distinct from `reliability` (the actual circuit reliability
+// Phi(margin/sigma)); confidence is about the verdict label,
+// reliability about link viability.
 export function tierConfidence(margin, sigma) {
   if (margin == null || isNaN(margin)) return 0;
   var s = (sigma != null && sigma > 0) ? sigma : DEFAULT_SIGMA_DB;
-  var z = margin / s;
-  if (z >= Z_EXCELLENT) return 1 - normCdf(Z_EXCELLENT - z);     // P(true z >= 1.6449)
-  if (z >= Z_GOOD)      return normCdf(Z_EXCELLENT - z) - normCdf(Z_GOOD - z);
-  if (z >= Z_FAIR)      return normCdf(Z_GOOD      - z) - normCdf(Z_FAIR - z);
-  if (z >= Z_POOR)      return normCdf(Z_FAIR      - z) - normCdf(Z_POOR - z);
-  return                       normCdf(Z_POOR      - z);          // P(true z <= -1.175)
+  if (margin >= TIER_DB_EXCELLENT) return 1 - normCdf((TIER_DB_EXCELLENT - margin) / s);
+  if (margin >= TIER_DB_GOOD)      return normCdf((TIER_DB_EXCELLENT - margin) / s) - normCdf((TIER_DB_GOOD - margin) / s);
+  if (margin >= TIER_DB_FAIR)      return normCdf((TIER_DB_GOOD      - margin) / s) - normCdf((TIER_DB_FAIR - margin) / s);
+  if (margin >= TIER_DB_POOR)      return normCdf((TIER_DB_FAIR      - margin) / s) - normCdf((TIER_DB_POOR - margin) / s);
+  return                                  normCdf((TIER_DB_POOR      - margin) / s);
 }
 
-// Verdict stability: Phi(σ-distance to nearest tier boundary).
+// Verdict stability: Phi(distance-to-nearest-boundary / sigma).
 // Operator reading: "how likely is the verdict to NOT change if the
-// true margin moves to its expected value?" Maps to the natural
-// confidence the operator wants, without the bucket-width artefact
-// that makes `tierConfidence` cap at ~32 % for finite-width middle
-// tiers. A verdict that sits 1 σ inside its bucket reads ~84 %
-// stable regardless of which tier it landed in; a verdict right on
-// a boundary reads 50 %.
+// true margin moves to its expected value?" Without the bucket-width
+// artefact that drives tierConfidence's cap, a verdict that sits
+// 1 sigma inside its bucket reads ~84 % stable regardless of which
+// tier it landed in; a verdict right on a boundary reads 50 %.
 //
-// 2026-04-28 audit pass: replaces tierConfidence as the surfaced
-// metric in the band-table "Stability" column. tierConfidence is
-// retained for callers that want the strict P(predicted == true
-// tier) interpretation but is no longer the operator-facing
-// indicator.
+// Surfaced as the "Stability" column in the band-table.
 export function tierStability(margin, sigma) {
   if (margin == null || isNaN(margin)) return 0;
   var s = (sigma != null && sigma > 0) ? sigma : DEFAULT_SIGMA_DB;
-  var z = margin / s;
-  // Distance to nearest tier boundary in z-space. Tier boundaries:
-  // Z_POOR (closed/poor), Z_FAIR (poor/fair), Z_GOOD (fair/good), Z_EXCELLENT (good/excellent).
-  var BOUNDARIES = [Z_POOR, Z_FAIR, Z_GOOD, Z_EXCELLENT];
+  var BOUNDARIES = [TIER_DB_POOR, TIER_DB_FAIR, TIER_DB_GOOD, TIER_DB_EXCELLENT];
   var minDist = Infinity;
   for (var i = 0; i < BOUNDARIES.length; i++) {
-    var d = Math.abs(z - BOUNDARIES[i]);
+    var d = Math.abs(margin - BOUNDARIES[i]);
     if (d < minDist) minDist = d;
   }
-  return normCdf(minDist);   // 0.5 at boundary, → 1.0 deep in bucket
+  return normCdf(minDist / s);
 }

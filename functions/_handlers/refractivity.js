@@ -1,10 +1,18 @@
 // Tropospheric refractivity helpers shared between the tropo handler
 // (which fans out over the radiosonde basket) and any future caller.
 //
-// Refractivity:    N = 77.6 / T_K · (P_mbar + 4810 · e_mbar / T_K)
-// Saturation:      e_sat(t_C) = 6.112 · exp(17.62 · t_C / (243.12 + t_C))
+// Refractivity, ITU-R P.453-13 §1 eq. (1):
+//   N = 77.6 · P/T  +  3.732 × 10⁵ · e/T²
+// where P, e are in hPa and T is in Kelvin.  The two-term form is
+// the published "simplified" expression accurate to ≤ 0.5% across
+// the full troposphere.  Equivalent to the older Smith-Weintraub
+// 77.6/T · (P + 4810·e/T) within rounding (4810 vs 3732/77.6).
 //
-// Classification of dN/dh over the lowest 1 km (ITU-R P.453 / NTIA):
+// Saturation vapor pressure, Sonntag-1990 Magnus form:
+//   e_sat(t_C) = 6.112 · exp(17.62 · t_C / (243.12 + t_C))
+// accurate to ~0.04 % across -45 °C to +60 °C.
+//
+// Classification of dN/dh over the lowest 1 km (ITU-R P.453):
 //   dN/dh > -79  N/km    standard / sub-refractive
 //   -79 to -157 N/km     super-refractive (extended VHF range)
 //   < -157 N/km          trapping / ducting
@@ -16,7 +24,7 @@ export function eSat(tC) {
 }
 
 export function refractivity(tK, pMbar, eMbar) {
-  return 77.6 / tK * (pMbar + 4810 * eMbar / tK);
+  return 77.6 * pMbar / tK + 3.732e5 * eMbar / (tK * tK);
 }
 
 export function classifyGradient(gradient) {

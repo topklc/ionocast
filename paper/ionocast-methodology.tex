@@ -2007,16 +2007,16 @@ $S_{\text{req}}$ (SSB) & \multicolumn{2}{r}{$+10$\,dB}   \\
 \end{tabular}
 \end{table}
 
-\paragraph{Tier verdict (P.842 reliability bucket).}
-With the per-band $\sigma$ for 20\,m = \SI{9}{\dB}
-(Table~\ref{tab:bandsigma}), the standardised margin is
-$M / \sigma = 33.1 / 9 = 3.68$. Since
-$M / \sigma \ge 1.2816$ (the ionocast $R \ge 90\%$ Excellent threshold,
-Table~\ref{tab:tiers}), the verdict is ``Excellent'' and the predicted
-reliability is $\Phi(3.68) \approx 0.99988$ (effectively
-$\sim$99.99\,\%; the tail beyond $z = 3.68$ is $\sim 1.2 \times 10^{-4}$).
-The wide head-room is typical of midday 20\,m on quiet days at
-1000\,km.
+\paragraph{Tier verdict.}
+With margin $M = +33.1$\,\si{\dB} and the fixed-dB cuts of
+Table~\ref{tab:tiers}, the verdict clears the Excellent threshold
+($M \ge +18$\,\si{\dB}) by 15\,\si{\dB}.  The corresponding
+circuit reliability under the per-band $\sigma$ for 20\,m
+(\SI{9}{\dB}, Table~\ref{tab:bandsigma}) is
+$\Phi(33.1 / 9) = \Phi(3.68) \approx 0.99988$ (effectively
+$\sim$99.99\,\%; the tail beyond $z = 3.68$ is
+$\sim 1.2 \times 10^{-4}$).  The wide head-room is typical of
+midday 20\,m on quiet days at 1000\,km.
 
 \paragraph{Worked example with bonuses (15\,m TEP, EU--Brazil at 19\,LT).}
 The budget in Table~\ref{tab:waterfall} silently sets the three
@@ -3902,6 +3902,195 @@ per-station classification lets the operator make the geographic
 inference where the radiosonde basket is dense (Western Europe,
 the contiguous US) and lets it stay silent where the basket is
 thin (most of Africa, Central Asia, the open ocean).
+The companion gridded surface (\S\ref{sec:tropomap}) fills the
+spatial coverage gap with a NOAA GFS-derived per-cell index that
+the radiosonde basket is then used to calibrate.
+
+\subsection{Global Tropospheric Ducting Heatmap}\label{sec:tropomap}
+
+The 24-station radiosonde basket of \S\ref{sec:tropo} answers
+"is the local atmosphere ducting?" wherever a sounding lands within
+the user's region of interest, but most of the planet sits hundreds
+of kilometres from the nearest radiosonde site. To give operators a
+global at-a-glance view, ionocast also ingests the NOAA Global
+Forecast System (GFS), computes a per-cell composite ducting index
+on a regular lat/lon grid, and renders a Hepburn-class heatmap
+embedded in the VHF panel.  The radiosonde-per-station table of
+\S\ref{sec:tropo} is retained as the calibration anchor: its P.453
+classifications are the falsifiable ground truth against which the
+gridded index is tuned.
+
+\paragraph{Forecast input.} GFS at 0.25\textdegree{} is the densest
+public NWP product covering the global troposphere with a refresh
+cadence faster than 6\,h.  ionocast pulls 13 pressure levels
+between 1000 and 500\,hPa
+(1000 / 975 / 950 / 925 / 900 at 25\,hPa spacing, then
+850 / 800 / 750 / 700 / 650 / 600 / 550 / 500 at 50\,hPa, the
+densest set NOMADS publishes on its \texttt{pgrb2.0p25}
+endpoint~\cite{noaagfs}) plus the surface bundle: 2\,m
+temperature, 2\,m dew point, skin temperature, land-sea mask,
+surface pressure, model orography, planetary-boundary-layer height,
+and 10\,m wind components.  Each cycle is filtered server-side by
+the NOMADS subset URL down to ${\sim}21$\,MB (vs ${\sim}500$\,MB
+for the unfiltered 0.25\textdegree{} file).  The 4\,$\times$ daily
+refresh runs ${\sim}5$\,h after each cycle (00 / 06 / 12 / 18\,Z)
+via a GitHub Actions workflow, packs the result to a compact binary
+(${\sim}2.1$\,MB row-major \texttt{Float32}, ${\sim}10\times$
+smaller than the JSON form), and uploads to Cloudflare R2 for
+browser delivery.
+
+\paragraph{Index composition.} The per-cell index $\mathcal{T}$ is
+a seven-term composite, height-weighted in the lowest 2.5\,km AGL
+(weight 1.0 below 1.5\,km, 0.5 between 1.5 and 2.5\,km, zero above
+since amateur VHF/UHF cannot couple meaningfully into upper
+tropospheric ducts) and attenuated by surface mixing:
+\begin{equation}\label{eq:tropoindex}
+  \mathcal{T} = (1 - w_p) \cdot \!\left[\,
+    5\,\Delta_{\text{duct}}
+    + S_{\text{sr}}
+    + S_{\ell}
+    + S_{\text{surf}}
+    + S_{\text{marine}}
+    + S_{\text{HPBL}}
+    + S_{\text{evap}}
+  \,\right],
+\end{equation}
+where the terms, in M-units, are:
+\begin{itemize}[nosep]
+  \item $\Delta_{\text{duct}}$, the ITU-R P.834~\cite{itup834}
+        canonical duct intensity $M_{\text{top}} - M_{\text{min}}$
+        per trapping layer, taken as the maximum across all
+        trapping layers in the column.  Weighted $5\times$ so a
+        30-unit duct contributes 150 to $\mathcal{T}$ and saturates
+        the renderer's 200-unit colormap.
+  \item $S_{\text{sr}}$, the super-refractive sum: per-layer
+        $(-79 - \mathrm{d}N/\mathrm{d}h)$ accumulated over every
+        layer whose gradient sits in the P.453 super-refractive
+        band $[-157, -79]$\,N-units$/$\si{\km}.  This term carries
+        the broad marine baseline (subsidence inversions over the
+        subtropical highs, sub-textbook stratification) that the
+        binary "is there a duct" check misses.
+  \item $S_{\ell}$, the per-layer temperature-inversion sum,
+        triggered when a layer's $\mathrm{d}T$ exceeds the
+        standard-lapse value by ${\ge}\!3$\,K.
+  \item $S_{\text{surf}}$, the surface inversion bonus, comparing
+        $T_{2m}$ to the lapse-adjusted temperature at the first
+        pressure level $\ge\!200$\,m above ground; threshold
+        1\,K, capped at 100.
+  \item $S_{\text{marine}}$, the marine inversion bonus, fires
+        when SST exceeds 2\,m air temperature by $\ge\!1.5$\,K
+        over an ocean cell (gated by GFS land-sea mask), capturing
+        Benguela / California-current cold-tongue and Mediterranean
+        warm-water stratification.  Capped at 60.
+  \item $S_{\text{HPBL}}$, a capping-inversion bonus that activates
+        when GFS's planetary-boundary-layer height $z_{\text{HPBL}}
+        < 1500$\,m \emph{and} another inversion term has already
+        fired.  This is the textbook capping-inversion duct setup:
+        a shallow well-mixed BL trapped under a strong inversion.
+        Up to $+25$.
+  \item $S_{\text{evap}}$, the saturation-deficit evaporation duct
+        bonus.  Over open water the air immediately at the sea
+        surface is saturated by definition; the deficit
+        $e_{\text{sat}}(T_{\text{sea}}) - e(T_{2m,\text{dew}})$
+        scales the strength of the resulting near-surface
+        refractivity gradient.  Replaces an earlier
+        column-precipitable-water proxy that fired on bulk
+        humidity rather than the surface gradient that actually
+        drives evap-duct height.  Capped at 30.
+  \item $w_p \in [0, 0.6]$, the wind-mixing penalty: 10\,m wind
+        speeds above 8\,m/s degrade the laminar boundary-layer
+        structure that ducts depend on, attenuating $\mathcal{T}$
+        by 10\% per m/s above 8\,m/s up to a 60\% reduction at
+        14\,m/s.
+\end{itemize}
+A super-adiabatic lapse anywhere in the lowest 2\,km marks the
+column as convectively-mixed and divides $S_{\ell}$ by 5 and
+$\Delta_{\text{duct}}$ by 2; surface, marine, and evaporation
+bonuses are unaffected because they measure surface-anchored
+quantities the convective check (a layer-gradient probe) cannot
+invalidate.
+
+\paragraph{Pressure-level density and ECMWF comparison.} A
+side-by-side calibration against the same 24-station P.453 panel
+of \S\ref{sec:tropo} makes the case for GFS over ECMWF Open Data on
+this specific application: the ECMWF Open Data feed publishes only
+five pressure levels between 1000 and 500\,hPa
+(1000 / 925 / 850 / 700 / 500), giving 75 to 150\,hPa gaps that
+average across the 50 to 300\,m thick layers where most operational
+ducts physically live.  Run with the same index formula, the ECMWF
+feed scored 0\% recall on observed super-refractive layers; the
+same harness against the GFS feed scored 80\%.  ECMWF retains a
+synoptic-skill edge on multi-day large-system forecasts that is
+not relevant for current-state ducting.  The full ECMWF-IFS
+137-model-level product would resolve sub-100\,m structure but is
+not part of the free Open Data feed.
+
+\paragraph{Calibration.} The calibration harness
+(\texttt{src/tropo/calibrate.mjs}) fetches the same 24-station
+UWyo basket, scans each sounding for its strongest sub-3\,km
+gradient (rather than the bulk-1\,km gradient \S\ref{sec:tropo}
+reports per-station, which averages over thin surface inversions),
+classifies it per Bean \& Dutton~\cite{beandutton1968}, samples
+$\mathcal{T}$ at the station coordinates from the most recent grid,
+and reports three-class agreement plus per-class precision and
+recall.  Across 13 amateur-relevant sondes per cycle (those whose
+strongest gradient sits at or below 2.5\,km AGL, matching the
+height-weighting cap), the optimal cuts come out near
+\begin{equation}\label{eq:tropocuts}
+  \mathcal{T} < 5: \text{standard}; \quad
+  5 \le \mathcal{T} \le 90: \text{super-refractive}; \quad
+  \mathcal{T} > 90: \text{ducting},
+\end{equation}
+with 100\% precision in the ducting band (when the index reads
+$\ge\!90$\,M-units a sonde at the same coordinates agrees the
+column is ducting) and ${\sim}17$\% recall.  The recall ceiling is
+GFS's vertical resolution rather than the formula: surface and
+shallow ducts in 50 to 300\,m thick layers fall between the model's
+25 to 50\,hPa pressure-level spacing and read as $\mathcal{T} = 0$.
+That is a known and bounded data-source limit; the operational
+implication is that bright cells on the heatmap are reliable but
+the absence of color does not rule out ducting.
+
+\paragraph{Rendering.} The browser fetches the packed binary from
+Cloudflare R2 via a same-origin redirect, decodes the row-major
+\texttt{Float32} arrays, applies a separable
+$[1,4,6,4,1]/16$ binomial Gaussian to soften per-cell jitter
+(matching the spatial smoothing every operational forecast product
+applies before contouring), and runs marching-squares contour
+extraction~\cite{d3contour} to produce closed polygon boundaries
+at 15 thresholds spaced
+\begin{equation}
+  \mathcal{T}_i = \mathcal{T}_{\min} +
+    \left(\frac{i}{N}\right)^{\!1/0.7}\!
+    (\mathcal{T}_{\max} - \mathcal{T}_{\min}),
+  \qquad i = 0, 1, \dots, 14
+\end{equation}
+with $\mathcal{T}_{\min} = 20$ and $\mathcal{T}_{\max} = 200$.  The
+$1/0.7$ exponent stretches the lower bands so the weak-but-real
+subtropical-marine baseline gets two or three colored bands rather
+than a single navy stripe; the strongest 1\% of the globe saturates
+at the deepest red without compressing the more common 30 to 100
+range into purple alone.  MapLibre paints each band as a fill
+layer with a hard color edge, identical to the
+meteorological-forecast contour-fill look used by William R.\
+Hepburn's worldwide tropo forecasts~\cite{hepburntropo} and Met
+Office surface charts.  Black isolines from a marching-squares
+overlay run on the source grid (unsmoothed) and trace the data
+boundaries on top of the band fills.
+
+\paragraph{Why this is not folded into the SNR budget.} The heatmap
+is a global field of point classifications, not path-level loss
+data.  A bright cell over the Mediterranean tells operators on
+both Italian and Spanish coasts that their local atmosphere is
+trapping VHF; whether a Genoa-Barcelona path is itself ducted
+depends on \emph{both} endpoints sitting inside the same duct
+\emph{and} the great-circle staying inside the duct between them,
+which the gridded forecast cannot adjudicate without ray-tracing
+through the M-profile along the path.  Surfacing the field as a
+heatmap lets operators make that geographic inference at a glance
+the way Hepburn's maps have been used for decades, while keeping
+the SNR-budget side of ionocast honest about what a single forecast
+column can support.
 
 % ═════════════════════════════════════════════════════════════════════
 \section{Ensemble Blend and Self-Calibration}\label{sec:ensemble}
@@ -4921,75 +5110,81 @@ column itself is therefore only a hint --- if it reads
 ``Tokyo'' on 20\,m and the operator wants Argentina, the
 Reference Paths panel is what to consult next.
 
-The continuous margin is discretised into five operator-facing tiers
-defined as ITU-R P.842 \cite{itup842} circuit-reliability buckets
-(Table~\ref{tab:tiers}).  Each tier corresponds to a fixed
-reliability $R = \Phi(M/\sigma)$ rather than a fixed dB margin, so
-the boundaries scale with each band's prediction uncertainty
-$\sigma_g$ (Section~\ref{sec:reliability}).  The tier label answers
-``how often will a QSO complete on this band right now, with the
-station the operator has configured?'' --- and is therefore a
-property of the user's actual rig, not of an abstract reference
-station.  The defaults (100\,W SSB, 5\,dBi horizontal dipole,
-suburban noise) match the canonical first-visit operator profile;
-any change to power, mode, antenna, or noise environment recomputes
-the SNR budget and reshapes the verdict accordingly.
+The continuous margin is discretised into five tiers using
+fixed-dB cuts (Table~\ref{tab:tiers}).  The cuts are absolute and
+do not scale with the per-band prediction uncertainty
+$\sigma_g$.  The tier label answers ``does the model expect a
+usable signal on this band right now, with the station the
+operator has configured?'' and is therefore a property of the
+user's actual rig.  The defaults (100\,W SSB, 5\,dBi horizontal
+dipole, suburban noise) match the canonical first-visit operator
+profile; any change to power, mode, antenna, or noise environment
+recomputes the SNR budget and reshapes the verdict accordingly.
 
 Tier verdicts are driven by the SNR budget plus the additive
 mode bonuses (Eq.~\ref{eq:blend}: $B_{\text{grayline}} +
-\max(B_{\text{TEP}}, B_{\text{scatter}})$) fed into the
-P.842 reliability formula (Equation~\ref{eq:reliability}); the
-WSPR spot-override of \S\ref{sec:spot-override} can additionally
+\max(B_{\text{TEP}}, B_{\text{scatter}})$); the WSPR
+spot-override of \S\ref{sec:spot-override} can additionally
 promote a band-group summary tier from below-Good up to Good
-when the activity ratchet fires, but does not enter the
-per-band row's tier or stability columns.  The harness retains
-a binary ``$\geq 50$ spots/h'' WSPR~\cite{wsprlive} activity
-check as a sanity floor only --- it does not feed the runtime
-verdict --- since spot activity measures who is transmitting
-rather than whether a QSO would complete on the configured
-station; the per-path mode of the harness uses a sparser
-$\geq 1$ spot/h floor over TX/RX bbox-restricted aggregates,
-documented in \S\ref{sec:calibrate} (Table~\ref{tab:harnessruns}).
+when the activity ratchet fires, but does not enter the per-band
+row's tier or stability columns.  The harness retains a binary
+``$\geq 50$ spots/h'' WSPR~\cite{wsprlive} activity check as a
+sanity floor only (it does not feed the runtime verdict) since
+spot activity measures who is transmitting rather than whether a
+QSO would complete on the configured station; the per-path mode
+of the harness uses a sparser $\geq 1$ spot/h floor over TX/RX
+bbox-restricted aggregates, documented in \S\ref{sec:calibrate}
+(Table~\ref{tab:harnessruns}).
 
 \begin{table}[H]
 \centering
-\caption{Tier thresholds, expressed as ITU-R P.842 circuit-reliability
-buckets.  $R$ is computed by Equation~\ref{eq:reliability}; the
-margin column is the corresponding boundary in $\sigma$-units.
-The actual boundary in dB is band-specific via the per-band
-$\sigma_g$ from Table~\ref{tab:bandsigma}: lower-mid HF bands
-($\sigma_g = \SI{8}{\dB}$ on 160m--40m, $\SI{9}{\dB}$ on 30m / 20m / 17m
-post 2026-04-30 $\sigma$ refit) put ``excellent'' at $\approx +10$--$12\,\si{\dB}$
-and ``good'' at $\approx +2.0$--$2.3\,\si{\dB}$; the upper HF bands
-(15m at $\sigma_g = \SI{10}{\dB}$, 12m / 10m at $\SI{12}{\dB}$) at
-$\approx +12.8$--$15.4 / +2.5$--$3.0\,\si{\dB}$.  The boundaries are
-symmetric: Excellent at $+1.2816\,\sigma$ ($R \ge 90\%$) and Closed at
-$-1.2816\,\sigma$ ($R < 10\%$) are mirror images.}
+\caption{Tier thresholds.  Margin is the dB difference between
+predicted SNR and the mode's required SNR (Table~\ref{tab:modesnr})
+including all additive mode bonuses; the cuts are absolute dB
+values, identical across all bands.  The corresponding circuit
+reliability $R = \Phi(M/\sigma)$ varies with the per-band
+$\sigma_g$ but is no longer the boundary criterion.}
 \label{tab:tiers}
-\begin{tabular}{@{}llll@{}}
+\begin{tabular}{@{}lll@{}}
 \toprule
-\textbf{Tier} & \textbf{Reliability} & \textbf{Margin (in $\sigma$)} & \textbf{Meaning} \\
+\textbf{Tier} & \textbf{Margin} & \textbf{Meaning} \\
 \midrule
-Excellent & {$R \geq 90\%$} & {$\geq +1.2816\,\sigma$} & QSO completes $\approx 9$ of 10 attempts \\
-Good      & {$R \geq 60\%$} & {$\geq +0.2533\,\sigma$} & Comfortable contacts; 3 of 5 attempts \\
-Fair      & {$R \geq 35\%$} & {$\geq -0.3853\,\sigma$} & Marginal; FT8/WSPR reliable, SSB iffy \\
-Poor      & {$R \geq 10\%$} & {$\geq -1.2816\,\sigma$} & Long shot; only digital modes likely \\
-Closed    & {$R <  10\%$}   & {$< -1.2816\,\sigma$}    & Band effectively closed \\
+Excellent & $\geq +18\,\si{\dB}$       & Loud and easy, almost any antenna \\
+Good      & $\geq +6\,\si{\dB}$        & Clear copy, normal QSO conditions \\
+Fair      & $\geq -5\,\si{\dB}$        & Workable with effort, careful timing \\
+Poor      & $\geq -14\,\si{\dB}$       & Long shot, weak signals at the floor \\
+Closed    & $< -14\,\si{\dB}$          & Band effectively closed \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Boundary anchoring.}  The $0.90 / 0.60 / 0.35 / 0.10$
-$R$-schedule is anchored to operator failure-rate intuition:
-Excellent $\approx 1$ in 10 fail, Good $\approx 4$ in 10 fail,
-Fair the coin-flip-down band, Poor $\approx 9$ in 10 fail,
-Closed essentially always.  Excellent / Closed boundaries are
-symmetric at $\pm 1.2816\,\sigma$, so Excellent at $\sigma_g =
-\SI{9}{\dB}$ sits at $\sim \SI{11.5}{\dB}$ (reachable on a
-strong DX path) and Good at $+0.2533\,\sigma \approx
-\SI{2.3}{\dB}$ clears comfortably with a few-dB margin.  An
-unconditional $\sigma_g = \SI{8}{\dB}$ fallback exists in
-\texttt{tier.js} as \texttt{DEFAULT\_SIGMA\_DB}.
+\paragraph{Why fixed dB rather than $R$-percentile cuts.}  An
+earlier revision of the verdict mapped tiers to fixed
+reliability buckets ($R = 0.90 / 0.60 / 0.35 / 0.10$, equivalent
+to margin $\geq 1.2816\,\sigma / 0.2533\,\sigma / -0.3853\,\sigma /
+-1.2816\,\sigma$).  It read well as operator-facing prose
+(``Good $=$ QSO completes 3 in 5 attempts'') but a 2026-05-10
+field-day audit by the author showed it labelled bands as Good
+or Fair that were unworkable on-air; only 20\,m, 17\,m, and
+15\,m carried real traffic at the time the model was reading
+five HF bands as Good or better.  The mismatch came from two
+sources.  First, the percentile cut at $+0.2533\,\sigma$
+puts Good at margin $\approx +2$\,\si{\dB} on lower HF
+($\sigma_g = \SI{8}{\dB}$); a 2\,\si{\dB} model margin
+disappears under the 3 to 6\,\si{\dB} of QRM that a contest
+environment adds on top of the ITU-R P.372~\cite{itup372}
+baseline noise the model assumes.  Second, the formal
+operator-readable framing turned out to over-promise: ``3 in 5
+QSOs complete'' encoded a $60\%$ floor that does not survive
+contact with on-air reality where adjacent-channel splatter,
+fading, and operator-side antenna or noise mis-estimation all
+push outcomes downward.  The fixed-dB cuts take operator
+intuition as primary: $+6\,\si{\dB}$ as Good means the model
+expects to clear required SNR by 6 dB \emph{before} real-world
+noise adds anything, which lines up with what an operator
+calls a usable band on-air.  The boundaries are now
+$\sigma$-independent; band-specific $\sigma_g$ continues to
+drive the stability and confidence columns.
 
 \subsection{WSPR Activity Override}\label{sec:spot-override}
 
@@ -6334,6 +6529,44 @@ not bit-exact metric values.
   \emph{Computation of Reliability and Compatibility of HF Radio Systems},
   International Telecommunication Union, Geneva, 2013.
   \url{https://www.itu.int/rec/R-REC-P.842/}.
+
+\bibitem{itup834}
+  ITU-R Recommendation P.834-9,
+  \emph{Effects of Tropospheric Refraction on Radiowave Propagation},
+  International Telecommunication Union, Geneva, 2017.
+  Cited for the modified-refractivity duct-intensity definition
+  $M_{\text{top}} - M_{\text{min}}$ in \S\ref{sec:tropomap}.
+  \url{https://www.itu.int/rec/R-REC-P.834/}.
+
+\bibitem{noaagfs}
+  NOAA National Centers for Environmental Prediction (NCEP),
+  \emph{Global Forecast System (GFS) Operational Documentation},
+  served via the NOAA Operational Model Archive and Distribution
+  System (NOMADS), College Park, Maryland.  ionocast pulls a
+  server-side-filtered subset of the 0.25\textdegree{}
+  \texttt{pgrb2} product (13 pressure levels plus surface bundle)
+  from the NOMADS subset endpoint.
+  \url{https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_0p25.pl};
+  product description at
+  \url{https://www.nco.ncep.noaa.gov/pmb/products/gfs/}.
+
+\bibitem{hepburntropo}
+  William R.\ Hepburn,
+  \emph{Worldwide VHF/UHF Tropospheric Forecasts},
+  DX Information Centre, dxinfocentre.com.  Long-running
+  amateur-radio reference for the Hepburn-class banded-color
+  tropospheric forecast aesthetic that ionocast's heatmap matches
+  visually.
+  \url{https://www.dxinfocentre.com/tropo.html}.
+
+\bibitem{d3contour}
+  Mike Bostock and contributors,
+  \emph{d3-contour: Compute contour polygons using marching
+  squares},
+  ISC license, 2017--present.  Used by the renderer to extract
+  per-band fill polygons from the smoothed grid; vendored locally
+  alongside d3-array under \texttt{src/tropo/vendor/}.
+  \url{https://github.com/d3/d3-contour}.
 
 \bibitem{arrl2023antenna}
   ARRL,
