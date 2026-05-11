@@ -162,6 +162,12 @@ export const DEFINITIONS = {
     def: "Reliability < 20 %: at the configured station, almost no attempt completes a QSO. Could be over-MUF, blocked by D-region absorption, or below the noise floor. May still produce isolated WSPR spots from extreme stations."
   },
 
+  // ---- DX flag (band table, rendered next to the tier) ----
+  "DX": {
+    name: "DX (long-path reach)",
+    def: "The band-table's Excellent tier means \"the loudest path on this band has plenty of margin\"; the DX badge says \"that loud path is at least 6000 km long, so continent-crossing DX is open\". Excellent without DX means the band is loud regionally (one or two short F2 hops) but the long-path reach isn't there. DX without the badge isn't impossible -- weaker paths can still work -- but the badge marks where the model expects DX to be easy."
+  },
+
   // ---- propagation mode cell values (band table) ----
   "F2": {
     name: "F2 (F-region skywave)",

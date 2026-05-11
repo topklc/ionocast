@@ -4,6 +4,10 @@
 // reliability percentiles are still surfaced via reliability() for
 // callers that want them, but the tier labels themselves are read
 // directly off the dB margin.
+//
+// The "DX is reaching" question is orthogonal to the tier and lives
+// in isDxOpen() below.  Tier answers "how loud is the loudest path";
+// DX flag answers "is that loud path long enough to count as DX".
 
 // Fixed 1σ for margin predictions. Combines antenna-gain misestimation
 // (~3 dB), path variability (~5 dB), noise-env misestimation (~3 dB), and
@@ -46,40 +50,45 @@ export const TIER_DB_FAIR      = -5;
 
 export const TIER_DB_POOR      = -14;
 
-// Reach gate: Excellent additionally requires that the best-margin
-// path is at least this distance.  Without it, the radial basket's
-// 2500 km ring naturally clears +18 dB on most days because short
-// F2 hops have low path loss; that's true physics but it doesn't
-// match what an operator means by "20m is excellent" (which means
-// "DX is open", not "any low-loss path exists").  6000 km is the
-// threshold for one full continent crossing on most QTHs, which
-// is the operator-intuitive boundary for DX.
+// DX-reach threshold.  An Excellent margin on a short F2 hop is true
+// physics ("the signal is loud") but does not match what an operator
+// means by "DX is open" -- DX implies continent-crossing reach.  We
+// surface this as an orthogonal flag (isDxOpen) rather than baking it
+// into the tier value: tier answers "how loud is the loudest path"
+// and the DX flag answers "is any of that loudness reaching DX
+// distance".  6000 km is the threshold for one full continent
+// crossing on most QTHs, the operator-intuitive boundary for DX.
 //
-// When the best-margin path clears +18 dB but is shorter than
-// TIER_DX_MIN_KM, the verdict downgrades to Good.  Other tiers
-// are unaffected — Good/Fair/Poor/Closed don't have a reach gate.
+// Prior to 2026-05-11 this lived inside tierFromMargin as a reach gate
+// that demoted Excellent -> Good for short paths.  The split was made
+// when validating against RBN spot rates: the gate created a Good >
+// Excellent inversion in spot rate (long-path DX has more failure
+// modes than regional Good propagation), which is operator-correct
+// but tier-monotonicity-violating.  Splitting tier from DX gives the
+// monotonic tier and the operator-meaningful DX signal independently.
 export const TIER_DX_MIN_KM    = 6000;
 
-export function tierFromMargin(margin, dKm) {
+export function tierFromMargin(margin) {
   if (margin == null || isNaN(margin)) return null;
-  if (margin >= TIER_DB_EXCELLENT) {
-    // Reach gate: Excellent requires DX-distance reach.  If the
-    // path that produced this margin is shorter than the DX
-    // threshold, the band is "good" (regional or short-DX) but
-    // not "excellent" (continental DX open).  When dKm is
-    // unknown (caller didn't pass it; e.g. legacy test paths),
-    // we default-allow the Excellent label rather than
-    // demoting it, on the principle that absence-of-distance-
-    // info shouldn't be treated as evidence-of-short-distance.
-    if (dKm != null && isFinite(dKm) && dKm < TIER_DX_MIN_KM) {
-      return "good";
-    }
-    return "excellent";
-  }
-  if (margin >= TIER_DB_GOOD) return "good";
-  if (margin >= TIER_DB_FAIR) return "fair";
-  if (margin >= TIER_DB_POOR) return "poor";
+  if (margin >= TIER_DB_EXCELLENT) return "excellent";
+  if (margin >= TIER_DB_GOOD)      return "good";
+  if (margin >= TIER_DB_FAIR)      return "fair";
+  if (margin >= TIER_DB_POOR)      return "poor";
   return "closed";
+}
+
+// Orthogonal DX flag: is the best path also a DX-reach path?  Caller
+// passes the dKm of the path that produced `margin`; we return true
+// when both the tier is Excellent AND the path clears the DX
+// threshold.  Caller may pass null dKm to mean "distance unknown",
+// in which case we return false (we cannot certify DX without
+// knowing the path length).  Used by the band-table to render a
+// DX badge alongside the tier label.
+export function isDxOpen(margin, dKm) {
+  if (margin == null || !isFinite(margin)) return false;
+  if (margin < TIER_DB_EXCELLENT) return false;
+  if (dKm == null || !isFinite(dKm)) return false;
+  return dKm >= TIER_DX_MIN_KM;
 }
 
 const TIER_RANK = { closed: 0, poor: 1, fair: 2, good: 3, excellent: 4 };

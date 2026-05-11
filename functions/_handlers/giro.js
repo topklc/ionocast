@@ -135,7 +135,7 @@ export function giroHandler(ctx, cfg) {
     const start = new Date(end.getTime() - 3 * 60 * 60 * 1000);
 
     // Fetch all stations in parallel. Per-station failures don't block
-    // the response – each result carries its own status / reason. Used
+    // the response; each result carries its own status / reason. Used
     // by R3 fusion to interpolate foF2 across the path's geometry.
     const all = await Promise.all(GIRO_STATIONS.map(([cc, nn, la, lo, provider]) =>
       fetchOneStation(cc, nn, la, lo, provider, lat, lon, start, end)
@@ -157,9 +157,19 @@ export function giroHandler(ctx, cfg) {
     const nearest = valid[0] || null;
 
     if (!nearest) {
+      // Distinguish "no station in this region" from "upstream is down".
+      // If every attempt returned a non-2xx status (HTTP error from UML
+      // itself), surface that as an upstream outage instead of a
+      // station-coverage issue, so operators know the band-table is
+      // missing digisonde fusion data because of an external service
+      // problem, not a configuration gap.
+      const allHttpFailed = attempts.length > 0 &&
+                            attempts.every(a => a.status && a.status >= 400);
+      const label = allHttpFailed ? "GIRO upstream offline" : "no nearby digisonde data";
+      const stamp = allHttpFailed ? "all stations HTTP " + attempts[0].status : "no recent data";
       return {
-        station: "no nearby digisonde data", stationOperator: null,
-        distanceKm: null, timestamp: "no recent data",
+        station: label, stationOperator: null,
+        distanceKm: null, timestamp: stamp,
         foF2: null, foE: null, foEs: null, hmF2: null, m3000: null, muf3000: null,
         stations: [],
         qth, attempts, source: "lgdc.uml.edu"
@@ -167,7 +177,7 @@ export function giroHandler(ctx, cfg) {
     }
 
     return {
-      // Backwards-compat scalar view – the nearest valid station.
+      // Backwards-compat scalar view: the nearest valid station.
       station: `${nearest.code} ${nearest.name}`,
       stationOperator: nearest.provider,
       distanceKm: nearest.distanceKm,

@@ -263,6 +263,15 @@ html.dark #term-popover{background:#0e1116;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 .q-bad{color:var(--sev-bad)}
 .q-muted{color:var(--muted)}
 
+/* DX badge: rendered next to the Excellent tier in the band-table
+   when the best path also clears the DX-reach distance (6000+ km).
+   Reads "Excellent DX" -- the badge marks DX-capable Excellents
+   distinctly from regional Excellents. Color inherited from the
+   tier cell so Excellent's green carries through to the badge. */
+.dx-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:1px 4px;margin-left:2px;border:1px solid currentColor;border-radius:3px;vertical-align:1px}
+.dx-badge a.term-link{color:inherit;border-bottom-color:transparent}
+.dx-badge a.term-link:hover{border-bottom-color:currentColor}
+
 /* Alert lines. Severity is carried by a pill-shaped .alert-label chip
    on the left. No left border; that primitive is reserved for h2 so
    the two visual grammars don't collide. */

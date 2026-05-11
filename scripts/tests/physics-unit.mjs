@@ -42,7 +42,7 @@ import {
   interpolateFoF2FromStations, perHopFoF2FromStations,
   interpolateFoEsFromStations, midpointFoF2WithFallback,
   // tier
-  tierFromMargin, tierRank, reliability, tierConfidence,
+  tierFromMargin, isDxOpen, tierRank, reliability, tierConfidence,
 } from "../../src/physics/physics.js";
 
 
@@ -579,46 +579,52 @@ const HF_BANDS = [
 {
   // Fixed-dB tier thresholds (2026-05-10 revert from the
   // sigma-percentile experiment after a field-day audit showed it
-  // labelled unworkable bands as good/fair):
-  //   excellent: margin >= +18 dB AND dKm >= TIER_DX_MIN_KM (=6000)
-  //   good:      margin >= +6  dB  (or +18 dB with short dKm)
+  // labelled unworkable bands as good/fair; 2026-05-11 split the
+  // distance reach-gate out of tierFromMargin into isDxOpen):
+  //   excellent: margin >= +18 dB
+  //   good:      margin >= +6  dB
   //   fair:      margin >= -5  dB
   //   poor:      margin >= -14 dB
   //   closed:    margin <  -14 dB
   //
-  // Second argument is dKm (the path's great-circle distance in km)
-  // for the Excellent reach-gate.  Passing null/undefined skips the
-  // gate, treating Excellent as unconditional on margin alone (used
-  // by VHF Es/aurora paths where reach isn't defined).
-  const D_DX = 9000;   // sample DX-class distance, clears the 6000 km gate
-  eq("tierFromMargin(-30, dx)        = closed",    tierFromMargin(-30, D_DX),    "closed");
-  eq("tierFromMargin(-15, dx)        = closed",    tierFromMargin(-15, D_DX),    "closed");
-  eq("tierFromMargin(-14, dx)        = poor",      tierFromMargin(-14, D_DX),    "poor");
-  eq("tierFromMargin(-6,  dx)        = poor",      tierFromMargin(-6,  D_DX),    "poor");
-  eq("tierFromMargin(-5,  dx)        = fair",      tierFromMargin(-5,  D_DX),    "fair");
-  eq("tierFromMargin(0,   dx)        = fair",      tierFromMargin(0,   D_DX),    "fair");
-  eq("tierFromMargin(5,   dx)        = fair",      tierFromMargin(5,   D_DX),    "fair");
-  eq("tierFromMargin(6,   dx)        = good",      tierFromMargin(6,   D_DX),    "good");
-  eq("tierFromMargin(15,  dx)        = good",      tierFromMargin(15,  D_DX),    "good");
-  eq("tierFromMargin(18,  dx)        = excellent", tierFromMargin(18,  D_DX),    "excellent");
-  eq("tierFromMargin(50,  dx)        = excellent", tierFromMargin(50,  D_DX),    "excellent");
+  // tierFromMargin is pure margin; distance no longer affects tier.
+  // The DX-reach question lives on isDxOpen(margin, dKm) instead.
+  eq("tierFromMargin(-30)             = closed",    tierFromMargin(-30),    "closed");
+  eq("tierFromMargin(-15)             = closed",    tierFromMargin(-15),    "closed");
+  eq("tierFromMargin(-14)             = poor",      tierFromMargin(-14),    "poor");
+  eq("tierFromMargin(-6)              = poor",      tierFromMargin(-6),     "poor");
+  eq("tierFromMargin(-5)              = fair",      tierFromMargin(-5),     "fair");
+  eq("tierFromMargin(0)               = fair",      tierFromMargin(0),      "fair");
+  eq("tierFromMargin(5)               = fair",      tierFromMargin(5),      "fair");
+  eq("tierFromMargin(6)               = good",      tierFromMargin(6),      "good");
+  eq("tierFromMargin(15)              = good",      tierFromMargin(15),     "good");
+  eq("tierFromMargin(18)              = excellent", tierFromMargin(18),     "excellent");
+  eq("tierFromMargin(50)              = excellent", tierFromMargin(50),     "excellent");
 
-  // Reach gate: Excellent requires dKm >= 6000 km.  Otherwise +18 dB
-  // margin still produces Good.
-  eq("tierFromMargin(18, 2500)       = good (short)",      tierFromMargin(18, 2500),  "good");
-  eq("tierFromMargin(18, 5999)       = good (just-short)", tierFromMargin(18, 5999),  "good");
-  eq("tierFromMargin(18, 6000)       = excellent (gate)",  tierFromMargin(18, 6000),  "excellent");
-  eq("tierFromMargin(50, 2500)       = good (short, big)", tierFromMargin(50, 2500),  "good");
-
-  // dKm omitted/null: gate skipped, Excellent as unconditional.
-  eq("tierFromMargin(0, null)        = fair",      tierFromMargin(0, null),   "fair");
-  eq("tierFromMargin(0)              = fair",      tierFromMargin(0),         "fair");
-  eq("tierFromMargin(20)             = excellent", tierFromMargin(20),        "excellent");
-  eq("tierFromMargin(20, null)       = excellent", tierFromMargin(20, null),  "excellent");
+  // Distance is now ignored by tierFromMargin: +18 dB always reads as
+  // Excellent regardless of path length.  The legacy short-path
+  // demotion now lives on isDxOpen.
+  eq("tierFromMargin(18) ignores dKm",  tierFromMargin(18),  "excellent");
+  eq("tierFromMargin(50) ignores dKm",  tierFromMargin(50),  "excellent");
 
   // Null/NaN margin returns null (preserves caller-side null-check semantics).
-  eq("tierFromMargin(null)      = null",      tierFromMargin(null),     null);
-  eq("tierFromMargin(NaN, 8)    = null",      tierFromMargin(NaN, 8),   null);
+  eq("tierFromMargin(null)            = null",      tierFromMargin(null),   null);
+  eq("tierFromMargin(NaN)             = null",      tierFromMargin(NaN),    null);
+
+  // isDxOpen: true only when margin clears Excellent AND dKm >= 6000.
+  eq("isDxOpen(18, 6000)              = true",      isDxOpen(18, 6000),     true);
+  eq("isDxOpen(18, 9000)              = true",      isDxOpen(18, 9000),     true);
+  eq("isDxOpen(50, 12000)             = true",      isDxOpen(50, 12000),    true);
+  eq("isDxOpen(17, 9000)              = false (margin below Excellent)",
+                                                    isDxOpen(17, 9000),     false);
+  eq("isDxOpen(18, 5999)              = false (short path)",
+                                                    isDxOpen(18, 5999),     false);
+  eq("isDxOpen(18, 2500)              = false (short path)",
+                                                    isDxOpen(18, 2500),     false);
+  eq("isDxOpen(18, null)              = false (unknown distance)",
+                                                    isDxOpen(18, null),     false);
+  eq("isDxOpen(null, 9000)            = false (null margin)",
+                                                    isDxOpen(null, 9000),   false);
 
   // tierRank monotone
   const order = ["closed", "poor", "fair", "good", "excellent"];

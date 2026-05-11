@@ -73,6 +73,7 @@ export {
   TIER_DB_POOR,
   TIER_DX_MIN_KM,
   tierFromMargin,
+  isDxOpen,
   tierRank,
   reliability,
   tierConfidence,
