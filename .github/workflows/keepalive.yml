@@ -1,24 +1,24 @@
 name: keepalive
 
-# Pings this workflow via the GitHub API to register repository
-# activity, which keeps GitHub from auto-disabling scheduled
-# workflows after 60 days of inactivity in public repos.
+# Re-enables any scheduled workflows that GitHub has auto-disabled
+# after 60 days of repo inactivity, and (when no commit has landed in
+# the past 50 days) makes a no-op commit touching a tracked
+# timestamp file so the inactivity clock resets.
 #
 # Belt-and-suspenders backup for data-wspr-refresh.yml, which already
 # commits daily under normal conditions (the spot-baselines.mjs file
 # embeds a `generated` timestamp that changes every run, so the diff
-# is never empty). If wspr.live is ever unreachable for an extended
-# period, this keepalive ensures the schedules stay enabled even
-# without the daily commit.
+# is never empty). If wspr.live is unreachable for weeks at a time,
+# this workflow keeps the schedules alive on its own.
 #
-# API mode (no git commits) so the repo's history stays clean. Runs
-# weekly on Monday 00:00 UTC, well inside the 60-day window with
-# plenty of margin for missed runs.
+# Previously used gautamkrishnar/keepalive-workflow@v2. That action's
+# source repository was blocked on GitHub (HTTP "Repository access
+# blocked" during action download) so the third-party dependency was
+# dropped in favour of inline gh CLI calls.
+#
+# Runs weekly on Monday 00:00 UTC, well inside the 60-day window.
 #
 # Failure modes:
-#   - keepalive-workflow action update breaks behavior: GitHub emails
-#     a warning 5 days before disable; re-enable manually in the
-#     Actions tab.
 #   - the keepalive workflow itself gets disabled: once off, it stays
 #     off. Re-enable by hand. Daily wspr-refresh commits are the
 #     primary safety net here.
@@ -32,6 +32,7 @@ on:
 
 permissions:
   actions: write
+  contents: write
 
 jobs:
   keepalive:
@@ -39,4 +40,48 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: gautamkrishnar/keepalive-workflow@v2
+        with:
+          fetch-depth: 0
+
+      # Re-enable anything GitHub auto-disabled.  Cheap, idempotent.
+      - name: Re-enable disabled workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ids=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" \
+                 --jq '.workflows[] | select(.state | startswith("disabled")) | .id')
+          if [ -z "$ids" ]; then
+            echo "No disabled workflows."
+          else
+            for id in $ids; do
+              echo "Re-enabling workflow $id"
+              gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/$id/enable"
+            done
+          fi
+
+      # If the repo has not seen any commit in 50 days, push a no-op
+      # timestamp commit to reset the inactivity clock.  Skipping when
+      # recent activity exists keeps the history clean under normal
+      # operation; only the worst case (wspr-refresh down for weeks)
+      # ever produces a keepalive commit.
+      - name: Heartbeat commit if repo is stale
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          age_days=$(( (now - last) / 86400 ))
+          echo "Days since last commit: $age_days"
+          if [ "$age_days" -lt 50 ]; then
+            echo "Repo activity recent; skipping heartbeat."
+            exit 0
+          fi
+          git config user.email "actions@github.com"
+          git config user.name  "github-actions[bot]"
+          mkdir -p .github
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/.keepalive-heartbeat
+          git add .github/.keepalive-heartbeat
+          git commit -m "chore(keepalive): heartbeat at $(date -u +%Y-%m-%d)"
+          git push

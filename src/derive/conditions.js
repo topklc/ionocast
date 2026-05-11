@@ -482,22 +482,29 @@ export function deriveConditions(ctx) {
       // by the per-band breakdown note when bands in a group diverge
       // by >=1 tier and by the HF-table renderer (each row gets the
       // band's predicted tier / margin / mode / best destination).
-      // Tier comes from the (margin, sigma) reliability bucket, so the
-      // boundary scales with each band's prediction uncertainty.
-      if (bestPerBand[name] == null || m.margin > bestPerBand[name].margin) {
+      // Tier comes from the highest-margin path; the DX flag is
+      // computed across the whole basket so it answers "is DX
+      // reaching on this band?" even when the loudest path is
+      // regional.  Without this, a band whose best path is the 2.5 Mm
+      // ring would always read dx=false even when 6000+ km paths
+      // also clear +18 dB.
+      var thisIsDx = isDxOpen(m.margin, pathCtx.dKm);
+      var existing = bestPerBand[name];
+      if (existing == null || m.margin > existing.margin) {
         bestPerBand[name] = {
           margin: m.margin,
           sigma:  m.sigma,
-          // Tier is pure margin; DX is orthogonal (is the best path
-          // long enough to count as continent-crossing).  See tier.js
-          // for the split rationale.
           tier:   tierFromMargin(m.margin),
-          dx:     isDxOpen(m.margin, pathCtx.dKm),
+          // dx accumulates: stays true once any path on this band
+          // proves DX reach, regardless of which path wins margin.
+          dx:     thisIsDx || (existing ? existing.dx : false),
           confidence: tierStability(m.margin, m.sigma),
           mode:   mode,
           dest:   pathCtx.destShort || null,
           dKm:    pathCtx.dKm || null,
         };
+      } else if (thisIsDx) {
+        existing.dx = true;
       }
 
       var esOpen = foes != null && foes * 5 >= f;
