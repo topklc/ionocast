@@ -1,0 +1,94 @@
+name: citations-annual
+
+# Annual citation / bibliography review reminder.  Unlike the
+# quarterly schema-and-station audits, this workflow ALWAYS opens an
+# issue when it runs, because the value is the operator-side review
+# (universities sometimes reorganize their pages without breaking the
+# URL itself) which automation cannot detect.
+#
+# What automation CAN do for this surface: run a fresh lychee scan
+# scoped to citation-bearing files and embed the dead-link report
+# inline so the operator can see the "URL actually broken" subset at
+# a glance.  The annual cadence is otherwise just a tickler -- a
+# checklist of citation surfaces to walk through once a year.
+#
+# Cadence: 10:00 UTC on 20 October.  Sits between the IMO annual
+# (15 October) and Bucket 4's "in October" wider review window.
+#
+# Scope of the lychee scan:
+#   - paper/ionocast-methodology.tex  bibliography URLs (~70 cites)
+#   - src/data/data-sources.js        CREDITS array (~30 entries)
+#   - licenses.html                   per-source attribution text
+#
+# These are the surfaces where citation rot has the highest stakes:
+# the paper bibliography for academic credibility, data-sources.js
+# for runtime upstream documentation, licenses.html for legal-
+# acknowledgement of data providers.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 10 20 10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee on citation-bearing files
+        id: lychee
+        uses: lycheeverse/lychee-action@v2
+        continue-on-error: true
+        with:
+          jobSummary: false
+          output: lychee-citations.md
+          args: |
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --max-retries 3
+            --retry-wait-time 5
+            --accept 200,203,206,301,302,304,403,429,503
+            --base https://ionocast.org/
+            --exclude ^https://db1\.wspr\.live/?$
+            --exclude ^https://github\.com/topklc/ionocast/?$
+            ./paper/ionocast-methodology.tex
+            ./src/data/data-sources.js
+            ./licenses.html
+
+      - name: Open annual review issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(citations): annual bibliography review ${today}"
+          {
+            echo "Automated annual citation / bibliography review tickler. Source: \`.github/workflows/citations-annual.yml\`."
+            echo
+            echo "The lychee scan below catches URLs that are dead at the HTTP level (404, 410, DNS failure). It does NOT catch the more common citation-rot pattern: URLs that still respond 200 OK but now point at unrelated content because the institution reorganized their page tree. Walking the bibliography by eye once a year catches the latter."
+            echo
+            echo "## Manual review checklist"
+            echo
+            echo "- [ ] **Paper bibliography** (\`paper/ionocast-methodology.tex\`): scan the \`@misc\` / \`@article\` entries for any URL that has moved. Spot-check 5 random entries by opening their URLs and confirming the page still describes what the bibitem says it does."
+            echo "- [ ] **data-sources.js CREDITS** (\`src/data/data-sources.js\`): each upstream's homepage should still match the description and license claim. Particularly watch for SWPC product reorganizations and GIRO data-provider attributions."
+            echo "- [ ] **licenses.html per-source acknowledgements**: every data provider that requires per-station attribution (GIRO CC-BY-NC-SA) needs the listed institution name to still match the upstream's current branding."
+            echo "- [ ] **DOIs**: any DOI-form citation should still resolve at https://doi.org/<id>. DOIs almost never rot but a manual check is cheap."
+            echo
+            echo "## lychee report (dead-link-only subset)"
+            echo
+            if [ -s lychee-citations.md ]; then
+              cat lychee-citations.md
+            else
+              echo "_(lychee produced no report file; either all links passed or the action errored. Check the workflow run logs.)_"
+            fi
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md

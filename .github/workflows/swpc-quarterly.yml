@@ -1,0 +1,107 @@
+name: swpc-quarterly
+
+# Quarterly SWPC schema fingerprint check.  Runs
+# `node scripts/swpc-schema-check.mjs --write` against the 13 SWPC
+# endpoints we consume (functions/_proxies.js + harness ingest),
+# diffs the structural fingerprint of each response against the
+# committed baseline at scripts/data/swpc-schema.json, refreshes
+# the snapshot in place when drift is detected, and opens a
+# PULL REQUEST whose diff the operator reviews.
+#
+# Why this instead of the brittle HTML-scraper approach DRIFT-HORIZON
+# previously flagged as not-worth-it: fingerprinting the actual
+# endpoints catches the signal we care about (silent field renames,
+# new fields, type changes that pass through tests-daily.yml because
+# the fetch still succeeds) without depending on NOAA publishing a
+# stable RSS / notice feed.  The schema is the real contract; HTML
+# notice pages were a proxy for it.
+#
+# Cadence: 04:30 UTC first day of Jan / Apr / Jul / Oct, half an
+# hour after the giro-quarterly cron so the two do not clash in the
+# log if both fire on the same morning.
+#
+# Workflow output:
+#   - No drift: workflow exits silently, no PR, no issue.
+#   - Drift detected: --write refreshes scripts/data/swpc-schema.json,
+#     workflow opens PR.  Operator reviews the diff:
+#       * benign change (e.g. SWPC added a field we don't consume):
+#         merge the PR, done.
+#       * breaking change (renamed field, type changed): close PR
+#         without merging, patch functions/_proxies.js or the relevant
+#         handler in functions/_handlers/ first, then re-run the
+#         workflow which will re-fingerprint cleanly.
+#   - Upstream outage (>= 7 of 13 endpoints fail): script aborts
+#     without writing the snapshot or producing diffs; no PR.
+#
+# Safety: PR is the only path the workflow can take to change
+# scripts/data/swpc-schema.json; it never pushes to main.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "30 4 1 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run SWPC schema fingerprint check (with --write)
+        id: check
+        run: |
+          set +e
+          node scripts/swpc-schema-check.mjs --write > report.txt 2>&1
+          rc=$?
+          # Schema-change signal: any "## schema changes:" section in
+          # the report indicates one or more endpoints diverged from
+          # the committed snapshot.  Abort-state ("# SWPC schema check:
+          # aborted") means upstream outage, not a change.
+          changes=$(grep -c '^### ' report.txt || true)
+          aborted=$(grep -c '^# SWPC schema check: aborted' report.txt || true)
+          [ -z "$changes" ] && changes=0
+          [ -z "$aborted" ] && aborted=0
+          echo "changes=$changes" >> "$GITHUB_OUTPUT"
+          echo "aborted=$aborted" >> "$GITHUB_OUTPUT"
+          # Detect whether --write actually changed the snapshot file
+          # (the canonical signal that we should open a PR).  --write
+          # only refreshes the snapshot when drift was detected AND no
+          # abort fired; this check is belt-and-braces.
+          if git diff --quiet -- scripts/data/swpc-schema.json; then
+            echo "snapshot_modified=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "snapshot_modified=1" >> "$GITHUB_OUTPUT"
+          fi
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          cat report.txt
+
+      - name: Open PR with the snapshot refresh
+        if: steps.check.outputs.snapshot_modified == '1'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/swpc-schema-refresh
+          delete-branch: true
+          commit-message: |
+            chore(swpc): refresh schema snapshot
+
+            Automated regeneration of scripts/data/swpc-schema.json
+            from swpc-quarterly.yml workflow.
+
+            Reviewer: inspect the diff to decide whether the upstream
+            change is benign (merge the PR) or breaks one of our
+            fetchers (close PR, patch functions/_proxies.js or the
+            relevant handler first, then re-run the workflow).
+          title: "chore(swpc): refresh schema snapshot"
+          body-path: report.txt
+          add-paths: scripts/data/swpc-schema.json

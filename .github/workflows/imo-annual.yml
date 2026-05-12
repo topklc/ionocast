@@ -1,0 +1,119 @@
+name: imo-annual
+
+# Annual IMO meteor calendar refresh.  Runs
+# `node scripts/imo-calendar-check.mjs --apply`, which fetches the IMO
+# resources/calendar page, parses peak dates for each major shower,
+# and rewrites the matching catalog rows in
+# `src/derive/showers.js:11` IN PLACE when:
+#
+#   - parser confidence is high (>= 8 of 9 showers parsed cleanly), AND
+#   - every per-shower shift is within the safety window (same month,
+#     |delta| <= 5 days).
+#
+# When those conditions are met, the workflow opens a PULL REQUEST
+# with the diff so the operator reviews + merges (or rejects).
+# When drift is detected but the safety window does not hold (month
+# change, parser confidence low, major discrepancy), the workflow
+# instead opens an ISSUE so the operator can decide manually.
+#
+# Cadence: 10:00 UTC on 15 October.  Late enough in the year that IMO
+# has typically published the upcoming year's calendar by then, early
+# enough that any drift caught will land before December's Geminids
+# (the highest-ZHR shower in the catalog).
+#
+# Safety: the rewrite NEVER pushes to main.  It always lands in a PR
+# under the `chore/imo-calendar-refresh` branch which the operator
+# must explicitly merge.  The regex used by --apply requires each
+# catalog row to match the exact expected shape
+# `["CODE", "Name", month, day, zhr, fwhm]`, so any source-file
+# refactor that changes the catalog structure causes --apply to skip
+# (the row falls through to the "row not found" branch) rather than
+# corrupt the file.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 10 15 10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run IMO calendar check in --apply mode
+        id: check
+        run: |
+          set +e
+          node scripts/imo-calendar-check.mjs --apply > report.txt 2>&1
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # Detect whether the rewrite actually changed src/derive/showers.js.
+          if git diff --quiet -- src/derive/showers.js; then
+            echo "modified=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "modified=1" >> "$GITHUB_OUTPUT"
+          fi
+          # Separate the "drift detected but skipped" case from the
+          # "no drift, all clean" case so the workflow can decide
+          # between PR / issue / nothing.
+          if grep -qE '^## (peak-date drift|major peak-date discrepancy|parser confidence low|fetch failed)' report.txt; then
+            echo "drift_signal=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift_signal=0" >> "$GITHUB_OUTPUT"
+          fi
+          cat report.txt
+
+      - name: Open PR with the catalog refresh
+        if: steps.check.outputs.modified == '1'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/imo-calendar-refresh
+          delete-branch: true
+          commit-message: |
+            chore(showers): IMO calendar peak-date refresh
+
+            Automated rewrite of src/derive/showers.js catalog rows
+            from imo-annual.yml workflow.  Parser confidence >= 8/9,
+            per-shower shifts within +-5 days same month.
+
+            Reviewer: confirm against https://www.imo.net/resources/calendar/
+            before merging.
+          title: "chore(showers): IMO calendar refresh"
+          body-path: report.txt
+          add-paths: src/derive/showers.js
+
+      - name: Open issue (drift detected but apply was skipped)
+        if: steps.check.outputs.modified == '0' && steps.check.outputs.drift_signal == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(showers): IMO calendar review needed ${today}"
+          {
+            echo "Automated IMO calendar check detected drift but could not safely auto-apply. Source: \`.github/workflows/imo-annual.yml\`, script: \`scripts/imo-calendar-check.mjs\`."
+            echo
+            echo "**Why not auto-PR'd:** at least one of the parser safety gates failed (parser confidence < 8/9 showers, or per-shower shift > 5 days, or month mismatch). Manual review of the IMO page is required this cycle."
+            echo
+            echo "Walk the report below alongside https://www.imo.net/resources/calendar/ and patch \`src/derive/showers.js:11\` by hand if real drift is confirmed."
+            echo
+            echo "## report"
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md

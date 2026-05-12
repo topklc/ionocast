@@ -1,0 +1,143 @@
+name: retune-annual
+
+# Annual solar-cycle-phase retune review.  Runs the full 7-parameter
+# coordinate descent (heavy suite `tune-r7` from `scripts/tests.mjs`)
+# against a fresh 30-day WSPR / harness window, then opens an issue
+# embedding the recommended config alongside the currently-committed
+# constants for human review.
+#
+# Critical: this workflow NEVER auto-commits the recommendation.
+# Per DRIFT-HORIZON, Brier optimization has structural ceilings
+# (operator-experience cannot be encoded into a loss function), so
+# applying the harness's suggested values without a sanity check
+# against real on-air conditions would ratchet sigma inflation
+# across years invisibly.  The annual ritual is: operator reads the
+# issue, weighs the recommendation against memory of the last 12
+# months' operating, and decides whether to patch
+# `src/constants.js` by hand.
+#
+# Cadence: 02:00 UTC on 22 October.  Same week as the IMO and
+# citation annuals, late enough at night that the heavy suite has
+# uninterrupted runner time.
+#
+# Runtime: 30 to 60 minutes (heavy suite: 7-param × 3 seeds × ~10
+# iterations × ~|GRID| evals per iteration; cache build + samples
+# expansion contributes ~2 minutes upfront).  timeout-minutes: 90.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 2 22 10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  retune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build 30-day harness cache
+        run: |
+          set -euo pipefail
+          # --no-cache forces a fresh wspr.live aggregate + GIRO history
+          # pull so the retune sees current solar conditions.
+          node scripts/harness.mjs --window-days=30 --no-cache
+
+      - name: Run heavy retune suite (tune-r7)
+        id: retune
+        run: |
+          set +e
+          node scripts/tests.mjs tune-r7 > retune.txt 2>&1
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          tail -200 retune.txt
+
+      - name: Extract recommended config from report
+        id: extract
+        run: |
+          set +e
+          # tests.mjs writes a structured report to scripts/outputs/tests.report.json.
+          # The tune-r7 suite emits a `winner` field with the optimal config.
+          if [ ! -f scripts/outputs/tests.report.json ]; then
+            echo "skip=missing-report" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node -e "
+            const fs = require('node:fs');
+            const r = JSON.parse(fs.readFileSync('scripts/outputs/tests.report.json','utf-8'));
+            const t = (r.results || {})['tune-r7'];
+            if (!t || !t.winner) { console.log('NO_WINNER'); process.exit(0); }
+            const w = t.winner.config;
+            console.log('RECOMMENDED:');
+            for (const k of Object.keys(w)) console.log('  ' + k + ' = ' + w[k]);
+            console.log('METRICS:');
+            console.log('  brier = ' + t.winner.brier);
+            console.log('  acc   = ' + t.winner.acc);
+            console.log('  seed  = ' + t.winner.seed);
+          " > extracted.txt 2>&1
+          cat extracted.txt
+          # Read current production values from src/constants.js so the
+          # issue body can show a direct before/after table.
+          {
+            echo "CURRENT (from src/constants.js):"
+            for sym in SCATTER_WEIGHT FUSION_PRIMARY_MUF DEFOCUS_DB_PER_EXTRA_HOP STORM_LAG_PEAK_H STORM_LAG_DECAY_H; do
+              line=$(grep -E "^export const $sym " src/constants.js | head -1)
+              echo "  $line"
+            done
+          } > current.txt
+          cat current.txt
+
+      - name: Open audit issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(retune): annual solar-cycle-phase retune review ${today}"
+          {
+            echo "Automated annual heavy-suite retune. Source: \`.github/workflows/retune-annual.yml\`."
+            echo
+            echo "**DO NOT AUTO-COMMIT THE RECOMMENDED VALUES.** Per \`docs/DRIFT-HORIZON.md\` (Bucket 4-5 \"Could automate, but not worth it\"), Brier optimisation has structural ceilings that do not encode operator-experience-side reality. Always weigh the suggested config against the last year's on-air observations before patching \`src/constants.js\`."
+            echo
+            echo "**Workflow:**"
+            echo "1. Read the **Recommended** values below alongside the **Current** values."
+            echo "2. For any constant that shifted meaningfully (e.g. \`scatterWeight\` 1.5 -> 1.0), check whether the operator-side experience this cycle supports the change (did 12 m / 10 m feel different than the model expected?)."
+            echo "3. If the change aligns with operator memory, edit \`src/constants.js\` by hand, run the unit tests, and commit. If it does not align, leave the constants alone -- the harness is telling you something the operator should investigate, not auto-apply."
+            echo "4. Even when not applying, recording the year-on-year drift in a comment somewhere is useful for cycle-26 transition planning."
+            echo
+            echo "## Recommendation"
+            echo
+            echo '```'
+            if [ -f extracted.txt ]; then
+              cat extracted.txt
+            else
+              echo "(no extracted recommendation; check workflow logs)"
+            fi
+            echo '```'
+            echo
+            echo "## Current production values"
+            echo
+            echo '```'
+            if [ -f current.txt ]; then
+              cat current.txt
+            else
+              echo "(no current.txt; check workflow logs)"
+            fi
+            echo '```'
+            echo
+            echo "## Full retune log (tail)"
+            echo
+            echo '```'
+            tail -120 retune.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md

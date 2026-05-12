@@ -37,11 +37,27 @@ export const THRESHOLDS = {
   wspr:    { strong_count: 500, weak_count: 50, strong_snr: -10, weak_snr: -27 }
 };
 
-// Band frequency lookup (MHz) by display name. Used by derivation and
-// physics model to convert band name <-> frequency.
+// Band frequency lookup (MHz) by display name.  Used by derivation
+// and the physics model as the reference frequency at which the SNR
+// budget is computed for each amateur band.
+//
+// Values are the ITU-R P.533 amateur-band reference frequencies,
+// placed near the DX-active end of each band so the budget answers
+// the question operators most often ask ("can I make a DX QSO on
+// this band").  Within-band variation in predicted margin is small
+// (free-space loss varies < 0.5 dB across any band's width); the
+// table is the canonical anchor, not the operator's exact dial
+// frequency.  Prior to 2026-05-12 these values held the WSPR
+// sub-band centres; the move to ITU-R references was made when
+// validation work established that WSPR-as-truth was structurally
+// unfit (decoder dynamic-range compression) and the budget should
+// anchor on the standard reference set rather than on a specific
+// digital-mode sub-band.  The numerical shifts are tiny on every
+// band (< 200 kHz) so prediction values barely move; the rename is
+// mostly the methodology-paper story getting honest.
 export const BAND_FREQ_MHZ = {
-  "160 m": 1.838, "80 m": 3.570, "60 m": 5.366, "40 m": 7.040, "30 m": 10.140,
-  "20 m": 14.097, "17 m": 18.106, "15 m": 21.096, "12 m": 24.924, "10 m": 28.126,
+  "160 m": 1.85, "80 m": 3.65, "60 m": 5.36, "40 m": 7.10, "30 m": 10.10,
+  "20 m": 14.10, "17 m": 18.10, "15 m": 21.10, "12 m": 24.90, "10 m": 28.20,
   "6 m": 50, "2 m": 144
 };
 
@@ -63,8 +79,8 @@ export const BAND_FREQ_MHZ = {
 // rural-quiet sites at midnight: 17m to 10m +11 dB, 30m/20m +5 to 8 dB,
 // 80m to 40m +1 to 2 dB, 160m +10 (atmospheric-driven).
 export const NOISE_FLOOR_DBM = {
-  1.838: -100, 3.570: -113, 5.366: -118, 7.040: -121, 10.140: -120,
-  14.097: -120, 18.106: -120, 21.096: -121, 24.924: -122, 28.126: -123,
+  1.85: -100, 3.65: -113, 5.36: -118, 7.10: -121, 10.10: -120,
+  14.10: -120, 18.10: -120, 21.10: -121, 24.90: -122, 28.20: -123,
   50: -127, 144: -132
 };
 

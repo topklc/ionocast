@@ -148,16 +148,16 @@ const BASELINE_FLIP_RATE       = isFinite(_argDriftFlip) ? _argDriftFlip : 0.05;
 // ---- bands and reference paths ------------------------------------------
 
 export const BANDS = [
-  { name: "160 m", f: 1.838,  intMHz: 1 },
-  { name: "80 m",  f: 3.570,  intMHz: 3 },
-  { name: "60 m",  f: 5.366,  intMHz: 5 },
-  { name: "40 m",  f: 7.040,  intMHz: 7 },
-  { name: "30 m",  f: 10.140, intMHz: 10 },
-  { name: "20 m",  f: 14.097, intMHz: 14 },
-  { name: "17 m",  f: 18.106, intMHz: 18 },
-  { name: "15 m",  f: 21.096, intMHz: 21 },
-  { name: "12 m",  f: 24.924, intMHz: 24 },
-  { name: "10 m",  f: 28.126, intMHz: 28 },
+  { name: "160 m", f: 1.85,  intMHz: 1 },
+  { name: "80 m",  f: 3.65,  intMHz: 3 },
+  { name: "60 m",  f: 5.36,  intMHz: 5 },
+  { name: "40 m",  f: 7.10,  intMHz: 7 },
+  { name: "30 m",  f: 10.10, intMHz: 10 },
+  { name: "20 m",  f: 14.10, intMHz: 14 },
+  { name: "17 m",  f: 18.10, intMHz: 18 },
+  { name: "15 m",  f: 21.10, intMHz: 21 },
+  { name: "12 m",  f: 24.90, intMHz: 24 },
+  { name: "10 m",  f: 28.20, intMHz: 28 },
 ];
 
 const REF_PATHS = JSON.parse(readFileSync(PATHS_FILE, "utf-8")).paths;

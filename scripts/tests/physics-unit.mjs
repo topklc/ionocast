@@ -64,16 +64,16 @@ function near(name, got, want, tol, detail) {
 
 // ─── Test bands the dashboard actually uses ───────────────────────────
 const HF_BANDS = [
-  { name: "160 m", f: 1.838 },
-  { name: "80 m",  f: 3.570 },
-  { name: "60 m",  f: 5.366 },
-  { name: "40 m",  f: 7.040 },
-  { name: "30 m",  f: 10.140 },
-  { name: "20 m",  f: 14.097 },
-  { name: "17 m",  f: 18.106 },
-  { name: "15 m",  f: 21.096 },
-  { name: "12 m",  f: 24.924 },
-  { name: "10 m",  f: 28.126 },
+  { name: "160 m", f: 1.85 },
+  { name: "80 m",  f: 3.65 },
+  { name: "60 m",  f: 5.36 },
+  { name: "40 m",  f: 7.10 },
+  { name: "30 m",  f: 10.10 },
+  { name: "20 m",  f: 14.10 },
+  { name: "17 m",  f: 18.10 },
+  { name: "15 m",  f: 21.10 },
+  { name: "12 m",  f: 24.90 },
+  { name: "10 m",  f: 28.20 },
 ];
 
 // ════════════════════════════════════════════════════════════════════
@@ -225,8 +225,8 @@ const HF_BANDS = [
 // 4. TEP regression test: the exact bug from this session.
 //
 // Across the HF band ladder, the TEP bonus was a binary 0 / +15 dB
-// step at 20 MHz which created a +13 dB cliff between 17 m (18.106)
-// and 15 m (21.096). After the fix, transition is smooth.
+// step at 20 MHz which created a +13 dB cliff between 17 m (18.10)
+// and 15 m (21.10). After the fix, transition is smooth.
 // ════════════════════════════════════════════════════════════════════
 {
   // Path: northern mid-lat to southern mid-lat (transequatorial).
@@ -250,9 +250,9 @@ const HF_BANDS = [
   check("TEP bonus: no >2 dB jump across f (regression)",
         maxJump < 2.0, `max jump ${maxJump.toFixed(2)} dB at ${atF?.toFixed(2)} MHz (was 15 dB pre-fix)`);
 
-  // Specifically: at 17 m (18.106) and 15 m (21.096) the gap should be < 8 dB.
-  const at17 = tepBonusDb(18.106, srcLat, srcLon, dstLat, dstLon, midLat, midLon, date);
-  const at15 = tepBonusDb(21.096, srcLat, srcLon, dstLat, dstLon, midLat, midLon, date);
+  // Specifically: at 17 m (18.10) and 15 m (21.10) the gap should be < 8 dB.
+  const at17 = tepBonusDb(18.10, srcLat, srcLon, dstLat, dstLon, midLat, midLon, date);
+  const at15 = tepBonusDb(21.10, srcLat, srcLon, dstLat, dstLon, midLat, midLon, date);
   check("TEP: 17 m → 15 m gap < 8 dB (was 15 dB pre-fix)",
         Math.abs(at15 - at17) < 8.0, `17m=${at17.toFixed(2)} 15m=${at15.toFixed(2)}`);
 

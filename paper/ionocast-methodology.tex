@@ -696,24 +696,24 @@ applies its own per-band $\sigma_g$ widening on top
 (\S\ref{sec:reliability}) rather than passing latitude /
 seasonality dependence into the absorption term itself.
 
-The constant $K_D = 200$ was chosen so $L_{\text{day}}(\SI{1.838}{\MHz}) =
-\SI{36.6}{\dB}$, a value bracketed by the prior table's
+The constant $K_D = 200$ was chosen so $L_{\text{day}}(\SI{1.85}{\MHz}) =
+\SI{36.2}{\dB}$, a value bracketed by the prior table's
 operator-experience anchor ($\SI{28}{\dB}$, K9LA / ARRL-derived) and
 the literal P.533~$/1.6$~oblique-incidence target ($\SI{45.7}{\dB}$
 divided by $1.6$ to convert vertical-incidence to oblique).
-Illustrative noon values at the canonical band centres,
-$L_{\text{day}}(f)$ from Eq.~\ref{eq:labsd}, replace the prior
-Table~2 anchors:
+Illustrative noon values at the ITU-R~P.533 amateur-band reference
+frequencies, $L_{\text{day}}(f)$ from Eq.~\ref{eq:labsd}, replace
+the prior Table~2 anchors:
 \begin{equation*}
 \begin{array}{lrlr}
 \textbf{Band} & {f}~(\si{\MHz}) &
 \textbf{Band} & {f}~(\si{\MHz})\\
 \midrule
-160\,\text{m} & 1.838~\to~36.6~\si{\dB} & 20\,\text{m} & 14.097~\to~0.94~\si{\dB} \\
-80\,\text{m}  & 3.570~\to~12.1~\si{\dB} & 17\,\text{m} & 18.106~\to~0.58~\si{\dB} \\
-60\,\text{m}  & 5.366~\to~5.80~\si{\dB} & 15\,\text{m} & 21.096~\to~0.43~\si{\dB} \\
-40\,\text{m}  & 7.040~\to~3.52~\si{\dB} & 12\,\text{m} & 24.924~\to~0.31~\si{\dB} \\
-30\,\text{m}  & 10.140~\to~1.76~\si{\dB} & 10\,\text{m} & 28.126~\to~0.24~\si{\dB} \\
+160\,\text{m} & 1.85~\to~36.2~\si{\dB} & 20\,\text{m} & 14.10~\to~0.94~\si{\dB} \\
+80\,\text{m}  & 3.65~\to~11.6~\si{\dB} & 17\,\text{m} & 18.10~\to~0.58~\si{\dB} \\
+60\,\text{m}  & 5.36~\to~5.82~\si{\dB} & 15\,\text{m} & 21.10~\to~0.43~\si{\dB} \\
+40\,\text{m}  & 7.10~\to~3.46~\si{\dB} & 12\,\text{m} & 24.90~\to~0.31~\si{\dB} \\
+30\,\text{m}  & 10.10~\to~1.78~\si{\dB} & 10\,\text{m} & 28.20~\to~0.24~\si{\dB} \\
 \end{array}
 \end{equation*}
 \noindent
@@ -1974,7 +1974,7 @@ side of the dipole peak the takeoff lands on.
          quiet day, suburban noise, SSB, with the reflection point at
          local noon ($\cos\chi \approx 1$, which produces the
          $L_{\text{Dreg}} = -0.94$\,dB shown via
-         $L_{\text{day}}(\SI{14.097}{\MHz}) \cdot 1^{0.7} = 0.94$\,dB
+         $L_{\text{day}}(\SI{14.10}{\MHz}) \cdot 1^{0.7} = 0.94$\,dB
          per Eq.~\ref{eq:labsd}). The $\Sigma$ column
          tracks the running signal level. Below the rule, $N$ and
          $S_{\text{req}}$ are operands to the margin formula
@@ -3357,16 +3357,16 @@ returns zero.
 \textbf{Band} & f & & B_{\max} &
 \textbf{Band} & f & & B_{\max} \\
 \midrule
-160\,\text{m} & 1.838~\si{\MHz} & \to & 25~\si{\dB}~(\text{capped}) &
-20\,\text{m}  & 14.097~\si{\MHz} & \to & 0.94~\si{\dB} \\
-80\,\text{m}  & 3.570~\si{\MHz}  & \to & 12.1~\si{\dB} &
-17\,\text{m}  & 18.106~\si{\MHz} & \to & 0.58~\si{\dB} \\
-60\,\text{m}  & 5.366~\si{\MHz}  & \to & 5.80~\si{\dB} &
-15\,\text{m}  & 21.096~\si{\MHz} & \to & 0.43~\si{\dB} \\
-40\,\text{m}  & 7.040~\si{\MHz}  & \to & 3.52~\si{\dB} &
-12\,\text{m}  & 24.924~\si{\MHz} & \to & 0.31~\si{\dB} \\
-30\,\text{m}  & 10.140~\si{\MHz} & \to & 1.76~\si{\dB} &
-10\,\text{m}  & 28.126~\si{\MHz} & \to & 0.24~\si{\dB} \\
+160\,\text{m} & 1.85~\si{\MHz} & \to & 25~\si{\dB}~(\text{capped}) &
+20\,\text{m}  & 14.10~\si{\MHz} & \to & 0.94~\si{\dB} \\
+80\,\text{m}  & 3.65~\si{\MHz}  & \to & 11.6~\si{\dB} &
+17\,\text{m}  & 18.10~\si{\MHz} & \to & 0.58~\si{\dB} \\
+60\,\text{m}  & 5.36~\si{\MHz}  & \to & 5.82~\si{\dB} &
+15\,\text{m}  & 21.10~\si{\MHz} & \to & 0.43~\si{\dB} \\
+40\,\text{m}  & 7.10~\si{\MHz}  & \to & 3.46~\si{\dB} &
+12\,\text{m}  & 24.90~\si{\MHz} & \to & 0.31~\si{\dB} \\
+30\,\text{m}  & 10.10~\si{\MHz} & \to & 1.78~\si{\dB} &
+10\,\text{m}  & 28.20~\si{\MHz} & \to & 0.24~\si{\dB} \\
 \end{array}
 \end{equation*}
 
@@ -4472,6 +4472,116 @@ actual drift gates.
 The harness does not auto-commit: a human reviews the suggested
 constants and pastes the winners into \texttt{src/constants.js}.
 
+\subsection{RBN Beacon Tier Confusion}\label{sec:rbn-tier-confusion}
+
+A separate calibration script,
+\texttt{scripts/calibration-rbn.mjs}, validates the verdict tier
+against an independent ground truth: RBN beacon spots aggregated
+across 30 days of reversebeacon.net raw-data archives.  Where the
+WSPR-based harness measures binary ``open somewhere'' rates against
+the global activity floor, this script directly tests
+$P(\text{spot exists} \mid \text{predicted tier})$ for every
+$(\text{beacon},\text{skimmer},\text{band},\text{hour})$ cell where
+the skimmer was active.  The beacon TX power is known
+($+30$ to $+50\,\si{dBm}$ for the curated amateur-beacon table;
+$+50\,\si{dBm}$ for the 18-station NCDXF/IARU rotating-beacon
+network) and skimmer locations are pinned, so the predicted SNR
+margin is computable directly and the binary outcome (was the
+beacon spotted by this skimmer in this hour?) is a clean
+per-cell observation.
+
+The script supports four reporting paths:
+
+\begin{enumerate}[nosep]
+  \item \texttt{--path=1}: per-margin-bin stratified residuals,
+        no censoring control.
+  \item \texttt{--path=2}: NCDXF-only per-band breakdown to test
+        the verdict on 10\,m, 12\,m, 15\,m, 17\,m, and 20\,m at
+        known TX power.  In the un-saturated middle window
+        ($+10\,\si{\dB} \leq M < +20\,\si{\dB}$, where the
+        skimmer is below its dynamic-range ceiling), residuals
+        are within $\pm 1.5\,\si{\dB}$ on every band.
+  \item \texttt{--path=3}: truncated-normal censoring fit on the
+        Good threshold; confirms the ${\sim}7\,\si{\dB}$
+        conservative bias visible in raw residuals is mostly a
+        skimmer-floor censoring artefact rather than real model
+        bias.
+  \item \texttt{--path=4} / \texttt{--path=4b}: binary tier
+        confusion (Table~\ref{tab:rbnconfusion}).  The simple
+        per-skimmer-per-hour variant
+        (\texttt{--path=4}) has a measurement ceiling around
+        $10\%\,P(\text{spot})$ because each cell is the product
+        of three independent events: band-open
+        $\times$ skimmer-monitoring-that-band
+        $\times$ skimmer-locking-on-one-of-the-20-beacon-slots
+        per hour.  The cross-skimmer-aggregated variant
+        (\texttt{--path=4b}) groups skimmers by distance bucket
+        from each beacon and marks a cell open if \emph{any}
+        skimmer in the bucket spotted the beacon, lifting the
+        ceiling to operator-recognisable scales.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Path~4b cross-skimmer-aggregated binary tier confusion,
+30-day RBN sample (146\,639 NCDXF spots + 20\,352 amateur-beacon
+spots, 2026-04-11 to 2026-05-10).  Distance buckets follow the
+radial-basket rings (2500 / 4000 / 6000 / 9000 / 12000 / 16000\,km).
+$P(\text{spot})$ is monotone in tier; the Excellent stratification
+by DX flag (last two rows) is the data signal behind the
+\S\ref{sec:dxflag} split.}
+\label{tab:rbnconfusion}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Stratum} & \textbf{n} & $\boldsymbol{P(\text{spot})}$ \\
+\midrule
+Excellent (all)              & 124\,839 & $24.2\,\%$ \\
+Good                         &  44\,728 & $\phantom{0}7.7\,\%$ \\
+Fair                         &  49\,270 & $\phantom{0}4.7\,\%$ \\
+Poor                         &  33\,131 & $\phantom{0}2.5\,\%$ \\
+Closed                       &  41\,792 & $\phantom{0}1.4\,\%$ \\
+\midrule
+Excellent regional ($d < \SI{6000}{\km}$) & 48\,671 & $45.2\,\%$ \\
+Excellent DX ($d \geq \SI{6000}{\km}$)    & 76\,168 & $10.8\,\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Why the absolute numbers are below operator-target
+$P(\text{open})$.}  An operator's mental model of ``Excellent''
+implies $\gtrsim 95\,\%$ of attempts complete a QSO; the table
+reads $24\,\%$ globally and $45\,\%$ for the regional stratum.
+The gap is not a model failure: RBN provides a verification
+probe, not the operator's audio experience.  Three independent
+attenuations stack in the $P(\text{spot})$ measurement that do
+not stack in the operator's QSO success rate:
+\begin{itemize}[nosep]
+  \item the band has to be open during the hour;
+  \item the skimmer (or any skimmer in the distance bucket) has
+        to be monitoring the band in question; CW Skimmer can
+        be configured to watch as few as one band;
+  \item the skimmer has to lock on one of the 20 ten-second
+        NCDXF slots per hour (or, for amateur beacons, on the
+        beacon's actual transmission cadence).
+\end{itemize}
+Operator-meaningful monotonicity (Excellent $>$ Good $>$ Fair
+$>$ Poor $>$ Closed) is preserved; the absolute scale is a
+property of RBN-as-instrument, not of the verdict.
+
+\paragraph{Why WSPR and PSKReporter are not the cleaner truth.}
+Both alternatives showed equivalent decoder-side pathology when
+tested as absolute-SNR truths.  WSPR observation responds to
+predicted channel SNR with sensitivity ${\sim}\!0.2$ instead of
+$1.0$ (slope invariant under every receiver-side knob:
+$\text{antGainDbi}$, $\text{antHeightM}$, $\text{noiseFaAdjDb}$);
+PSKReporter FT8 shows the same compression with slope
+${\sim}\!-0.9$.  RBN has a complementary saturation ceiling
+around $+13$ to $+15\,\si{\dB}$ observed SNR.  All three are
+suited for binary ``did the path open'' truth but none of them
+calibrates absolute SNR magnitude, which is why
+Table~\ref{tab:tiers}'s cuts were validated on RBN
+\emph{tier-frequency} rather than RBN \emph{SNR-residual}.
+
 \subsection{Circuit Reliability}\label{sec:reliability}
 
 Given the margin $M$ and spread $\sigma$, the circuit reliability is
@@ -5202,6 +5312,71 @@ calls a usable band on-air.  The boundaries are now
 $\sigma$-independent; band-specific $\sigma_g$ continues to
 drive the stability and confidence columns.
 
+\subsection{DX Flag (Orthogonal Distance Dimension)}\label{sec:dxflag}
+
+Tier is pure margin: \texttt{tierFromMargin(margin)} in
+\texttt{src/physics/tier.js} reads the dB cuts of
+Table~\ref{tab:tiers} off the best-margin path and never
+consults distance.  An operator-meaningful ``DX is reaching''
+signal lives on a separate boolean,
+\texttt{isDxOpen(margin, dKm)}, which returns true only when
+$M \geq +18\,\si{\dB}$ \emph{and} the path is at least
+\SI{6000}{\km} long.  The band-table renders this as a small
+\textbf{DX} badge next to the tier label when the band's best
+path (or any path on the band that also clears
+$+18\,\si{\dB}$) reaches DX distance; \texttt{best.dx}
+accumulates over the radial basket so a strong short-path
+Excellent that also has DX reach surfaces both axes at once.
+
+\paragraph{Why a separate dimension rather than a tier value.}
+A prior revision baked the distance test into
+\texttt{tierFromMargin}: $+18\,\si{\dB}$ margin demoted to Good
+when $d_{\text{km}} < \SI{6000}{\km}$.  This made Excellent
+mean ``DX is open'' in operator terms, but a 2026-05-11 RBN
+beacon binary tier-confusion run
+(\S\ref{sec:rbn-tier-confusion}) showed that the gate produced
+a monotonicity inversion in
+$P(\text{spot in hour} \mid \text{tier})$: Good came in
+higher than Excellent because the basket's short rings carry
+high-margin regional paths into Good, while Excellent ended up
+restricted to long-DX paths whose per-skimmer-per-hour spot
+probability is intrinsically lower (multi-hop fading,
+sunrise/sunset zones, polar-cap transit absorption).  The
+inversion is real and physically correct (DX paths \emph{are}
+more variable than short F2 hops) but a tier label that does
+not order monotonically against any reasonable truth is a
+landmine for the reader of the band-table.
+
+The split moves the variability-of-DX information out of the
+tier value and into the orthogonal flag.  Tier becomes
+strictly margin-monotone (a band with a louder best path
+always reads at least as high a tier as a band with a quieter
+best path); the DX badge answers the long-reach question
+without polluting the loudness one.  Operators reconstruct
+most of the propagation picture from two signals:
+\begin{itemize}[nosep]
+  \item Excellent\,$+$\,DX badge: loud and continent-crossing.
+        All distances from the basket's 2.5\,Mm ring out to
+        16\,Mm are likely workable.
+  \item Excellent without DX badge: loud regionally
+        ($\leq\!6000\,$km) but no long-reach path clears
+        $+18\,\si{\dB}$.  Operator wanting DX should look
+        elsewhere this hour.
+  \item Good / Fair / Poor / Closed: no DX promise either
+        way; the badge never appears below Excellent because
+        DX by construction requires the Excellent-margin
+        threshold.
+\end{itemize}
+The asymmetry that makes two bits sufficient is monotone-safe
+in distance only at the bottom: the best path (usually the
+shortest viable hop) bounds what is loud, so paths
+\emph{shorter} than it cannot be louder than it (free-space
+loss is monotone, and short paths have fewer multi-hop
+failure modes).  Paths \emph{longer} than the best either
+clear the DX threshold (badge shows) or do not (badge stays
+off).  Anything in between can be reconstructed by inspection
+of the per-path detail panel.
+
 \subsection{WSPR Activity Override}\label{sec:spot-override}
 
 WSPR spot counts give an independent observational signal that the
@@ -5453,40 +5628,40 @@ fit regional baselines without over-fitting noise.
 % Lday(f) = 200 / (f + 0.5)^2
 % Night: cos(chi) < 0.05 → 0 (gate omitted from the smooth illustrative curve)
 
-% 160m (1.838 MHz): Lday = 200/5.466 = 36.6
+% 160m (1.85 MHz): Lday = 200/5.5225 = 36.21
 \addplot[red,very thick,domain=6:18,samples=100]
-  {36.6 * (max(0, cos(deg((x-12)/12*180))))^0.7};
+  {36.2 * (max(0, cos(deg((x-12)/12*180))))^0.7};
 \addplot[red,very thick,domain=0:6,samples=20] {0};
 \addplot[red,very thick,domain=18:24,samples=20] {0};
-\addlegendentry{160\,m ($L_{\text{day}}=36.6$\,dB)}
+\addlegendentry{160\,m ($L_{\text{day}}=36.2$\,dB)}
 
-% 80m (3.570 MHz): Lday = 200/16.56 = 12.1
+% 80m (3.65 MHz): Lday = 200/17.2225 = 11.61
 \addplot[orange,thick,domain=6:18,samples=100]
-  {12.1 * (max(0, cos(deg((x-12)/12*180))))^0.7};
+  {11.6 * (max(0, cos(deg((x-12)/12*180))))^0.7};
 \addplot[orange,thick,domain=0:6,samples=20] {0};
 \addplot[orange,thick,domain=18:24,samples=20] {0};
-\addlegendentry{80\,m ($L_{\text{day}}=12.1$\,dB)}
+\addlegendentry{80\,m ($L_{\text{day}}=11.6$\,dB)}
 
-% 60m (5.366 MHz): Lday = 200/34.49 = 5.80
+% 60m (5.36 MHz): Lday = 200/34.3396 = 5.82
 \addplot[yellow!80!black,thick,domain=6:18,samples=100]
-  {5.80 * (max(0, cos(deg((x-12)/12*180))))^0.7};
+  {5.82 * (max(0, cos(deg((x-12)/12*180))))^0.7};
 \addplot[yellow!80!black,thick,domain=0:6,samples=20] {0};
 \addplot[yellow!80!black,thick,domain=18:24,samples=20] {0};
-\addlegendentry{60\,m ($L_{\text{day}}=5.80$\,dB)}
+\addlegendentry{60\,m ($L_{\text{day}}=5.82$\,dB)}
 
-% 40m (7.040 MHz): Lday = 200/56.85 = 3.52
+% 40m (7.10 MHz): Lday = 200/57.76 = 3.46
 \addplot[green!60!black,thick,domain=6:18,samples=100]
-  {3.52 * (max(0, cos(deg((x-12)/12*180))))^0.7};
+  {3.46 * (max(0, cos(deg((x-12)/12*180))))^0.7};
 \addplot[green!60!black,thick,domain=0:6,samples=20] {0};
 \addplot[green!60!black,thick,domain=18:24,samples=20] {0};
-\addlegendentry{40\,m ($L_{\text{day}}=3.52$\,dB)}
+\addlegendentry{40\,m ($L_{\text{day}}=3.46$\,dB)}
 
-% 30m (10.140 MHz): Lday = 200/113.4 = 1.76
+% 30m (10.10 MHz): Lday = 200/112.36 = 1.78
 \addplot[blue,thick,domain=6:18,samples=100]
-  {1.76 * (max(0, cos(deg((x-12)/12*180))))^0.7};
+  {1.78 * (max(0, cos(deg((x-12)/12*180))))^0.7};
 \addplot[blue,thick,domain=0:6,samples=20] {0};
 \addplot[blue,thick,domain=18:24,samples=20] {0};
-\addlegendentry{30\,m ($L_{\text{day}}=1.76$\,dB)}
+\addlegendentry{30\,m ($L_{\text{day}}=1.78$\,dB)}
 
 % Night shading
 \addplot[name path=top,draw=none,domain=0:6,samples=2] {40};
@@ -5529,10 +5704,12 @@ surfaced across an eight-panel web UI:
         feed plus rule-derived ``soft'' alerts in one
         severity-sorted list at the top of the page.
   \item \textbf{HF Bands}: the ten HF amateur bands as a per-band
-        table.  Each row shows the band frequency, the predicted
-        verdict tier (Excellent / Good / Fair / Poor / Closed
-        per Section~\ref{sec:tiers}), the SNR margin in dB, the
-        Stability percent
+        table.  Each row shows the predicted verdict tier
+        (Excellent / Good / Fair / Poor / Closed per
+        Section~\ref{sec:tiers}, with an inline \textbf{DX} badge
+        per \S\ref{sec:dxflag} when a path $\geq\!\SI{6000}{\km}$
+        also clears the Excellent margin), the SNR margin in dB,
+        the Stability percent
         (Eq.~\ref{eq:tierstab}: $\Phi$ of $\sigma$-distance to the
         nearest tier boundary; bucket-width-independent and so
         directly readable on an absolute scale --- 50\,\% at a

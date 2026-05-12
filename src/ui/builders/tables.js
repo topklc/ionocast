@@ -17,8 +17,8 @@ export const tableBuilders = {
     // columns sit between the band frequency and the observation cells
     // unique to each scope.
     var headers = hf
-      ? ["Band","f (MHz)","Tier","Margin","Stability","Mode","Best Path","WSPR SNR","WSPR N/h","f/MUF","D-RAP"]
-      : ["Band","f (MHz)","Tier","Margin","Stability","Mode","Best Path","foEs (MHz)","Es MUF/f","Aurora HP","Tropo dN/dh"];
+      ? ["Band","Tier","Margin","Stability","Mode","Best Path","WSPR SNR","WSPR N/h","f/MUF","D-RAP"]
+      : ["Band","Tier","Margin","Stability","Mode","Best Path","foEs (MHz)","Es MUF/f","Aurora HP","Tropo dN/dh"];
 
     // Format a margin number as a signed dB string. Uses U+2212 minus
     // for the negative sign so the cell isn't ambiguous with a hyphen.
@@ -108,15 +108,15 @@ export const tableBuilders = {
 
         var headerSpecs = headers.map(function(h) { return { html: abbr(h) }; });
         var rows = (data.rows || []).map(function(row) {
-          // Render: Band + f (MHz) from the source row, then 4 prediction
-          // cells, then the remaining observation cells from the source
-          // row. Same shape for HF and VHF; only the trailing observation
-          // columns differ between scopes.
+          // Render: Band from the source row, then 5 prediction cells,
+          // then the remaining observation cells from the source row
+          // (skipping the source's f-MHz cell at index 1 which the
+          // band-table no longer displays as a column -- the reference
+          // frequency lives in the Band cell's click-popover).
           var bandName = typeof row[0] === "object" ? row[0].text : row[0];
           var best = bestByBand[bandName];
           var cells = [
-            sourceCell(row[0], true),
-            sourceCell(row[1], false)
+            sourceCell(row[0], true)
           ];
           if (best) {
             // Tier and mode cells are wrapped in abbr() so the operator

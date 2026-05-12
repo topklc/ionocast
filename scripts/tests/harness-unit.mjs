@@ -31,12 +31,12 @@ function near(name, got, want, tol, detail) {
 // Values updated 2026-04-30 with the P.372-anchored NOISE_FLOOR_DBM
 // re-derivation. Base values are the noon floor; midnight = base + swing.
 {
-  eq("noise: exact 14.097", baseNoiseDbm(14.097), -120);
-  eq("noise: 14.0 close → 14.097", baseNoiseDbm(14.0), -120);
-  eq("noise: 7.0 close → 7.040", baseNoiseDbm(7.0), -121);
-  eq("noise: 28.126 exact", baseNoiseDbm(28.126), -123);
-  // Extreme: 100 MHz isn't a defined band; nearest is 28.126
-  eq("noise: 100 MHz → nearest 28.126", baseNoiseDbm(100), -123);
+  eq("noise: exact 14.10", baseNoiseDbm(14.10), -120);
+  eq("noise: 14.0 close → 14.10", baseNoiseDbm(14.0), -120);
+  eq("noise: 7.0 close → 7.10", baseNoiseDbm(7.0), -121);
+  eq("noise: 28.20 exact", baseNoiseDbm(28.20), -123);
+  // Extreme: 100 MHz isn't a defined band; nearest is 28.20
+  eq("noise: 100 MHz → nearest 28.20", baseNoiseDbm(100), -123);
 }
 
 // ── 3. normCdf: known z-values ────────────────────────────────────────
@@ -72,7 +72,7 @@ function near(name, got, want, tol, detail) {
 {
   // Path Lisbon-Kyiv (matches LIS-KIE in the basket): 3000km, 1 hop.
   const path = { name: "test", src: [38.72, -9.14], dst: [50.45, 30.52] };
-  const band = { name: "20 m", f: 14.097, intMHz: 14 };
+  const band = { name: "20 m", f: 14.10, intMHz: 14 };
   const date = new Date("2026-04-25T12:00:00Z");  // noon UTC
   // Quiet conditions
   const config = { ...DEFAULT_CONFIG };
@@ -105,7 +105,7 @@ function near(name, got, want, tol, detail) {
        lIonoLow.margin - lIonoHigh.margin, 10, 0.01);
 
   // Below MUF, ratio safely under 0.7 → no over-MUF loss
-  const lowBand = { name: "80 m", f: 3.570, intMHz: 3 };
+  const lowBand = { name: "80 m", f: 3.65, intMHz: 3 };
   const lowR = replayMargin(path, lowBand, 2, 120, date, null, config);
   check("replayMargin: 80m noon margin computable", lowR && typeof lowR.margin === "number");
 
@@ -115,7 +115,7 @@ function near(name, got, want, tol, detail) {
   const tepPath = {
     name: "TEP", src: [41.0, 29.0], dst: [-26.2, 28.05],
   };
-  const band15 = { name: "15 m", f: 21.096, intMHz: 21 };
+  const band15 = { name: "15 m", f: 21.10, intMHz: 21 };
   const tepDate = new Date("2026-04-25T17:00:00Z");
   const baseR = replayMargin(tepPath, band15, 2, 120, tepDate, null, config);
   const altR = replayMargin(tepPath, band15, 2, 120, tepDate, null,
@@ -129,7 +129,7 @@ function near(name, got, want, tol, detail) {
 
   // Gray-line: 40m at sunrise on a low-band midlat path.
   const grayPath = { name: "gray", src: [50, 0], dst: [50, 30] };
-  const grayBand = { name: "40 m", f: 7.040, intMHz: 7 };
+  const grayBand = { name: "40 m", f: 7.10, intMHz: 7 };
   // 04 UTC at midpoint lon ~15° → local time ~5 h, near sunrise in May.
   const grayDate = new Date("2026-05-15T04:00:00Z");
   const grayBase = replayMargin(grayPath, grayBand, 2, 120, grayDate, null, config);
@@ -181,7 +181,7 @@ function near(name, got, want, tol, detail) {
 {
   eq("BANDS: 10 entries", BANDS.length, 10);
   eq("BANDS[0]: 160m", BANDS[0].name, "160 m");
-  eq("BANDS[0]: f=1.838", BANDS[0].f, 1.838);
+  eq("BANDS[0]: f=1.85", BANDS[0].f, 1.85);
   eq("BANDS[0]: intMHz=1", BANDS[0].intMHz, 1);
   // Station count: 13 at R0, 18 after F added GM037/TR169/JI91J/DB049/EI764.
   // Test pins a lower bound so accidental shrinkage is caught while

@@ -1,0 +1,153 @@
+{
+  "swpc-3day": {
+    "kind": "text",
+    "firstLine": ":Product: 3-Day Forecast",
+    "lineCount": 54,
+    "columns": 3
+  },
+  "swpc-27day": {
+    "kind": "text",
+    "firstLine": ":Product: 27-day Space Weather Outlook Table 27DO.txt",
+    "lineCount": 40,
+    "columns": 7
+  },
+  "swpc-drap": {
+    "kind": "text",
+    "firstLine": "# DRAP Tabular Values",
+    "lineCount": 112,
+    "columns": 4
+  },
+  "solar-regions": {
+    "kind": "array-of-objects",
+    "keys": [
+      "area",
+      "c_flare_probability",
+      "c_xray_events",
+      "carrington_longitude",
+      "extent",
+      "first_date",
+      "impulse_flares_1",
+      "impulse_flares_2",
+      "impulse_flares_3",
+      "impulse_flares_4",
+      "latitude",
+      "location",
+      "longitude",
+      "m_flare_probability",
+      "m_xray_events",
+      "mag_class",
+      "mag_string",
+      "number_spots",
+      "observed_date",
+      "old_carrington_longitude",
+      "proton_events",
+      "proton_probability",
+      "protons",
+      "region",
+      "s_flares",
+      "spot_class",
+      "status",
+      "x_flare_probability",
+      "x_xray_events"
+    ]
+  },
+  "ovation": {
+    "kind": "object",
+    "keys": [
+      "Data Format",
+      "Forecast Time",
+      "Observation Time",
+      "coordinates",
+      "type"
+    ],
+    "types": {
+      "Data Format": "string",
+      "Forecast Time": "string",
+      "Observation Time": "string",
+      "coordinates": "array[object]",
+      "type": "string"
+    }
+  },
+  "kp": {
+    "kind": "array-of-objects",
+    "keys": [
+      "Kp",
+      "a_running",
+      "station_count",
+      "time_tag"
+    ]
+  },
+  "f107": {
+    "kind": "array-of-objects",
+    "keys": [
+      "avg_begin_date",
+      "flux",
+      "frequency",
+      "ninety_day_mean",
+      "rec_count",
+      "reporting_schedule",
+      "time_tag"
+    ]
+  },
+  "xrays": {
+    "kind": "array-of-objects",
+    "keys": [
+      "electron_contaminaton",
+      "electron_correction",
+      "energy",
+      "flux",
+      "observed_flux",
+      "satellite",
+      "time_tag"
+    ]
+  },
+  "mag": {
+    "kind": "array-of-arrays",
+    "header": [
+      "time_tag",
+      "bx_gsm",
+      "by_gsm",
+      "bz_gsm",
+      "lon_gsm",
+      "lat_gsm",
+      "bt"
+    ],
+    "columns": 7
+  },
+  "plasma": {
+    "kind": "array-of-arrays",
+    "header": [
+      "time_tag",
+      "density",
+      "speed",
+      "temperature"
+    ],
+    "columns": 4
+  },
+  "protons": {
+    "kind": "array-of-objects",
+    "keys": [
+      "energy",
+      "flux",
+      "satellite",
+      "time_tag"
+    ]
+  },
+  "electrons": {
+    "kind": "array-of-objects",
+    "keys": [
+      "energy",
+      "flux",
+      "satellite",
+      "time_tag"
+    ]
+  },
+  "alerts": {
+    "kind": "array-of-objects",
+    "keys": [
+      "issue_datetime",
+      "message",
+      "product_id"
+    ]
+  }
+}

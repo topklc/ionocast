@@ -217,11 +217,7 @@ export const DEFINITIONS = {
   // ---- band table: shared prediction columns (HF + VHF) ----
   "Band": {
     name: "Band (amateur radio band)",
-    def: "Amateur radio band by wavelength: 160 m at 1.8 MHz down to 2 m at 144 MHz. Each band has its own propagation character: low bands (160-40 m) for night and short-skip, mid bands (30-20 m) for steady DX, upper bands (17-10 m) for solar-cycle DX, VHF (6 m / 2 m) for line-of-sight + Es / aurora / meteor scatter."
-  },
-  "f (MHz)": {
-    name: "f (band reference frequency)",
-    def: "The reference frequency in MHz used by the propagation budget for this band. Anchored at the typical digital-mode segment (e.g. 14.097 for 20 m FT8) so the SNR computation reflects where most operators actually transmit. Different exact frequencies on the same band see almost identical propagation."
+    def: "Amateur radio band by wavelength: 160 m at 1.8 MHz down to 2 m at 144 MHz. Each band has its own propagation character: low bands (160-40 m) for night and short-skip, mid bands (30-20 m) for steady DX, upper bands (17-10 m) for solar-cycle DX, VHF (6 m / 2 m) for line-of-sight + Es / aurora / meteor scatter. The SNR budget for each band is computed at the band's ITU-R P.533 reference frequency (1.85 / 3.65 / 5.36 / 7.10 / 10.10 / 14.10 / 18.10 / 21.10 / 24.90 / 28.20 MHz on 160-10 m; 50 / 144 MHz on VHF). Within-band variation in predicted margin is small (< 0.5 dB free-space-loss spread across a band's width) so the reference frequency is a representative anchor rather than the operator's exact dial setting."
   },
   "Tier": {
     name: "Tier (verdict bucket)",

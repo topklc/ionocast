@@ -1,0 +1,124 @@
+name: giro-quarterly
+
+# Quarterly GIRO station list audit.  Runs the two existing harness
+# subcommands:
+#
+#   node scripts/harness.mjs verify   diffs the in-repo GIRO_STATIONS
+#                                     coordinates against kc2g's
+#                                     authoritative station registry;
+#                                     prints "*** WRONG ***" per
+#                                     station off by > 2° in lat or lon.
+#   node scripts/harness.mjs probe    queries DIDB for every kc2g
+#                                     station NOT in GIRO_STATIONS to
+#                                     find newly-active digisondes worth
+#                                     adding.
+#
+# Both subcommands produce a console report and do not edit any source.
+# The workflow captures both reports and opens a GitHub issue summarising
+# them; the operator reads the issue, decides which stations to add /
+# remove / fix, and patches `scripts/harness.mjs` GIRO_STATIONS by
+# hand.  No auto-merge: station-list changes need human judgement (which
+# new stations have stable enough uptime to fuse with, which off-coord
+# stations have actually moved vs were just listed wrong in kc2g).
+#
+# Cadence: 04:00 UTC first day of Jan / Apr / Jul / Oct.  Off-cycle by
+# 4 hours from the daily 00:00 UTC keepalive so they do not pile up at
+# the same minute.
+#
+# Failure modes:
+#   - kc2g.com unreachable: verify exits nonzero, issue creation skipped.
+#   - lgdc.uml.edu unreachable: probe reports every station as failed
+#     (already-known outage mode, see giro handler upstream-offline path).
+#     verify still produces useful output independently.
+#
+# Manual run: workflow_dispatch in the GitHub UI.
+
+on:
+  schedule:
+    - cron: "0 4 1 1,4,7,10 *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify GIRO_STATIONS coordinates vs kc2g registry
+        id: verify
+        run: |
+          set +e
+          node scripts/harness.mjs verify > verify.txt 2>&1
+          rc=$?
+          # Pass through script's report verbatim; "coord errors > 2°"
+          # count lives on the last line and drives the actionable flag.
+          bad=$(grep -oE '^[0-9]+ stations with coord errors' verify.txt | grep -oE '^[0-9]+' || echo 0)
+          echo "bad=$bad" >> "$GITHUB_OUTPUT"
+          echo "rc=$rc"  >> "$GITHUB_OUTPUT"
+          cat verify.txt
+
+      - name: Probe candidate stations from kc2g not in GIRO_STATIONS
+        id: probe
+        run: |
+          set +e
+          node scripts/harness.mjs probe > probe.txt 2>&1
+          rc=$?
+          # An "ok" status line means DIDB returned fresh data; that's
+          # a candidate worth considering for inclusion.
+          ok=$(grep -cE '   ok        ' probe.txt || echo 0)
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          cat probe.txt
+
+      - name: Decide whether to open an issue
+        id: decide
+        run: |
+          bad="${{ steps.verify.outputs.bad }}"
+          ok="${{ steps.probe.outputs.ok }}"
+          if [ "${bad:-0}" -gt 0 ] || [ "${ok:-0}" -gt 0 ]; then
+            echo "open=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "open=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open audit issue
+        if: steps.decide.outputs.open == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          bad="${{ steps.verify.outputs.bad }}"
+          ok="${{ steps.probe.outputs.ok }}"
+          today=$(date -u +%Y-%m-%d)
+          title="chore(giro): quarterly audit ${today}, ${bad:-0} coord drift, ${ok:-0} active candidates"
+          {
+            echo "Automated quarterly GIRO_STATIONS audit. Source: \`.github/workflows/giro-quarterly.yml\`."
+            echo
+            echo "**Coord drift (\`verify\`):** ${bad:-0} stations off by > 2° vs kc2g registry."
+            echo "**New candidates (\`probe\`):** ${ok:-0} kc2g stations not yet in GIRO_STATIONS that returned fresh DIDB data."
+            echo
+            echo "If both numbers are 0, no action is needed (this issue should not have opened)."
+            echo "If \`verify\` shows drift, edit \`scripts/harness.mjs\` GIRO_STATIONS to match the kc2g coordinates."
+            echo "If \`probe\` shows active candidates, evaluate each for inclusion (proximity to fusion gaps, data-provider crediting, uptime history)."
+            echo
+            echo "## verify"
+            echo
+            echo '```'
+            cat verify.txt
+            echo '```'
+            echo
+            echo "## probe"
+            echo
+            echo '```'
+            cat probe.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
