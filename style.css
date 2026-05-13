@@ -142,6 +142,11 @@ footer a{font-size:12px}
 .panel-caption{margin:4px 0 14px;line-height:1.4}
 .simple-footer{max-width:640px}
 .iono-note{font-size:10px;margin-top:6px;margin-bottom:0;line-height:1.4}
+.path-table-toggle{
+  background:none;border:0;padding:6px 0;margin:6px 0 0;
+  font:12px var(--font-system);color:var(--muted);cursor:pointer;
+}
+.path-table-toggle:hover{color:var(--ink)}
 .empty-list,.pending-note{margin:4px 0 8px}
 a:focus-visible,
 button:focus-visible,

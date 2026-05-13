@@ -101,10 +101,9 @@ export const ionoBuilders = {
           { html: abbr("foF2 mid") },
           { label: t("Sonde") }
         ];
-        // The radial basket has 72 paths (12 bearings × 6 rings).
-        // Show only the longest viable ring per bearing so the table
-        // stays scannable; the band-table's per-band best-path
-        // selector consumes the full 72-path basket separately.
+        // displayPaths is one row per 16-point compass bearing (selected
+        // in selectDisplayPaths). Fall back to the full basket if the
+        // pre-selected list is missing.
         var display = (data.displayPaths && data.displayPaths.length)
           ? data.displayPaths
           : (data.paths || []);
@@ -118,7 +117,40 @@ export const ionoBuilders = {
             { className: sondeColor, text: p.sonde || "-" }
           ];
         });
-        content.appendChild(dataTable(headers, rows));
+
+        // Default to first 5 rows with an expand toggle. Container is
+        // re-rendered on each click so dataTable's row layout stays
+        // intact (it doesn't expose per-row hide/show).
+        var DEFAULT_N = 5;
+        var expanded = false;
+        var tableWrap = el("div");
+        var toggle = null;
+        function render() {
+          tableWrap.innerHTML = "";
+          var shown = expanded ? rows : rows.slice(0, DEFAULT_N);
+          tableWrap.appendChild(dataTable(headers, shown));
+          if (toggle) {
+            var hidden = rows.length - DEFAULT_N;
+            toggle.textContent = expanded
+              ? "▴ " + t("show fewer")
+              : "▾ " + t("show {n} more", { n: hidden });
+            toggle.setAttribute("aria-expanded", String(expanded));
+          }
+        }
+        content.appendChild(tableWrap);
+        if (rows.length > DEFAULT_N) {
+          toggle = el("button", {
+            type: "button",
+            className: "path-table-toggle",
+            "aria-expanded": "false"
+          });
+          toggle.addEventListener("click", function() {
+            expanded = !expanded;
+            render();
+          });
+          content.appendChild(toggle);
+        }
+        render();
       }
     });
   },

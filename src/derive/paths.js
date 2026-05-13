@@ -243,7 +243,7 @@ export function selectDisplayPaths(allPaths) {
   var byBearing = {};
   for (var i = 0; i < allPaths.length; i++) {
     var p = allPaths[i];
-    var key = p.bearingDeg != null ? String(p.bearingDeg) : p.destShort;
+    var key = p.bearingLabel || (p.bearingDeg != null ? String(p.bearingDeg) : p.destShort);
     if (!byBearing[key]) byBearing[key] = [];
     byBearing[key].push(p);
   }
