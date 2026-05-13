@@ -732,6 +732,11 @@ export async function mountTropoMap(container) {
     pitchWithRotate: false,
     dragRotate: false,
     touchPitch: false,
+    // Single world frame: stop horizontal repetition past ±180°.
+    // Without this, panning east or west reveals an infinite tile of
+    // duplicate globes, which is disorienting at low zoom on a panel
+    // that's meant to read as one global snapshot.
+    renderWorldCopies: false,
   });
 
   map.touchZoomRotate.disableRotation();

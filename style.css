@@ -268,14 +268,6 @@ html.dark #term-popover{background:#0e1116;box-shadow:0 4px 14px rgba(0,0,0,.5)}
 .q-bad{color:var(--sev-bad)}
 .q-muted{color:var(--muted)}
 
-/* DX badge: rendered next to the Excellent tier in the band-table
-   when the best path also clears the DX-reach distance (6000+ km).
-   Reads "Excellent DX" -- the badge marks DX-capable Excellents
-   distinctly from regional Excellents. Color inherited from the
-   tier cell so Excellent's green carries through to the badge. */
-.dx-badge{font-size:10px;font-weight:700;letter-spacing:.5px;padding:1px 4px;margin-left:2px;border:1px solid currentColor;border-radius:3px;vertical-align:1px}
-.dx-badge a.term-link{color:inherit;border-bottom-color:transparent}
-.dx-badge a.term-link:hover{border-bottom-color:currentColor}
 
 /* Alert lines. Severity is carried by a pill-shaped .alert-label chip
    on the left. No left border; that primitive is reserved for h2 so
@@ -432,13 +424,34 @@ html.dark #term-popover{background:#0e1116;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   margin:6px 0 0;line-height:1.4
 }
 
-/* MapLibre control restyle to match dark panel aesthetic. */
+/* MapLibre control restyle, theme-aware. Default rule covers light
+   mode (white background, black icons via the icon-filter override on
+   the MapLibre SVG sprite). The dark-mode media query below flips the
+   background to match the dark page and lets the SVG icons render in
+   their default white.
+
+   The MapLibre vendored SVGs are black by default, so they're already
+   correct for light mode; we only need to invert them in dark mode. */
 .tropo-mount .maplibregl-ctrl-group{
-  background:rgba(20,20,20,0.85)!important;
+  background:var(--bg)!important;
   border:1px solid var(--border)!important
 }
 .tropo-mount .maplibregl-ctrl button{background-color:transparent!important}
-.tropo-mount .maplibregl-ctrl button:hover{background-color:rgba(255,255,255,0.08)!important}
+.tropo-mount .maplibregl-ctrl button:hover{background-color:rgba(128,128,128,0.12)!important}
+@media(prefers-color-scheme:dark){
+  html:not(.light) .tropo-mount .maplibregl-ctrl-group{
+    background:rgba(20,20,20,0.85)!important
+  }
+  html:not(.light) .tropo-mount .maplibregl-ctrl button .maplibregl-ctrl-icon{
+    filter:invert(1)
+  }
+}
+html.light .tropo-mount .maplibregl-ctrl-group{
+  background:rgba(255,255,255,0.95)!important
+}
+html.light .tropo-mount .maplibregl-ctrl button .maplibregl-ctrl-icon{
+  filter:none
+}
 
 @media(max-width:800px){
   .tropo-map{height:360px}

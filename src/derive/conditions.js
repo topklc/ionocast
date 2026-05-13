@@ -311,6 +311,13 @@ export function deriveConditions(ctx) {
     // for the HF-table renderer (each row gets the band's predicted
     // tier / margin / mode / best destination).
     var bestPerBand = {};
+    // Per-band list of every valid path margin (any mode). The group-
+    // level tier below is anchored on the 2nd-best margin rather than
+    // the single hottest path, so a basket where one path is excellent
+    // and the rest are over-MUF no longer reads as "Excellent" purely
+    // on that one path. See docs/HF-TIER-AGGREGATION.md for rationale
+    // and the long-term plan (coverage-fraction).
+    var marginsByBand = {};
 
     // tryMargin: for a given band and path context, compute the SNR
     // margin with full data-layer treatment: kc2g↔climatology consensus
@@ -580,6 +587,11 @@ export function deriveConditions(ctx) {
       // regional.  Without this, a band whose best path is the 2.5 Mm
       // ring would always read dx=false even when 6000+ km paths
       // also clear +18 dB.
+      // Feed the per-band margin list used by the 2nd-best-anchored
+      // group tier below. Pushed after the Es/F2 reconciliation, so
+      // m.margin is the final mode-resolved margin for this path.
+      (marginsByBand[name] = marginsByBand[name] || []).push(m.margin);
+
       var thisIsDx = isDxOpen(m.margin, pathCtx.dKm);
       var existing = bestPerBand[name];
       // Tie-breaker: when margins agree to within 0.01 dB, prefer the
@@ -682,12 +694,26 @@ export function deriveConditions(ctx) {
       // heuristicTier stays exported in physics.js for the scenarios
       // diagnostic harness but is no longer in the verdict path.
 
-      // best.m carries the physics budget; tier is pure margin.
+      // best.m carries the physics budget; the group tier is anchored
+      // on the band's 2nd-best path margin so a single hot path can no
+      // longer carry the verdict by itself. Falls back to best.m.margin
+      // when only one path produced a valid margin for the band (the
+      // absorbed / no-MUF cases short-circuit above, so this only fires
+      // on baskets that genuinely have a single open path).
       // The DX flag rides on per-band-best via isDxOpen() and is
       // rendered next to the tier in the band-table; the group-level
       // verdict here is band-agnostic, so we do not annotate DX at
-      // this layer.  See tier.js for the tier/DX split rationale.
-      var tier = tierFromMargin(best.m.margin);
+      // this layer. See tier.js for the tier/DX split rationale and
+      // docs/HF-TIER-AGGREGATION.md for the aggregation history.
+      var bandMargins = marginsByBand[best.name] || [];
+      var anchorMargin;
+      if (bandMargins.length >= 2) {
+        var desc = bandMargins.slice().sort(function (a, b) { return b - a; });
+        anchorMargin = desc[1];
+      } else {
+        anchorMargin = best.m.margin;
+      }
+      var tier = tierFromMargin(anchorMargin);
       // D-RAP absorption gate: if D-RAP flags this band as absorbed AND
       // observed spot activity sits below half the band's 30-day
       // baseline, close it out. Previously the threshold was a flat 50
@@ -751,13 +777,21 @@ export function deriveConditions(ctx) {
       // dropped here: rare ones are surfaced by the soft-alert bar at
       // the top of the page, and D-RAP is already shown per-band in
       // the dedicated HF Bands panel.
-      var parts = [t("margin") + " " + Math.round(best.m.margin) + " dB"];
+      // Display the anchor margin (2nd-best, or fallback to best when
+      // only one valid path), so the dB shown in the note is consistent
+      // with the tier. Otherwise the note can read "good · margin 22 dB"
+      // when 22 dB sits in the Excellent band but the verdict was
+      // demoted because no other path was loud.
+      var parts = [t("margin") + " " + Math.round(anchorMargin) + " dB"];
 
       // Pre-compute confidence once for both override and non-override
-      // branches; bestPerBand[best.name].confidence already carries it
-      // but recomputing locally keeps this block independent of the
-      // per-band-best dict shape.
-      var stabilityPct = Math.round(tierStability(best.m.margin, best.m.sigma) * 100);
+      // branches. Anchored on the anchorMargin used by the verdict so
+      // the "X% confident" reading describes the tier the operator
+      // actually sees, not the best-path's tier confidence. Sigma is
+      // approximated by best.m.sigma; path-to-path sigma drift is small
+      // and tracking the 2nd-best path's sigma explicitly is deferred
+      // to the coverage-fraction rework.
+      var stabilityPct = Math.round(tierStability(anchorMargin, best.m.sigma) * 100);
 
       if (spotOverride) {
         parts.push(t("unusually active: {n} spots/h vs avg {m}",

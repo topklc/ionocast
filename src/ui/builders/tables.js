@@ -124,13 +124,7 @@ export const tableBuilders = {
             // "excellent" means, what "F2" / "Es" / "MS" propagation
             // does). Cells where best.tier or best.mode are absent
             // render as plain "-".
-            //
-            // DX badge: Excellent on a continent-crossing path renders
-            // an extra "DX" link after the tier label so the operator
-            // can see at a glance whether the loudness reaches DX or
-            // is only regional.  See definitions.js "DX" entry.
             var tierHtml = best.tier ? abbr(best.tier) : "-";
-            if (best.dx) tierHtml += ' <span class="dx-badge">' + abbr("DX") + '</span>';
             cells.push({ className: tierClass(best.tier), html: tierHtml });
             cells.push({ text: marginCell(best.margin) });
             // Confidence is intentionally uncolored: the tier cell already
