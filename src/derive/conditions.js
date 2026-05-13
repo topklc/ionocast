@@ -5,7 +5,8 @@
 // classification fed to the physics budget.
 
 import {
-  BAND_FREQ_MHZ, FUSION_PRIMARY_MUF, SCATTER_WEIGHT
+  BAND_FREQ_MHZ, FUSION_PRIMARY_MUF, SCATTER_WEIGHT, ES_M_FACTOR,
+  FUSE_PRIMARY_FOF2
 } from "../constants.js";
 import {
   currentQth, qthToLatLon, gcPointAtFraction
@@ -13,14 +14,16 @@ import {
 import {
   snrMarginHf, snrMarginHfEs, snrMarginVhfEs, snrMarginVhfAurora,
   solarCosZenith,
-  tierFromMargin, isDxOpen, tierRank, tierStability,
+  tierFromMargin, isDxOpen, tierRank, tierStability, TIER_DB_GOOD,
   cgmLatAbs,
-  foF2Climatology, mufConsensus, pathMinMuf, grayLineBonusDb,
+  foF2Climatology, mufConsensus, pathMinMuf, grayLineBonusPathDb,
   midpointFoF2WithFallback, perHopFoF2FromStations,
   scatterBonusDb, irregularityRecoveryDb,
   hopsForDistance,
-  tepBonusDb, nvisSecantFactor, nvisTailFactor
+  tepBonusDb, nvisSecantFactor, nvisTailFactor,
+  buildFoF2Grid
 } from "../physics/physics.js";
+import { computeFuseGrid, computeFuseEsGrid } from "../physics/fuse.js";
 import { snrOpts } from "../settings.js";
 import { t } from "../i18n.js";
 import { spotBaselineMean } from "./spots.js";
@@ -35,6 +38,10 @@ function pathDirections(paths) {
   // (= 0.85 \u00d7 MUF). Derived directly from p.mufMHz so we don't need the
   // user-facing "band" label that was removed from path-table.
   var buckets = { "160":[], "80":[], "60":[], "40":[], "30":[], "20":[], "17":[], "15":[], "12":[], "10":[] };
+  // FOT-must-clear thresholds at the LOWER edge of each amateur band
+  // allocation (not the DX-end BAND_FREQ_MHZ from constants.js, which
+  // is the prediction reference). A path's FOT must exceed these to
+  // genuinely support each band.
   var BAND_FOT = [[28,"10"],[24,"12"],[21,"15"],[18,"17"],[14,"20"],[10,"30"],[7,"40"],[3.5,"80"],[1.8,"160"]];
   (paths && paths.paths || []).forEach(function(p) {
     if (p.mufMHz == null) return;
@@ -43,7 +50,12 @@ function pathDirections(paths) {
     for (var k = 0; k < BAND_FOT.length; k++) {
       if (BAND_FOT[k][0] <= fot) { group = BAND_FOT[k][1]; break; }
     }
-    if (!group) return;
+    // If MUF is so low even 160 m's FOT (1.8 MHz) isn't cleared, surface
+    // the direction on 160 m anyway: operators want to know where the
+    // band is open during heavily-absorbed conditions, exactly when the
+    // 160 m floor is most relevant. The prior code silently dropped
+    // these paths from every band's direction hint.
+    if (!group) group = "160";
     var name = (p.name || "").replace("QTH \u2192 ", "").split(" ")[0];
     if (name && buckets[group].indexOf(name) < 0) buckets[group].push(name);
   });
@@ -102,14 +114,19 @@ export function deriveConditions(ctx) {
   var donkiHss = ctx.donkiHss;      // DONKI HSS (co-rotating stream) catalog
   var showers  = ctx.showers;       // IMO meteor shower catalog
 
-  var nowDateForStorm = new Date();
+  // Single now-instant shared across the whole derivation. Previously
+  // we built `nowDateForStorm` here and `nowDate` again later in the
+  // function; they differed by microseconds in practice but a long
+  // microtask gap could cross a second boundary and put storm phase and
+  // cosZ on different "now"s.
+  var nowDate = new Date();
 
   // Storm-lag effective Kp: ionospheric F-region depression lags the Kp
   // kick by a couple hours and recovers over ~half a day (CME) to a full
   // day (HSS). UI text continues to show kpNow so the displayed number
   // matches SWPC.
-  var stormType = classifyStormType(donkiHss && donkiHss.items, dstNow, nowDateForStorm, solarWindNow, bzNow);
-  var kpLagged = stormLagEffectiveKp(kpHistory, nowDateForStorm, kpNow, stormType);
+  var stormType = classifyStormType(donkiHss && donkiHss.items, dstNow, nowDate, solarWindNow, bzNow);
+  var kpLagged = stormLagEffectiveKp(kpHistory, nowDate, kpNow, stormType);
 
   // Bz forward bump: real-time L1 Bz leads geomagnetic effect at Earth
   // by ~30-60 min, so the lagged kernel (which is decay-only) misses the
@@ -154,18 +171,23 @@ export function deriveConditions(ctx) {
   }
   function fmuf(n) {
     var r = hfByName[n]; if (!r) return null;
-    var v = parseFloat(cellText(r[4])); return isNaN(v) ? null : v;
+    // Normalize locale decimal commas to dots so European-locale renderers
+    // that emit "14,2 MHz" parse correctly. The previous parseFloat saw
+    // "14,2" and stopped at the comma, returning 14 silently.
+    var s = String(cellText(r[4]) || "").replace(",", ".");
+    var v = parseFloat(s); return isNaN(v) ? null : v;
   }
   function drapAbs(n) {
     var r = hfByName[n]; if (!r) return false;
-    return String(cellText(r[5]) || "").indexOf("\u2265") === 0;
+    // Match either the U+2265 "greater-than-or-equal" glyph or the
+    // ASCII ">=" so a future change in the upstream cell-text producer
+    // (or a different Unicode composition) doesn't silently disable
+    // the D-region absorption gate.
+    var s = String(cellText(r[5]) || "").trimStart();
+    return s.charCodeAt(0) === 0x2265 || s.indexOf(">=") === 0;
   }
 
   var pathDirs = pathDirections(paths);
-  function withDirs(group, base) {
-    var d = pathDirs[group];
-    return d && d.length ? base + t("; best to ") + d.join(", ") : base;
-  }
 
   // Closure context for verdict functions. Computed once; read by both
   // hfGroupVerdict (via the auroral & Es-screen terms) and vhfVerdict.
@@ -181,17 +203,28 @@ export function deriveConditions(ctx) {
   var qthCgmLatAbs = ll ? cgmLatAbs(ll[0], ll[1]) : null;
   var auroraHp = ovation ? (ll && ll[0] >= 0 ? ovation.north_hp_gw : ovation.south_hp_gw) : null;
   var haf = drap ? drap.qth_freq : null;
-  var nowDate = new Date();
+  // nowDate already constructed up-top; reusing it here so every
+  // subsequent solar / climatology / spot-baseline call references the
+  // same instant.
   var cosZNow = ll ? solarCosZenith(ll[0], ll[1], nowDate) : null;
 
   // Storm-phase classification from Dst trajectory + Kp.
   //   quiet     - Dst > -30 and Kp < 4
   //   initial   - Dst > 0 with elevated Kp (sudden compression, rare)
-  //   main      - Dst <= -50 and storm-lag kernel still loading
-  //   recovery  - Dst depressed but kpEffective > kpNow (tail settling)
+  //   main      - Dst <= -50 with the storm-lag kernel matured (i.e.
+  //               kpEffective has caught up to kpNow, so the F-region
+  //               response is at or past its peak depression)
+  //   active    - storm conditions present but not (yet) into main or
+  //               recovery: e.g. Dst between -30 and -50, or kp
+  //               elevated but Dst not yet bottomed out
+  //   recovery  - Dst depressed but kpEffective > kpNow + 0.5 (Kp has
+  //               dropped while the lagged F-region remains elevated;
+  //               TID tail)
   // Hoisted up here so bandOpts can pass it into the physics budget;
-  // physics.js applies +40% on lAuroralDb during main and +4 dB on
-  // sigma during recovery.
+  // physics.js applies +4 dB additive to lAuroralDb during main (was
+  // +40% multiplicative pre-2026-04 retune), +2 dB additive during the
+  // "active" pre-main window, and +4 dB sigma penalty during recovery
+  // plus +2 dB sigma penalty during active (lighter pre-main warning).
   var stormPhase = (function() {
     if (dstNow == null && kpNow == null) return null;
     if (dstNow != null && dstNow > 0 && kpNow != null && kpNow >= 5) return "initial";
@@ -203,6 +236,29 @@ export function deriveConditions(ctx) {
 
   // Build a per-band SNR opts bundle (carries diurnal noise + environmental
   // context shared by all margin computations on this tick).
+  // Live F2 peak height for the hop budget. Same sanity bounds as the
+  // NVIS gate above (giroHmF2 readings outside [100, 500] km are noise).
+  var hFLive = (giroHmF2 != null && isFinite(giroHmF2) && giroHmF2 > 100 && giroHmF2 < 500)
+                 ? giroHmF2 : null;
+
+  // fuse v1: build the global foF2 grid once per refresh from whatever
+  // observation sources ctx carries (GIRO digisondes today; GNSS TEC
+  // when the adapter lands; WSPR/RBN reverse-fit later). Per-midpoint
+  // lookups in tryMargin become grid.lookup(midLat, midLon) instead of
+  // interpolateFoF2FromStations + per-call climatology. Built
+  // unconditionally because the cost is small and harness diagnostics
+  // can compare lookups vs the legacy path even with FUSE_PRIMARY_FOF2
+  // off. The flag governs whether tryMargin actually CONSUMES the grid;
+  // off keeps the calibration baseline unchanged.
+  var fuseGrid = null;
+  var fuseEsGrid = null;
+  try {
+    fuseGrid   = computeFuseGrid(ctx,   { nowDate: nowDate });
+    fuseEsGrid = computeFuseEsGrid(ctx, { nowDate: nowDate });
+  } catch (e) {
+    fuseGrid = null;
+    fuseEsGrid = null;
+  }
   function bandOpts(extra) {
     var o = Object.assign({}, opts, {
       haf: haf, kp: kpEffective, hpGw: auroraHp,
@@ -222,6 +278,13 @@ export function deriveConditions(ctx) {
       // Storm phase: feeds the lAuroralDb amplification (main) and
       // recovery-tail TID sigma penalty in snrMarginHf.
       stormPhase: stormPhase,
+      // Live F2 peak height for hop-ceiling and takeoff-angle math.
+      // Used to be ignored by the budget (parameters on the loss
+      // functions existed but were never threaded through), so the
+      // ceiling stayed pinned at the 300 km default regardless of
+      // observation. Wires through bandOpts now so depressed/elevated
+      // hmF2 days actually change nHops and elevDeg.
+      hF: hFLive,
     });
     if (extra) Object.assign(o, extra);
     return o;
@@ -236,6 +299,10 @@ export function deriveConditions(ctx) {
     var spots = Math.max.apply(null, names.map(spotsInt).concat([0]));
     var absorbed = names.some(drapAbs);
     var pathList = (paths && paths.paths) || [];
+    // Shared spot-override ratio for both the main path (best-of-N
+    // physics) and the spot-only fallback. 1.3x baseline approximates
+    // "mean + 0.5 sigma" of typical spot-rate distributions.
+    var SPOT_OVERRIDE_RATIO = 1.3;
 
     var best = null;
     var openDirs = [];     // destinations where ANY band in the group is open
@@ -282,7 +349,11 @@ export function deriveConditions(ctx) {
       // at hmF2 = 340 km versus the 300 km default matters at the
       // upper edge of NVIS, where the band gate f <= MUF_NVIS(d) flips
       // around f_oF2.
-      var hFNvis = (giroHmF2 != null && isFinite(giroHmF2) && giroHmF2 > 100)
+      // Sanity-bound on digisonde hmF2: real readings sit roughly in
+      // [200, 450] km; values above ~500 km are typically noise spikes
+      // during disturbed hours and would inflate nvisSecantFactor enough
+      // to force-promote 30 m and 40 m to NVIS-eligible incorrectly.
+      var hFNvis = (giroHmF2 != null && isFinite(giroHmF2) && giroHmF2 > 100 && giroHmF2 < 500)
                      ? giroHmF2 : 300;
       var nvisMuf      = (giroFoF2 != null && dKm != null)
                           ? giroFoF2 * nvisSecantFactor(dKm, hFNvis) : null;
@@ -316,7 +387,13 @@ export function deriveConditions(ctx) {
       var climoMuf = null;
       if (pathCtx.midLat != null && pathCtx.midLon != null) {
         var foF2c = null;
-        if (FUSION_PRIMARY_MUF && giroStations.length > 0) {
+        // Priority: fuse grid (v1) > legacy R3 station fusion > pure
+        // climatology. fuse already incorporates climatology as its
+        // Bayesian prior, so a cell with no observation in range reads
+        // climatology equivalently to the third branch below.
+        if (FUSE_PRIMARY_FOF2 && fuseGrid) {
+          foF2c = fuseGrid.lookup(pathCtx.midLat, pathCtx.midLon);
+        } else if (FUSION_PRIMARY_MUF && giroStations.length > 0) {
           var blended = midpointFoF2WithFallback(
             giroStations, pathCtx.midLat, pathCtx.midLon,
             function (lat, lon) {
@@ -380,8 +457,10 @@ export function deriveConditions(ctx) {
       // taking max keeps the more informative estimate per cell.
 
       var glBonus = 0;
-      if (pathCtx.midLat != null) {
-        glBonus = grayLineBonusDb(pathCtx.midLat, pathCtx.midLon, f, nowDate);
+      if (pathCtx.destLat != null) {
+        glBonus = grayLineBonusPathDb(ll[0], ll[1],
+                                      pathCtx.destLat, pathCtx.destLon,
+                                      f, nowDate);
       }
 
       // F2-region scatter recovery on above-MUF paths. Per-hop foF2
@@ -401,6 +480,7 @@ export function deriveConditions(ctx) {
             } else {
               var frac = (2 * (k + 1) - 1) / (2 * nHops);
               var pt = gcPointAtFraction(ll[0], ll[1], pathCtx.destLat, pathCtx.destLon, frac);
+              if (pt == null) continue;
               var cz = solarCosZenith(pt[0], pt[1], nowDate);
               var v = foF2Climatology(f107A, cz, Math.abs(pt[0]), pt[0], pt[1], nowDate);
               if (v != null) fof2List.push(v);
@@ -457,18 +537,30 @@ export function deriveConditions(ctx) {
       // whichever mode gives the better margin. Captures summer-evening
       // 10 m / 12 m / 15 m Es openings the F2-only model calls closed.
       // (Es check below overrides mode when Es wins.)
-      if (foes != null && foes > 0) {
-        var mEs = snrMarginHfEs(f, foes, bandOpts({
-          midLat: pathCtx.midLat, midLon: pathCtx.midLon
+      // Prefer per-midpoint foEs from the fuse Es grid over the single
+      // QTH-station foes value. The grid covers the path's reflection
+      // point (where the Es layer actually intercepts the signal),
+      // which on long paths can be very different from the QTH foEs.
+      // Falls back to QTH foes when no grid observation is in range.
+      var foesPath = foes;
+      if (FUSE_PRIMARY_FOF2 && fuseEsGrid && pathCtx.midLat != null && pathCtx.midLon != null) {
+        var foesGrid = fuseEsGrid.lookup(pathCtx.midLat, pathCtx.midLon);
+        if (foesGrid != null && isFinite(foesGrid) && foesGrid > 0) foesPath = foesGrid;
+      }
+      if (foesPath != null && foesPath > 0) {
+        var mEs = snrMarginHfEs(f, foesPath, bandOpts({
+          midLat: pathCtx.midLat, midLon: pathCtx.midLon,
+          dKm:    pathCtx.dKm
         }));
         if (mEs != null && mEs.margin > m.margin) {
           // Copy the Es budget into m, preserving the shape expected by
-          // the rest of the pipeline (lAbsD / lPca / lFlare exist; lAur,
-          // lEs, lHop, lLow, lAbs absent from Es → zero-fill).
+          // the rest of the pipeline (lAbs / lAbsD / lPca / lAur exist
+          // in the Es budget now; lEs, lHop, lLow are Es-irrelevant so
+          // zero-fill).
           m = {
             margin: mEs.margin, sigma: mEs.sigma,
-            lFs: mEs.lFs, lAbs: 0, lAbsD: mEs.lAbsD,
-            lAur: 0, lMuf: mEs.lMuf,
+            lFs: mEs.lFs, lAbs: mEs.lAbs, lAbsD: mEs.lAbsD,
+            lAur: mEs.lAur, lMuf: mEs.lMuf,
             lLow: 0, lHop: 0, lEs: 0,
             lPca: mEs.lPca, lFlare: mEs.lFlare,
             n: mEs.n, dKm: mEs.dKm, nHops: 1,
@@ -490,7 +582,18 @@ export function deriveConditions(ctx) {
       // also clear +18 dB.
       var thisIsDx = isDxOpen(m.margin, pathCtx.dKm);
       var existing = bestPerBand[name];
-      if (existing == null || m.margin > existing.margin) {
+      // Tie-breaker: when margins agree to within 0.01 dB, prefer the
+      // shorter path (more reliable single-hop, less directional spread).
+      // The previous strict `>` left ties to whichever path happened to
+      // come first in basket-iteration order; that order is not stable
+      // across data refreshes, so the displayed `dest` flickered on
+      // low-margin bands where two paths tied.
+      var marginEps = 0.01;
+      var winsOnMargin = existing == null || m.margin > existing.margin + marginEps;
+      var tiedOnMargin = existing != null && Math.abs(m.margin - existing.margin) <= marginEps;
+      var winsOnDistance = tiedOnMargin && pathCtx.dKm != null && existing.dKm != null &&
+                           pathCtx.dKm < existing.dKm;
+      if (winsOnMargin || winsOnDistance) {
         bestPerBand[name] = {
           margin: m.margin,
           sigma:  m.sigma,
@@ -507,10 +610,9 @@ export function deriveConditions(ctx) {
         existing.dx = true;
       }
 
-      var esOpen = foes != null && foes * 5 >= f;
       var candidate = {
         name: name, freq: f, muf: effMuf, ratio: f / effMuf,
-        m: m, esOpen: esOpen, dest: pathCtx.destShort,
+        m: m, dest: pathCtx.destShort,
         dKm: pathCtx.dKm || null,
         glBonus: glBonus, tepBonus: tepBonus, scatterBonus: scatterBonus,
         mode: mode,
@@ -519,7 +621,7 @@ export function deriveConditions(ctx) {
       };
       // Keep the best for metadata (directional notes, Es flag, etc.)
       if (!best || m.margin > best.m.margin) best = candidate;
-      if (m.margin >= 6 && pathCtx.destShort && openDirs.indexOf(pathCtx.destShort) < 0) {
+      if (m.margin >= TIER_DB_GOOD && pathCtx.destShort && openDirs.indexOf(pathCtx.destShort) < 0) {
         openDirs.push(pathCtx.destShort);
       }
       return m;
@@ -537,17 +639,22 @@ export function deriveConditions(ctx) {
       names.forEach(function(n) { tryMargin(n, ctx); });
     });
 
-    // Local-MUF fallback when no kc2g paths. Midpoint = QTH, no destination
-    // geometry (single-point); pathMinMuf + grayLineBonusDb degrade
-    // gracefully.
-    if (!best) {
+    // Local-MUF fallback when no kc2g paths produced a candidate.
+    // No geometry available, so the path-midpoint is genuinely unknown;
+    // pass null for midLat/midLon so D-region absorption, foF2
+    // climatology, and gray-line bonus are NOT sampled at the QTH (the
+    // prior code substituted QTH coordinates, which over-credited
+    // gray-line-adjacent terms at local sunset because QTH sits at the
+    // terminator while any real midpoint would be past it).
+    // Null-guard ll defensively in case qthToLatLon ever returns null.
+    if (!best && ll != null) {
       names.forEach(function(n) {
         var f = BAND_FREQ_MHZ[n];
         var ratio = fmuf(n);
         if (f == null || ratio == null || ratio <= 0) return;
         tryMargin(n, {
           mufMHz: f / ratio, dKm: null,
-          midLat: ll[0], midLon: ll[1],
+          midLat: null, midLon: null,
           destLat: null, destLon: null,
           destShort: null
         });
@@ -581,7 +688,16 @@ export function deriveConditions(ctx) {
       // verdict here is band-agnostic, so we do not annotate DX at
       // this layer.  See tier.js for the tier/DX split rationale.
       var tier = tierFromMargin(best.m.margin);
-      if (absorbed && spots < 50) return ["closed", t("D-region absorption blocking signals"), bestPerBand];
+      // D-RAP absorption gate: if D-RAP flags this band as absorbed AND
+      // observed spot activity sits below half the band's 30-day
+      // baseline, close it out. Previously the threshold was a flat 50
+      // spots/h, which was below baseline on 10/12/15 m (over-opening
+      // false-positives) and above baseline on 160/80 m (over-closing
+      // false-negatives). Scaling by the per-band baseline makes the
+      // gate behave consistently across the spectrum.
+      var absorbedBaseline = spotBaselineMean(best.name, nowDate);
+      var absorbedThreshold = isFinite(absorbedBaseline) ? absorbedBaseline * 0.5 : 50;
+      if (absorbed && spots < absorbedThreshold) return ["closed", t("D-region absorption blocking signals"), bestPerBand];
 
       // WSPR activity override. One-way only: if observed spots exceed
       // the band's 30-day mean for this hour of the day, promote the
@@ -598,7 +714,6 @@ export function deriveConditions(ctx) {
       // before promoting -- approximately mean + 0.5 sigma assuming
       // typical spot-rate distributions.
       var avg = spotBaselineMean(best.name, nowDate);
-      var SPOT_OVERRIDE_RATIO = 1.3;
       // Two distinct activity signals from the same observation:
       //   spotOverride: promote tier up to good when activity beats
       //     baseline AND the prior tier was below good. Tier-changing.
@@ -612,9 +727,18 @@ export function deriveConditions(ctx) {
       //     plain "Excellent · margin 22 dB" line doesn't say so.
       var spotsExceedBaseline = spots > avg * SPOT_OVERRIDE_RATIO;
       var spotOverride = false;
-      if (spotsExceedBaseline && tierRank(tier) < tierRank("good")) {
+      // (tierRank ?? 0) so a hypothetical unknown tier label doesn't
+      // sneak through the override gate via null < 3 coercion.
+      if (spotsExceedBaseline && (tierRank(tier) ?? 0) < tierRank("good")) {
         tier = "good";
         spotOverride = true;
+        // Keep the per-band-best row in sync with the override-applied
+        // verdict; without this the group reads "good" while the HF
+        // table's bestPerBand row still shows the pre-override tier.
+        if (best && bestPerBand[best.name]) {
+          bestPerBand[best.name].tier = "good";
+          bestPerBand[best.name].spotOverride = true;
+        }
       }
       var exceptionalActivity = spotsExceedBaseline && !spotOverride;
 
@@ -629,9 +753,19 @@ export function deriveConditions(ctx) {
       // the dedicated HF Bands panel.
       var parts = [t("margin") + " " + Math.round(best.m.margin) + " dB"];
 
+      // Pre-compute confidence once for both override and non-override
+      // branches; bestPerBand[best.name].confidence already carries it
+      // but recomputing locally keeps this block independent of the
+      // per-band-best dict shape.
+      var stabilityPct = Math.round(tierStability(best.m.margin, best.m.sigma) * 100);
+
       if (spotOverride) {
         parts.push(t("unusually active: {n} spots/h vs avg {m}",
                       { n: spots, m: Math.round(avg) }));
+        // Confidence on override rows too: the model still knows how
+        // close margin sits to the original tier boundaries, and the
+        // operator deserves the same signal here as on physics rows.
+        parts.push(stabilityPct + "% " + t("confident"));
       } else {
         // Directional suffix: only for genuinely open bands. Showing
         // "best: Joburg" on a closed row implied "least-bad direction,"
@@ -640,8 +774,22 @@ export function deriveConditions(ctx) {
         if (tier === "good" || tier === "excellent") {
           var opens = openDirs.slice();
           if (opens.length === 0 && best.dest) opens = [best.dest];
-          if (opens.length >= 4)      parts.push(t("open worldwide"));
-          else if (opens.length > 0)  parts.push(opens.join(", "));
+          // "open worldwide" when most of the distinct destination
+          // labels are open. Count the basket's unique destShort labels
+          // rather than total path rows so the 75% threshold scales
+          // sanely across basket geometries. Previous code used a flat
+          // 4-of-5 threshold that could never fire on baskets with
+          // fewer than 5 distinct destinations.
+          var distinctDests = {};
+          (paths && paths.paths || []).forEach(function(p) {
+            if (p.destShort) distinctDests[p.destShort] = true;
+          });
+          var basketSize = Object.keys(distinctDests).length || opens.length;
+          if (basketSize > 0 && opens.length / basketSize >= 0.75) {
+            parts.push(t("open worldwide"));
+          } else if (opens.length > 0) {
+            parts.push(opens.join(", "));
+          }
         }
         // Exceptional-activity decoration: physics-Excellent bands that
         // are ALSO reading well above baseline. The override never
@@ -661,8 +809,7 @@ export function deriveConditions(ctx) {
         // and not the next tier over." Percent shown for non-closed
         // verdicts only.
         if (tier !== "closed") {
-          var pct = Math.round(tierStability(best.m.margin, best.m.sigma) * 100);
-          parts.push(pct + "% " + t("confident"));
+          parts.push(stabilityPct + "% " + t("confident"));
         }
       }
 
@@ -673,9 +820,15 @@ export function deriveConditions(ctx) {
     // here -- no physics ran, so the verdict comes purely from observed
     // activity vs the 30-day baseline.
     var avg2 = spotBaselineMean(names[0], nowDate);
-    if (absorbed && spots < 50) return ["closed", t("D-region absorption blocking signals"), bestPerBand];
-    if (spots === 0)            return ["closed", t("no recent activity"), bestPerBand];
-    if (spots > avg2)           return ["fair", t("active · {n} spots/h", { n: spots }), bestPerBand];
+    // Match the per-band threshold and ratio used by the main path
+    // above. The prior fallback used a flat 50-spots gate and bare
+    // `spots > avg2`, which over-closed low bands during DRAP and
+    // over-promoted to "fair" on any spot exceeding the baseline even
+    // by a single sample.
+    var fallbackThreshold = isFinite(avg2) ? avg2 * 0.5 : 50;
+    if (absorbed && spots < fallbackThreshold) return ["closed", t("D-region absorption blocking signals"), bestPerBand];
+    if (spots === 0)                          return ["closed", t("no recent activity"), bestPerBand];
+    if (spots > avg2 * SPOT_OVERRIDE_RATIO)   return ["fair", t("active · {n} spots/h", { n: spots }), bestPerBand];
     return ["poor", t("quiet · {n} spots/h", { n: spots }), bestPerBand];
   }
 
@@ -724,12 +877,23 @@ export function deriveConditions(ctx) {
     // VHF (Es / aurora-E / MS) is inherently regional; tier is
     // pure margin, and DX never applies here (no continent-crossing
     // single-hop VHF in our model).
+    // Defensive NaN guard: if antennaGainAtElevation or a sub-budget
+    // upstream produced NaN, margin is NaN here; without this guard the
+    // note text reads "margin NaN dB" because tierFromMargin's isNaN
+    // check returns null but tier coerces to closed and Math.round(NaN)
+    // still flows into the note construction.
+    if (!isFinite(margin)) { margin = null; }
     var tier = tierFromMargin(margin);
     if (tier == null) tier = "closed";
     // MS also rescues closed E/aurora verdicts with low margin.
     if ((tier === "closed" || tier === "poor") && ms.active) {
       return ["poor", t("meteor scatter · {name} shower active", { name: ms.name }),
               pack("poor", margin, "MS", ms.name, sigma)];
+    }
+    // Re-handle the NaN-coerced case so we never render "margin NaN dB".
+    if (margin == null) {
+      var fallbackBest = pack("closed", null, hint6vs2 === "6m" ? "MS only" : "EME only", null, null);
+      return ["closed", t("no propagation modeled"), fallbackBest];
     }
     var marginStr = t("margin") + " " + Math.round(margin) + " dB";
     var modeLabel = via === "Es" ? t("sporadic-E") : t("aurora-E");
@@ -789,6 +953,15 @@ export function deriveConditions(ctx) {
 
   return {
     bands: bands,
+    // The fused global foF2 grid this conditions tick was computed
+    // against. Consumers (the global heatmap, the path table's hover
+    // popovers) can call fuseGrid.lookup(lat, lon) to get a foF2 value
+    // at any point, with the WSPR / GIRO / TEC / COSMIC blend already
+    // applied. Null when the engine is in a degraded pre-bootstrap
+    // state (no F10.7 prior available); callers should fall back to
+    // their legacy data source in that case.
+    fuseGrid: fuseGrid,
+    fuseEsGrid: fuseEsGrid,
     concurrent: {
       kpNow: kpNow,
       apNow: apNow,

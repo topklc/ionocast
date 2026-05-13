@@ -55,7 +55,7 @@ import { runHarnessSuite }         from "./tests/harness.mjs";
 import { runCalibrationSuite }     from "./tests/calibration.mjs";
 import { runVoacapSuite }          from "./tests/voacap.mjs";
 import { runWsprSnrSuite }         from "./tests/wspr-snr.mjs";
-import { runRbnSuite }             from "./tests/rbn.mjs";
+import { runRbnSuite, runRbnFuseSuite } from "./tests/rbn.mjs";
 import { runRbnBeaconSuite }       from "./tests/rbn-beacon.mjs";
 import { runPskSuite }             from "./tests/psk.mjs";
 import { runScatterFusionSuite }   from "./tests/scatter-fusion.mjs";
@@ -100,6 +100,7 @@ const SUITES = {
   voacap:           runVoacapSuite,
   "wspr-snr":       runWsprSnrSuite,
   rbn:              runRbnSuite,
+  "rbn-fuse":       runRbnFuseSuite,
   "rbn-beacon":     runRbnBeaconSuite,
   psk:              runPskSuite,
   "scatter-fusion": runScatterFusionSuite,
@@ -116,7 +117,7 @@ const SUITES = {
   "voacap-fixtures": () => runVoacapFixtures(),
 };
 const UNIT_SUITES = new Set(["physics-unit", "harness-unit", "derive-unit", "i18n"]);
-const NETWORK_SUITES = new Set(["wspr-snr", "rbn", "rbn-beacon", "psk"]);
+const NETWORK_SUITES = new Set(["wspr-snr", "rbn", "rbn-fuse", "rbn-beacon", "psk"]);
 const HEAVY_SUITES = new Set(["tune-r7", "voacap-fixtures"]);
 const ALL_NAMES = Object.keys(SUITES);
 
@@ -130,6 +131,7 @@ const SUITE_DESCRIPTIONS = {
   voacap:            "Per-path REL deltas vs the 7-path VOACAP fixture map. Signed and absolute mean delta.",
   "wspr-snr":        "Per-spot SNR residual histogram against wspr.live raw spots. Per-band, per-distance breakdown.",
   rbn:               "Per-spot SNR residual on curated RBN skimmers (assumed 100 W TX).",
+  "rbn-fuse":        "Same as rbn, but per-spot midpoint foF2 is read from the fuse grid (GIRO + GNSS TEC) instead of pure climatology. Used for A/B against the rbn baseline to validate the FUSE_PRIMARY_FOF2 flip.",
   "rbn-beacon":      "Per-spot residual on amateur beacons (BEACON-mode, known TX power and grid). Cleanest SNR signal.",
   psk:               "PSKReporter FT8 reception reports vs predicted SNR.",
   "scatter-fusion":  "scatter-weight sweep (1.5/2/2.5/3) at cache-f107 and synthetic f107=70; fusion-radius experiment.",
@@ -289,6 +291,22 @@ if (EMIT_JSON) {
     if (r.skipped || r.error) fmtSect("rbn", [r.skipped || r.error]);
     else if (!r.overall) fmtSect("rbn", [`day=${r.day}  no spots resolved`]);
     else fmtSect("rbn", [`day=${r.day}  n=${r.n}  mean=${r.overall.mean.toFixed(2)} dB  std=${r.overall.std.toFixed(2)} dB`]);
+  }
+
+  if (results["rbn-fuse"]) {
+    const r = results["rbn-fuse"];
+    if (r.skipped || r.error) fmtSect("rbn-fuse", [r.skipped || r.error]);
+    else if (!r.overall) fmtSect("rbn-fuse", [`day=${r.day}  no spots resolved`]);
+    else {
+      const lines = [`day=${r.day}  n=${r.n}  mean=${r.overall.mean.toFixed(2)} dB  std=${r.overall.std.toFixed(2)} dB`];
+      if (r.assumptions && r.assumptions.fuse) lines.push("  " + r.assumptions.fuse);
+      if (results.rbn && results.rbn.overall) {
+        const dMean = r.overall.mean - results.rbn.overall.mean;
+        const dStd  = r.overall.std  - results.rbn.overall.std;
+        lines.push(`  vs rbn baseline:  ΔMean=${dMean >= 0 ? "+" : ""}${dMean.toFixed(2)} dB  ΔStd=${dStd >= 0 ? "+" : ""}${dStd.toFixed(2)} dB`);
+      }
+      fmtSect("rbn-fuse", lines);
+    }
   }
 
   if (results["rbn-beacon"]) {

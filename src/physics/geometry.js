@@ -44,29 +44,31 @@ export function hopsForDistance(dKm, hF) {
 //
 // Formula: cgm_lat = arcsin( sin(lat)·sin(pole_lat)
 //                           + cos(lat)·cos(pole_lat)·cos(lon - pole_lon) )
-export function cgmLatAbs(lat, lon) {
+//
+// Shared internal helper so cgmLatAbs and dipLatitude (which both use
+// the same tilted-dipole formula and differ only on signed-vs-absolute
+// result) cannot drift apart.
+var _DIP_POLE_LAT = 80.7;
+var _DIP_POLE_LON = -72.7;
+function _dipLatDeg(lat, lon) {
   if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return null;
-  var POLE_LAT = 80.7, POLE_LON = -72.7;
   var d2r = Math.PI / 180;
-  var s = Math.sin(lat * d2r) * Math.sin(POLE_LAT * d2r) +
-          Math.cos(lat * d2r) * Math.cos(POLE_LAT * d2r) *
-          Math.cos((lon - POLE_LON) * d2r);
+  var s = Math.sin(lat * d2r) * Math.sin(_DIP_POLE_LAT * d2r) +
+          Math.cos(lat * d2r) * Math.cos(_DIP_POLE_LAT * d2r) *
+          Math.cos((lon - _DIP_POLE_LON) * d2r);
   if (s > 1) s = 1; if (s < -1) s = -1;
-  return Math.abs(Math.asin(s) / d2r);
+  return Math.asin(s) / d2r;
+}
+export function cgmLatAbs(lat, lon) {
+  var v = _dipLatDeg(lat, lon);
+  return v == null ? null : Math.abs(v);
 }
 
 // Signed dipole-magnetic latitude. Same tilted-dipole approximation as
 // cgmLatAbs, but returns the sign so hemisphere can be distinguished.
 // Used by foF2Climatology to site the equatorial anomaly enhancement.
 export function dipLatitude(lat, lon) {
-  if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) return null;
-  var POLE_LAT = 80.7, POLE_LON = -72.7;
-  var d2r = Math.PI / 180;
-  var s = Math.sin(lat * d2r) * Math.sin(POLE_LAT * d2r) +
-          Math.cos(lat * d2r) * Math.cos(POLE_LAT * d2r) *
-          Math.cos((lon - POLE_LON) * d2r);
-  if (s > 1) s = 1; if (s < -1) s = -1;
-  return Math.asin(s) / d2r;
+  return _dipLatDeg(lat, lon);
 }
 
 // Required takeoff (elevation) angle for an F2-layer hop. Simplified
@@ -91,10 +93,13 @@ export function dipLatitude(lat, lon) {
 // ceiling angle (~8.5° at hF=300, dmax=4000). The legacy nHops
 // argument is preserved in the signature for backward-compat with
 // callers that still pass it but is no longer read.
-export function takeoffAngleDeg(dKm, _nHops) {
+export function takeoffAngleDeg(dKm, _nHops, hFOverride) {
   if (dKm == null || dKm <= 0) return 30;
-  var hF = 300;  // km, typical F2 peak
-  var dHop = Math.min(dKm, hopCeilingKm());
+  // Accept a live hF (typically giroHmF2) when supplied; default to
+  // 300 km for legacy callers. Previously hardcoded 300, ignoring the
+  // live observation the rest of the budget should be tracking.
+  var hF = (hFOverride != null && isFinite(hFOverride) && hFOverride > 100) ? hFOverride : 300;
+  var dHop = Math.min(dKm, hopCeilingKm(hF));
   // Flat-earth approximation, adequate for elevation > 5 deg.
   var rad = Math.atan(2 * hF / dHop);
   return rad * 180 / Math.PI;
@@ -113,6 +118,12 @@ export function solarCosZenith(lat, lon, date) {
   var lst  = (gmst * 15 + lon) * Math.PI / 180;
   var ha   = lst - ra;
   var latR = lat * Math.PI / 180;
-  return Math.sin(latR) * Math.sin(dec) +
-         Math.cos(latR) * Math.cos(dec) * Math.cos(ha);
+  var cosZ = Math.sin(latR) * Math.sin(dec) +
+             Math.cos(latR) * Math.cos(dec) * Math.cos(ha);
+  // Clamp to [-1, 1] so floating-point overshoot at the subsolar point
+  // or antipode does not propagate NaN through downstream Math.acos
+  // callers or the rising/falling detector at the terminator.
+  if (cosZ > 1) return 1;
+  if (cosZ < -1) return -1;
+  return cosZ;
 }

@@ -105,7 +105,7 @@ export function lAbsDb(fMHz, haf) {
 // Replaces stepped if/else cutoffs with continuous frequency dependence;
 // values at anchor frequencies are unchanged from the prior table.
 // 2026-04-30 refactor.
-var _LLOW_ANCHORS = [
+const _LLOW_ANCHORS = [
   [1.838, 8],   // 160 m
   [3.570, 5],   // 80 m
   [5.366, 3],   // 60 m
@@ -158,12 +158,15 @@ export function lLowBandExtraDb(fMHz) {
 // and closes the ~1-3 dB residual on multi-hop midday DX paths the prior
 // form under-predicted on. cosZ < 0.05 still returns 0 (night).
 //
-// Pairs with grayLineBonusDb: at the terminator the grayline bonus
-// refunds dayLoss * (1 - cos^0.7), so the budget gives a net D-region
-// credit equal to dayLoss * (1 - cos^0.7) at near-terminator hops on
-// top of zero charge from this term — operationally consistent with
-// the empirically-strong gray-line propagation operators report
-// (capped at 25 dB in modes.js).
+// Pairs with grayLineBonusDb: the bonus is a Gaussian peak-at-
+// terminator credit (peak = min(15, dayLoss), sigma 0.25 in cosZ) that
+// fires near cosZ = 0 and decays into both deep day and deep night.
+// The bonus and this absorption term are NOT algebraic complements
+// (the old (1 - cos^0.7) shape was, but it paid full credit deep into
+// the night side and was retired in favour of the Gaussian peak).
+// Operationally: near the terminator the bonus partially offsets the
+// daytime charge; deep day, only this absorption fires; deep night,
+// neither fires.
 export function lAbsDiurnalDb(fMHz, cosZ) {
   if (cosZ == null || isNaN(cosZ) || cosZ < 0.05) return 0;
   if (fMHz == null || !isFinite(fMHz) || fMHz <= 0) return 0;
@@ -270,6 +273,10 @@ export function lEsScreenDb(fMHz, foEs) {
 // SWPC-style auroral absorption. Active when CGM latitude is in the
 // auroral zone (|cgmLat| ≥ 60). f^-1 frequency dependence; capped 30 dB.
 export function lAuroralDb(fMHz, kp, hpGw, cgmLatAbsValue) {
+  // Match the validity-guard pattern used by the other Lxx helpers in
+  // this file; without this, fMHz=NaN propagates NaN through the path
+  // sum and into the verdict, and fMHz=0 returns the cap silently.
+  if (!isFinite(fMHz) || fMHz <= 0) return 0;
   // Auroral oval expands equatorward during storms. The nominal CGM
   // threshold of 60 deg ramps linearly to 50 deg as Kp climbs from 5
   // to 7, then holds at 50 deg above Kp 7. Earlier code stepped
@@ -312,18 +319,30 @@ export function lAuroralDb(fMHz, kp, hpGw, cgmLatAbsValue) {
 // and ionize the D-region, producing severe HF absorption on polar paths
 // for hours to days. Gate: GOES >=10 MeV integral proton flux > NOAA S1
 // (10 pfu) AND path traverses the polar cap (|CGM| > 60°). Magnitude
-// scales with log10(flux / threshold) and f^-1.5 (same frequency
-// dependence as ordinary D-region). This is a per-hop contribution;
-// pathIonoLosses sums it across reflection points.
+// scales with log10(flux / threshold) and f^-1.0 (PCA's empirical
+// frequency dependence per NOAA D-RAP and Sauer & Wilkinson 2008; the
+// classical Castelli & Aarons f^-1.5 fits chromospheric flare D-region
+// absorption better and over-attenuates PCA at HF). Per-hop;
+// pathIonoLosses sums across reflection points.
+//
+// 2026-05-13 retune: prior form (driver = 5, f^-1.5) predicted 1.77 dB
+// at S1 / 14 MHz vs the 10-20 dB NOAA D-RAP / ITU-R reports for the
+// same conditions. New form (driver = 9, f^-1.0) yields:
+//   S1 (10 pfu × 10 = 100): 9 × 1 × (7/14)   = 4.5 dB at 14 MHz
+//                                              9 dB at  7 MHz
+//   S2 (~1000 pfu):          9 × 2 × (7/14)  = 9 dB at 14 MHz
+//                                              18 dB at  7 MHz
+//   S3 (~10000 pfu):         9 × 3 × (7/14)  = 13.5 dB at 14 MHz
+//                                              27 dB at  7 MHz (cap @ 30)
+// Within NOAA's published S1-S3 expected-absorption ranges across the
+// HF spectrum on polar paths.
 export function lPcaDb(fMHz, protonFluxP10, cgmLatAbsValue) {
   if (protonFluxP10 == null || protonFluxP10 < PCA_FLUX_THRESHOLD_PFU) return 0;
   if (cgmLatAbsValue == null || cgmLatAbsValue < PCA_CGM_THRESHOLD) return 0;
   if (!isFinite(fMHz) || fMHz <= 0) return 0;
-  // 5 dB driver per decade of flux above threshold; sqrt-ish in practice
-  // because the ionization-recombination balance saturates at high flux.
-  var driver = 5 * Math.log10(protonFluxP10 / PCA_FLUX_THRESHOLD_PFU);
+  var driver = 9 * Math.log10(protonFluxP10 / PCA_FLUX_THRESHOLD_PFU);
   if (driver <= 0) return 0;
-  var L = driver * Math.pow(7 / fMHz, 1.5);
+  var L = driver * (7 / fMHz);
   return Math.min(PCA_PER_HOP_CAP_DB, L);
 }
 
@@ -331,8 +350,8 @@ export function lPcaDb(fMHz, protonFluxP10, cgmLatAbsValue) {
 //, separate from the >=10 MeV main term's 5 dB/decade, because p1
 // senses arrival of the SEP front while p10 senses the absorbing
 // population. Conservative early-warning value.
-var PCA_ONSET_DB_PER_DECADE = 1;
-var PCA_ONSET_CAP_DB = 5;
+const PCA_ONSET_DB_PER_DECADE = 1;
+const PCA_ONSET_CAP_DB = 5;
 
 // SEP onset early-warning: GOES >=1 MeV protons rise ~1 h before the
 // >=10 MeV channel during a hard SEP event. When p1 has climbed well
@@ -371,7 +390,7 @@ export function lPcaOnsetDb(fMHz, protonFluxP1, protonFluxP10, cgmLatAbsValue) {
 // well under the model's 10 min refresh cycle.
 //
 // Class to driver at 7 MHz (dB):
-//   C3   -> ~2      (below: returns 0)
+//   C5   -> ~1.6    (onset; below this the driverAt7 <= 0 gate returns 0)
 //   M1   -> FLARE_DB_AT_M1_AT_7MHZ (default 4)
 //   M5   -> ~10
 //   X1   -> 12
@@ -439,7 +458,7 @@ export function lFlareDb(fMHz, xrayClass, cosZ) {
 //     blended by alpha when nC is non-integer.
 export function pathIonoLosses(fMHz, kp, hpGw, protonFluxP10, xrayClass,
                                midLat, midLon, srcLat, srcLon, dstLat, dstLon,
-                               dKm, date, protonFluxP1) {
+                               dKm, date, protonFluxP1, hF) {
   var empty = { lAbsD: 0, lPca: 0, lFlare: 0, lAur: 0, anySunlit: false };
   if (!date || midLat == null) return empty;
 
@@ -476,16 +495,19 @@ export function pathIonoLosses(fMHz, kp, hpGw, protonFluxP10, xrayClass,
     var arr = [];
     for (var k = 1; k <= n; k++) {
       var frac = (2 * k - 1) / (2 * n);
-      arr.push(gcPointAtFraction(srcLat, srcLon, dstLat, dstLon, frac));
+      var pt = gcPointAtFraction(srcLat, srcLon, dstLat, dstLon, frac);
+      if (pt != null) arr.push(pt);
     }
     return arr;
   }
 
-  // Continuous hop count nC = dKm / hopCeilingKm (~ 4000 km at hF=300).
+  // Continuous hop count nC = dKm / hopCeilingKm.
   // Blend losses for the two integer N's bracketing nC, weighted by the
   // fractional part alpha. When nC is exactly integer (alpha = 0), the
   // ceil branch is identical to the floor branch and no blend happens.
-  var ceiling = hopCeilingKm();
+  // Live hF (typically giroHmF2) shifts the ceiling: depressed hmF2
+  // produces more hops, elevated hmF2 fewer.
+  var ceiling = hopCeilingKm(hF);
   var nC = (dKm != null && isFinite(dKm) && dKm > 0) ? dKm / ceiling : 1;
   var nFloor = Math.max(1, Math.floor(nC));
   var nCeil  = Math.max(1, Math.ceil(nC));
@@ -521,7 +543,7 @@ function _baseNoiseDbm(fMHz) {
     var d = Math.abs(fMHz - keys[i]);
     if (d < bestD) { best = keys[i]; bestD = d; }
   }
-  return NOISE_FLOOR_DBM[best] != null ? NOISE_FLOOR_DBM[best] : NOISE_FLOOR_DBM[best.toFixed(3)];
+  return NOISE_FLOOR_DBM[best];
 }
 
 // Diurnal atmospheric noise variation per ITU-R P.372 Fig 15 (atmospheric

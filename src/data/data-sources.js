@@ -7,7 +7,7 @@ import { jget } from "./net.js";
 import { currentQth } from "../physics/qth.js";
 import {
   fetchSwpc3day, fetchSwpcRegions, fetch27day, fetchDrap, fetchOvationHp,
-  fetchDonkiCme, fetchDonkiHss, fetchWsprAgg, fetchKc2gStations,
+  fetchDonkiCme, fetchDonkiHss, fetchWsprAgg, fetchWsprSpots, fetchKc2gStations,
   fetchKpApNow, fetchKpHistory, fetchF107Now, fetchXrayClass, fetchBzNow,
   fetchSolarWindPlasma, fetchProtonFlux
 } from "./fetchers.js";
@@ -33,6 +33,9 @@ function _fetchData(name) {
     case "tropo":         return jget("/api/tropo?qth=" + encodeURIComponent(currentQth()) + "&v=3")
                                   .then(function(d) { return cacheSet(name, d); });
     case "tec":           return fetchData("kc2g").then(function(k) { return cacheSet(name, deriveTec(k.stations, currentQth())); });
+    case "gim":           return jget("/api/gim").then(function(d) { return cacheSet(name, d); });
+    case "cosmic-ro":     return jget("/api/cosmic-ro").then(function(d) { return cacheSet(name, d); });
+    case "wspr-spots":    return fetchWsprSpots().then(function(d) { return cacheSet(name, { spots: d }); });
     case "kc2g":          return fetchKc2gStations().then(function(s) { return cacheSet(name, { stations: s }); });
     case "paths":         return fetchData("kc2g").then(function(k) {
                                   var p = computePaths(k.stations, currentQth());
@@ -97,6 +100,9 @@ function _fetchData(name) {
         fetchData("imo-showers").catch(function(){return null;}),
         fetchSolarWindPlasma().catch(function(){return null;}),
         fetchData("swpc-kp-forecast").catch(function(){return null;}),
+        fetchData("gim").catch(function(){return null;}),
+        fetchData("cosmic-ro").catch(function(){return null;}),
+        fetchData("wspr-spots").catch(function(){return null;}),
       ]).then(function(a) {
         return cacheSet(name, deriveConditions({
           bandsHf:   a[0], bandsVhf: a[1], ovation: a[2], drap: a[3], paths: a[4],
@@ -120,6 +126,22 @@ function _fetchData(name) {
           solarWindNow:     a[15] ? a[15].now : null,
           solarWindHistory: a[15] ? a[15].history : null,
           kpForecast:       a[16] ? a[16].forecast : null,
+          // GNSS-derived global TEC grid (GFZ rapid GIM) for fuse.
+          // Shape: { epoch, hgtKm, bbox, cells: [{lat, lon, tec}, ...] }
+          // or null on upstream failure / parse failure.
+          tecGrid:          a[17] || null,
+          // COSMIC-2 radio-occultation foF2/hmF2 peak profiles for fuse.
+          // Shape: { profiles: [{lat, lon, foF2, hmF2, timeUtc}, ...] }
+          // or null on upstream failure. Empty profiles[] is OK and
+          // means no RO data is available for the current window.
+          cosmicRo:         a[18] || null,
+          // WSPR spot-level rows for the fuse-inversion path. Shape:
+          //   { spots: [{ txlat, txlon, rxlat, rxlon, band, snr, pwr,
+          //               freq, n }, ...] }
+          // Each row is a 1° tx-bin × 1° rx-bin × band aggregate over
+          // the last 30 min. Fed into computeFuseGrid via the
+          // wsprSpotsToObservations bridge.
+          wsprSpots:        a[19] && Array.isArray(a[19].spots) ? a[19].spots : [],
         }));
       });
     default:

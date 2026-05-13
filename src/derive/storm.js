@@ -3,7 +3,9 @@
 // functions of arrays + scalars; no DOM, no upstream calls.
 
 import {
-  STORM_LAG_PEAK_H, STORM_LAG_DECAY_H, STORM_LAG_DECAY_HSS_H
+  STORM_LAG_PEAK_H, STORM_LAG_DECAY_H, STORM_LAG_DECAY_HSS_H,
+  STORM_DST_CME_THRESHOLD, STORM_BZ_CME_THRESHOLD, STORM_BZ_HSS_THRESHOLD,
+  STORM_SW_SPEED_THRESHOLD, STORM_HSS_WINDOW_PAST_H, STORM_HSS_WINDOW_FUTURE_H
 } from "../constants.js";
 
 // Heuristic storm-type classifier from DONKI HSS events + Dst, with
@@ -19,9 +21,9 @@ export function classifyStormType(hssItems, dst, nowDate, swNow, bzNow) {
   // sharply negative Bz right now is a CME shock arriving regardless of
   // what the catalog says, and a fast wind with mild Bz is HSS regardless
   // of how long ago the last DONKI HSS event was logged.
-  if (swNow && swNow.speedKmS != null && swNow.speedKmS >= 500) {
-    if (bzNow != null && bzNow <= -8) return "cme";
-    if (bzNow == null || bzNow > -5)  return "hss";
+  if (swNow && swNow.speedKmS != null && swNow.speedKmS >= STORM_SW_SPEED_THRESHOLD) {
+    if (bzNow != null && bzNow <= STORM_BZ_CME_THRESHOLD) return "cme";
+    if (bzNow == null || bzNow > STORM_BZ_HSS_THRESHOLD)  return "hss";
   }
   // Any DONKI HSS event within the last 2 days or next 1 day counts as
   // an active HSS window.
@@ -31,15 +33,24 @@ export function classifyStormType(hssItems, dst, nowDate, swNow, bzNow) {
     for (var i = 0; i < hssItems.length; i++) {
       var it = hssItems[i] || {};
       var when = it.time || "";      // "YYYY-MM-DD HH:MMZ" or similar
-      var t = Date.parse(when.replace(" ", "T"));
+      // Normalise to ISO 8601 with explicit Z so Date.parse interprets
+      // the timestamp as UTC. Without the Z, Date.parse treats
+      // ISO-without-tz as local time, which silently introduced a
+      // UTC-offset-sized bias in the HSS-active window for users far
+      // from UTC.
+      var iso = when.replace(" ", "T");
+      if (!/[Zz]$|[+-]\d\d:?\d\d$/.test(iso)) iso += "Z";
+      var t = Date.parse(iso);
       if (!isFinite(t)) continue;
       var dtH = (nowMs - t) / 3600000;
-      if (dtH > -24 && dtH < 48) { hssActive = true; break; }
+      if (dtH > -STORM_HSS_WINDOW_FUTURE_H && dtH < STORM_HSS_WINDOW_PAST_H) {
+        hssActive = true; break;
+      }
     }
   }
   // Deep Dst (ring current clearly enhanced) rules out HSS signature
   // regardless of catalog timing: CME shock dominates.
-  if (dst != null && dst < -80) return "cme";
+  if (dst != null && dst < STORM_DST_CME_THRESHOLD) return "cme";
   return hssActive ? "hss" : "cme";
 }
 
@@ -69,7 +80,12 @@ export function bzForwardKpBump(bzHistory, nowDate) {
     if (ageMin < 0 || ageMin > 20) continue;
     samples.push(r.bz);
   }
-  if (samples.length < 10) return 0;   // need ~10 min of 1-min samples
+  // Need at least a handful of samples for the median to be meaningful.
+  // Was 10 (assumed 1-min cadence), which silently rejected 5-min
+  // cadence data during instrument-glitch recovery. 3 samples in a
+  // 20-min window covers cadences down to ~6 min while still requiring
+  // sustained negative Bz rather than a single dip.
+  if (samples.length < 3) return 0;
   samples.sort(function(a, b) { return a - b; });
   // Proper median: average the two middle values for even-length arrays.
   var n = samples.length;
@@ -100,7 +116,11 @@ export function forecastKpPenaltyDb(kpForecast, nowDate, currentKp) {
   for (var i = 0; i < kpForecast.length; i++) {
     var r = kpForecast[i];
     if (!r || !isFinite(r.kp)) continue;
-    var m = String(r.utc || "").match(/^([A-Z][a-z]{2})(\d{1,2})\/(\d{2})-(\d{2})$/);
+    // Slot format: "Mmm DD/HH-HH" (e.g. "Apr18/03-06"). Allow 1-2 digit
+    // hours and an optional trailing " UTC" so a format drift upstream
+    // doesn't silently reject every row.
+    var m = String(r.utc || "").trim()
+              .match(/^([A-Z][a-z]{2})(\d{1,2})\/(\d{1,2})-(\d{1,2})(?:\s*UTC)?$/);
     if (!m) continue;
     var mo = months[m[1]];
     if (mo == null) continue;
@@ -145,7 +165,12 @@ export function stormLagEffectiveKp(history, nowDate, kpNow, stormType) {
   for (var i = 0; i < history.length; i++) {
     var r = history[i];
     if (!r) continue;
-    var iso = typeof r.time === "string" && /Z$|[+-]\d\d:?\d\d$/.test(r.time) ? r.time : r.time + "Z";
+    // Skip rows with missing time outright; previously they fell through
+    // to `undefined + "Z"` -> "undefinedZ", a string Date.parse rejected
+    // (returning NaN), so the row was discarded silently. Same end
+    // result, but explicit makes the intent visible.
+    if (typeof r.time !== "string" || !r.time) continue;
+    var iso = /Z$|[+-]\d\d:?\d\d$/.test(r.time) ? r.time : r.time + "Z";
     var t = Date.parse(iso);
     if (!isFinite(t)) continue;
     var dtH = (nowMs - t) / 3600000;           // positive = past, negative = future forecast

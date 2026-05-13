@@ -583,6 +583,21 @@ export function fetchWsprAgg() {
   return jproxy("/api/wspr").catch(function() { return { data: [] }; });
 }
 
+// Spot-level WSPR pull for the fuse inversion pipeline. Returns an
+// array of path-row objects, each already aggregated by the upstream
+// query to a 1° tx-bin × 1° rx-bin × band cell over the last 30 min:
+//   { txlat, txlon, rxlat, rxlon, band, snr, pwr, freq, n }
+// Coordinates are in degrees, snr in dB, pwr in dBm, freq in Hz, n
+// is the spot count that fell in the cell.
+export function fetchWsprSpots() {
+  return jproxy("/api/wspr-spots")
+    .then(function (r) {
+      var rows = (r && r.data && r.data.data) || [];
+      return Array.isArray(rows) ? rows : [];
+    })
+    .catch(function () { return []; });
+}
+
 // ---- kc2g ----
 
 export function fetchKc2gStations() {

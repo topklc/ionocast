@@ -14,7 +14,20 @@ import SPOT_BASELINES from "../data/spot-baselines.mjs";
 export function spotBaselineMean(bandName, nowDate) {
   var band = SPOT_BASELINES && SPOT_BASELINES.bands && SPOT_BASELINES.bands[bandName];
   if (!band || !band.length) return Infinity;
-  var hour = nowDate ? nowDate.getUTCHours() : new Date().getUTCHours();
-  var v = band[hour];
-  return (typeof v === "number" && v > 0) ? v : Infinity;
+  // Linear interpolation between adjacent hour buckets so a spot at
+  // 13:59 UTC doesn't read a different baseline from one at 14:01 just
+  // because the integer hour changed. Without this the override flips
+  // discretely at every UTC hour boundary even though activity is
+  // continuous.
+  var d    = nowDate || new Date();
+  var hour = d.getUTCHours();
+  var frac = (d.getUTCMinutes() * 60 + d.getUTCSeconds()) / 3600;
+  var lo = band[hour];
+  var hi = band[(hour + 1) % band.length];
+  var loOK = typeof lo === "number" && lo > 0;
+  var hiOK = typeof hi === "number" && hi > 0;
+  if (loOK && hiOK)  return lo + (hi - lo) * frac;
+  if (loOK)          return lo;
+  if (hiOK)          return hi;
+  return Infinity;
 }

@@ -3,7 +3,7 @@
 // it sums every loss term, applies condition-dependent sigma penalties, and
 // returns a {margin, sigma, ...breakdown} object.
 
-import { bandSigmaDb, AUR_PER_HOP_CAP_DB } from "../constants.js";
+import { bandSigmaDb, AUR_PER_HOP_CAP_DB, ES_M_FACTOR } from "../constants.js";
 export { bandSigmaDb };
 import {
   refDistanceHfKm, hopsForDistance, takeoffAngleDeg,
@@ -194,8 +194,14 @@ function _conditionalSigmaDb(fMHz, muf, opts, cosZpath) {
       sigSq += mufPenalty * mufPenalty;
     }
   }
-  if (opts.kp != null && opts.kp >= 5) {
-    var stormPenalty = 3 + 0.75 * (opts.kp - 5);
+  if (opts.kp != null && opts.kp >= 4) {
+    // Smooth ramp from 0 at Kp=4 to +3 at Kp=5, then +0.75 dB per Kp
+    // step beyond. Was a hard step at Kp=5 (0 -> +3 dB sigma at the
+    // boundary). Adjacent auroral loss term has a smooth Kp 4 to 5
+    // ramp already, the sigma stepping was inconsistent with it.
+    var stormPenalty = opts.kp < 5
+      ? 3 * (opts.kp - 4)
+      : 3 + 0.75 * (opts.kp - 5);
     sigSq += stormPenalty * stormPenalty;
   }
   if (opts.forecastSigmaDb != null && opts.forecastSigmaDb > 0) {
@@ -206,11 +212,26 @@ function _conditionalSigmaDb(fMHz, muf, opts, cosZpath) {
     if (aCos <= 0.15)      sigSq += 9;
     else if (aCos < 0.20)  sigSq += 9 * (0.20 - aCos) / 0.05;
   }
-  if (cosZpath != null && cosZpath < 0 && fMHz <= 16) {
-    sigSq += 9;
+  // Night-time low/mid-HF: ramp +3 dB sigma over a 1 dB band around the
+  // 16 MHz cutoff so 17 m (18.1) and 20 m (14.1) don't sit on opposite
+  // sides of a hard step. The cutoff was previously a literal 16 with
+  // no rampe, producing a sharp discontinuity at the band boundary.
+  var LOW_HF_CUTOFF = 16;
+  var LOW_HF_RAMP_HALF = 1;  // half-width of the ramp in MHz
+  if (cosZpath != null && cosZpath < 0 && fMHz <= LOW_HF_CUTOFF + LOW_HF_RAMP_HALF) {
+    var lowFreqWeight = fMHz <= LOW_HF_CUTOFF - LOW_HF_RAMP_HALF
+      ? 1
+      : (LOW_HF_CUTOFF + LOW_HF_RAMP_HALF - fMHz) / (2 * LOW_HF_RAMP_HALF);
+    sigSq += 9 * lowFreqWeight * lowFreqWeight;
   }
   if (opts.stormPhase === "recovery") {
     sigSq += 16;
+  } else if (opts.stormPhase === "active") {
+    // Pre-main warning: ionosphere is unsettled but not yet at peak
+    // depression. Lighter sigma penalty than recovery's TID tail. Was
+    // previously a no-op in the verdict pipeline despite being a real
+    // phase the derive layer could classify.
+    sigSq += 4;
   }
   if (opts.esModeActive) {
     sigSq += 4;
@@ -268,7 +289,8 @@ export function snrMarginHf(fMHz, muf, opts) {
   opts = opts || {};
 
   var dKm    = opts.dKm != null ? opts.dKm : refDistanceHfKm(fMHz);
-  var nHops  = hopsForDistance(dKm);
+  var hFLive = opts.hF != null && isFinite(opts.hF) ? opts.hF : null;
+  var nHops  = hopsForDistance(dKm, hFLive);
   var pTx    = opts.pTxDbm        != null ? opts.pTxDbm        : REF_POWER_DBM;
   var peakGain = opts.antGainDbi  != null ? opts.antGainDbi    : 0;
   var snrReq = opts.snrRequiredDb != null ? opts.snrRequiredDb : SNR_REQUIRED_DB;
@@ -276,7 +298,7 @@ export function snrMarginHf(fMHz, muf, opts) {
   // Elevation-dependent antenna gain: compute the required takeoff
   // angle from hop geometry, then look up the effective gain for
   // this (type, height, band, elevation) combination.
-  var elevDeg = takeoffAngleDeg(dKm, nHops);
+  var elevDeg = takeoffAngleDeg(dKm, nHops, hFLive);
   var gAnt    = antennaGainAtElevation(
     opts.antType, peakGain, elevDeg, fMHz, opts.antHeightM
   );
@@ -293,22 +315,35 @@ export function snrMarginHf(fMHz, muf, opts) {
   // (which needs lat for CGM).
   var cosZpath = opts.cosZenithPath != null ? opts.cosZenithPath : opts.cosZenithNow;
   var lAbsD, lPca, lFlare, lAur;
+  // Bundle declared at function scope so the all-dark suppression guard
+  // below at line ~340 can reference it without relying on var-hoisting
+  // out of an if-block. Stays null in the legacy fallback branch.
+  var bundle = null;
   if (opts.midLat != null && opts.date) {
-    var bundle = pathIonoLosses(
+    bundle = pathIonoLosses(
       fMHz, opts.kp, opts.hpGw, opts.protonFluxP10, opts.xrayClass,
       opts.midLat, opts.midLon,
       opts.srcLat, opts.srcLon, opts.dstLat, opts.dstLon,
-      dKm, opts.date, opts.protonFluxP1
+      dKm, opts.date, opts.protonFluxP1, hFLive
     );
     lAbsD  = bundle.lAbsD;
     lPca   = bundle.lPca;
     lFlare = bundle.lFlare;
     lAur   = bundle.lAur;
   } else {
-    lAbsD  = lAbsDiurnalDb(fMHz, cosZpath);
+    // Legacy single-point fallback. The bundle branch above returns
+    // path-summed values (lAbsDiurnalDb / lAuroralDb accumulated over
+    // every reflection point). Here we have only one geographic sample,
+    // so multiply by nHops to keep the cardinality consistent with the
+    // bundle branch; otherwise the downstream margin equation
+    // (subtracting lAur, lAbsD) silently under-applies absorption by a
+    // factor of nHops on multi-hop paths that lacked full geometry, and
+    // the +4 dB main-phase amplification below operates on values an
+    // order of magnitude apart across the two branches.
+    lAbsD  = nHops * lAbsDiurnalDb(fMHz, cosZpath);
     lPca   = 0;
     lFlare = 0;
-    lAur   = lAuroralDb(fMHz, opts.kp, opts.hpGw, opts.cgmLatAbsValue);
+    lAur   = nHops * lAuroralDb(fMHz, opts.kp, opts.hpGw, opts.cgmLatAbsValue);
   }
   // D-RAP HAF and the per-hop lFlare bundle are both flare-driven D-region
   // absorption (D-RAP HAF is computed by SWPC from the same GOES X-ray
@@ -339,7 +374,7 @@ export function snrMarginHf(fMHz, muf, opts) {
   var lLow   = lLowBandExtraDb(fMHz);
   // Pass dKm so lMultiHopDb computes the smooth (extra-hop * perHop)
   // form rather than the cliff-at-4000km integer (nHops - 1) form.
-  var lHop   = lMultiHopDb(dKm, fMHz, elevDeg);
+  var lHop   = lMultiHopDb(dKm, fMHz, elevDeg, hFLive);
   var lEs    = lEsScreenDb(fMHz, opts.foEs);
   var n      = noiseDbm(fMHz, opts);
   // Storm-phase amplification of auroral loss. During the main phase of
@@ -350,13 +385,17 @@ export function snrMarginHf(fMHz, muf, opts) {
   // multiplier with an additive `lAur + 4` because 1.4x of a 25 dB
   // base term gives +10 dB extra, well past the 3-6 dB range ITU-R
   // P.533 and operator experience attribute to main-phase polar
-  // amplification. Additive +4 dB is the midpoint of the cited range
-  // and binds against the per-hop cap (AUR_PER_HOP_CAP_DB = 30) the
-  // same way the multiplier did. Recovery and quiet phases keep the
-  // steady-state value; initial phase is rare and short (sudden
-  // compression), held at steady-state too.
+  // amplification. Additive +4 dB is the midpoint of the cited range.
+  // The path-sum is bounded by PATH_AUR_CAP_DB inside pathIonoLosses;
+  // do not re-cap at the per-hop ceiling here (that previously inverted
+  // the sign of the amplification on heavily-auroral multi-hop paths
+  // where the path-sum exceeded 30 dB before the +4 bump).
   if (opts.stormPhase === "main" && lAur > 0) {
-    lAur = Math.min(AUR_PER_HOP_CAP_DB, lAur + 4);
+    lAur = lAur + 4;
+  } else if (opts.stormPhase === "active" && lAur > 0) {
+    // Active is the pre-main window where the oval is expanding but
+    // hasn't fully matured; +2 dB is half of main's amplification.
+    lAur = lAur + 2;
   }
 
   // Global absorption-sum saturation. The four ionospheric absorption
@@ -396,7 +435,11 @@ export function snrMarginHf(fMHz, muf, opts) {
     sigma: sigma,
     lFs: lFs, lAbs: lAbs, lAbsD: lAbsD, lAur: lAur, lMuf: lMuf,
     lLow: lLow, lHop: lHop, lEs: lEs, lIono: lIono,
-    lPca: lPca, lFlare: lFlare,
+    lPca: lPca,
+    // lFlare has already been folded into lAbs via the max() collapse
+    // above; report it as 0 here so any consumer that sums the per-
+    // mechanism breakdown does not double-count flare absorption.
+    lFlare: 0,
     n: n, dKm: dKm, nHops: nHops, gAnt: gAnt, pTx: pTx
   };
 }
@@ -422,16 +465,23 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
   // literature: Es is essentially unobserved below 20 m.
   if (fMHz < 14) return null;
   opts = opts || {};
-  var esMuf = 5 * foEs;
+  var esMuf = ES_M_FACTOR * foEs;
   var lMuf = lMufDb(fMHz, esMuf);
   if (lMuf == null) return null;
   if (fMHz > esMuf) return null;   // above Es MUF, no propagation at all
-  var dKm    = REF_DISTANCE_KM_HFES;
+  // Es is single-hop off the ~110 km E layer; physical ceiling is
+  // ~2400 km (geometry breaks down beyond that). Reject longer paths
+  // explicitly rather than letting the budget silently price a 6000 km
+  // Es contact against the reference distance.
+  var dKm    = opts.dKm != null && isFinite(opts.dKm) && opts.dKm > 0
+                 ? opts.dKm
+                 : REF_DISTANCE_KM_HFES;
+  if (dKm > 2400) return null;
   var pTx    = opts.pTxDbm        != null ? opts.pTxDbm        : REF_POWER_DBM;
   var peakGain = opts.antGainDbi  != null ? opts.antGainDbi    : 0;
   var snrReq = opts.snrRequiredDb != null ? opts.snrRequiredDb : SNR_REQUIRED_DB;
-  // Es takeoff angle: E layer at ~110 km, single 2000 km hop
-  // → arctan(2·110/2000) ≈ 6.3°. Typical low-angle DX geometry.
+  // Es takeoff angle: E layer at ~110 km, single dKm-long hop.
+  // elevDeg = arctan(2·110/dKm); ~6.3° at 2000 km, ~14° at 800 km.
   var elevDeg = Math.atan(2 * 110 / dKm) * 180 / Math.PI;
   var gAnt    = antennaGainAtElevation(
     opts.antType, peakGain, elevDeg, fMHz, opts.antHeightM
@@ -448,6 +498,7 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
   var lAbsD = 0;    // diurnal D-region (quiet-day baseline)
   var lPca = 0;
   var lFlare = 0;
+  var lAur = 0;     // auroral E-region absorption
   if (opts.midLat != null && opts.date) {
     var cosZ = solarCosZenith(opts.midLat, opts.midLon, opts.date);
     var cgm  = cgmLatAbs(opts.midLat, opts.midLon);
@@ -457,6 +508,10 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
                lPcaOnsetDb(fMHz, opts.protonFluxP1, opts.protonFluxP10, cgm));
     lFlare = lFlareDb(fMHz, opts.xrayClass, cosZ);
     lAbs   = lAbsDb(fMHz, opts.haf);
+    // Auroral oval absorbs Es paths crossing high CGM latitudes too.
+    // Previously omitted; Scandinavian / Alaskan summer Es over the
+    // oval ran with no D/E attenuation in the budget.
+    lAur   = lAuroralDb(fMHz, opts.kp, opts.hpGw, cgm);
     // Collapse D-RAP and per-hop flare via max(), same physics as the
     // F2 budget. Es is exactly the mode an operator might pivot to during
     // a flare-suppressed F2 path, so getting D-RAP into the Es budget
@@ -473,7 +528,7 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
   // Numerically zero under the current gate (lLowBandExtraDb is 0 for
   // f >= 14 MHz).
   var lLow = lLowBandExtraDb(fMHz);
-  var margin = pTx + gAnt - lFs - lAbs - lAbsD - lPca - lMuf - L_IONO_ES_DB - lLow - n - snrReq;
+  var margin = pTx + gAnt - lFs - lAbs - lAbsD - lPca - lAur - lMuf - L_IONO_ES_DB - lLow - n - snrReq;
 
   // Sigma: full RSS using the per-band σ_g(f) plus the same situational
   // penalties the F2 budget applies (near-MUF on f/(5·foEs), storm,
@@ -491,7 +546,12 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
   );
   return {
     margin: margin, sigma: sigma,
-    lFs: lFs, lAbs: lAbs, lAbsD: lAbsD, lPca: lPca, lFlare: lFlare, lMuf: lMuf,
+    lFs: lFs, lAbs: lAbs, lAbsD: lAbsD, lPca: lPca,
+    // Folded into lAbs via max() above; zero in the breakdown so the
+    // sum of per-mechanism components doesn't double-count.
+    lFlare: 0,
+    lAur: lAur,
+    lMuf: lMuf,
     lIono: L_IONO_ES_DB, n: n, dKm: dKm, gAnt: gAnt, pTx: pTx,
     mode: "Es"
   };
@@ -502,7 +562,7 @@ export function snrMarginHfEs(fMHz, foEs, opts) {
 // a 2 m dipole hung at the same 10 m height as an HF dipole is
 // 4.8 λ up and has a much tighter elevation peak, the elevation-
 // aware function captures that automatically.
-var VHF_CHAR_ELEV_DEG = 10;
+const VHF_CHAR_ELEV_DEG = 10;
 
 export function snrMarginVhfEs(fMHz, foEs, opts) {
   if (foEs == null || foEs <= 0) return null;
@@ -513,11 +573,24 @@ export function snrMarginVhfEs(fMHz, foEs, opts) {
   var gAnt   = antennaGainAtElevation(
     opts.antType, peakGain, VHF_CHAR_ELEV_DEG, fMHz, opts.antHeightM
   );
-  var esMuf = 5 * foEs;
+  var esMuf = ES_M_FACTOR * foEs;
   var lMuf  = lMufDb(fMHz, esMuf);
-  var lFs   = freeSpaceLossDb(fMHz, REF_DISTANCE_KM_VHF);
+  var dKm   = opts.dKm != null && isFinite(opts.dKm) && opts.dKm > 0
+                ? opts.dKm
+                : REF_DISTANCE_KM_VHF;
+  if (dKm > 2400) return null;
+  var lFs   = freeSpaceLossDb(fMHz, dKm);
   var n     = noiseDbm(fMHz, opts);
-  return { margin: pTx + gAnt - lFs - lMuf - L_IONO_ES_DB - n - snrReq, sigma: DEFAULT_SIGMA_DB };
+  // Route sigma through the shared conditional sigma helper instead of
+  // a flat DEFAULT_SIGMA_DB so VHF Es verdicts pick up storm-, terminator-,
+  // forecast- and near-MUF inflation just like the HF Es branch.
+  var cosZpathVhf = opts.cosZenithPath != null ? opts.cosZenithPath : opts.cosZenithNow;
+  var sigma = _conditionalSigmaDb(
+    fMHz, esMuf,
+    Object.assign({}, opts, { esModeActive: true }),
+    cosZpathVhf
+  );
+  return { margin: pTx + gAnt - lFs - lMuf - L_IONO_ES_DB - n - snrReq, sigma: sigma };
 }
 
 export function snrMarginVhfAurora(fMHz, hpGw, opts) {
@@ -531,7 +604,14 @@ export function snrMarginVhfAurora(fMHz, hpGw, opts) {
   );
   var aurMuf = 50 + (hpGw - 30) * 1.0;
   var lMuf   = lMufDb(fMHz, aurMuf);
-  var lFs    = freeSpaceLossDb(fMHz, REF_DISTANCE_KM_VHF);
+  var dKm    = opts.dKm != null && isFinite(opts.dKm) && opts.dKm > 0
+                 ? opts.dKm
+                 : REF_DISTANCE_KM_VHF;
+  var lFs    = freeSpaceLossDb(fMHz, dKm);
   var n      = noiseDbm(fMHz, opts);
-  return { margin: pTx + gAnt - lFs - lMuf - L_IONO_AUR_DB - n - snrReq, sigma: DEFAULT_SIGMA_DB };
+  // Match the HF and VHF Es sigma routing through the conditional
+  // helper, keyed on aurMuf for the near-MUF inflation.
+  var cosZpathAur = opts.cosZenithPath != null ? opts.cosZenithPath : opts.cosZenithNow;
+  var sigma  = _conditionalSigmaDb(fMHz, aurMuf, opts, cosZpathAur);
+  return { margin: pTx + gAnt - lFs - lMuf - L_IONO_AUR_DB - n - snrReq, sigma: sigma };
 }

@@ -115,7 +115,13 @@ function browserTimeZone() {
 
 // Lat/lon -> 4-char Maidenhead grid. Inverse of qthToLatLon modulo
 // grid-center rounding. Clamped to the canonical A-R × 0-9 range.
+// Polar inputs are pinned to the top-row field with subsquare digit 9
+// (or 0 for the south pole) rather than the prior 89.999 clamp, which
+// rounded lat=90 into a non-polar bin and silently encoded it as JR09
+// (decoding to 89.5 N).
 function latLonToQth(lat, lon) {
+  if (lat >= 89.99) return "RR99";
+  if (lat <= -89.99) return latLonToQth(-89.99, lon);
   lat = Math.max(-90, Math.min(89.999, lat));
   lon = Math.max(-180, Math.min(179.999, lon));
   var aIdx = Math.floor((lon + 180) / 20);
@@ -172,7 +178,10 @@ export function haversineKm(a, b, c, d) {
   var R = 6371, p1 = a * Math.PI/180, p2 = c * Math.PI/180;
   var dp = (c - a) * Math.PI/180, dl = (d - b) * Math.PI/180;
   var h = Math.sin(dp/2)*Math.sin(dp/2) + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
-  return 2 * R * Math.asin(Math.sqrt(h));
+  // atan2(sqrt(h), sqrt(1-h)) is numerically stable for near-antipodal
+  // pairs where h approaches 1 and asin(sqrt(h)) loses precision (and
+  // can NaN if floating-point overshoot pushes sqrt(h) above 1).
+  return 2 * R * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
 }
 
 export function gcMidpoint(a, b, c, d) {
@@ -199,7 +208,13 @@ export function gcPointAtFraction(lat1, lon1, lat2, lon2, f) {
   var h = Math.sin(dp/2)*Math.sin(dp/2) +
           Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
   var d = 2 * Math.asin(Math.min(1, Math.sqrt(h)));
-  if (d < 1e-9) return [lat1, lon1];          // degenerate (antipodal-safe by cap above)
+  if (d < 1e-9) return [lat1, lon1];          // degenerate (co-located)
+  // Near-antipodal: sin(d) is near zero so the slerp factors A/B blow
+  // up to Infinity and the result is an arbitrary meridian point.
+  // Antipodal pairs do not have a unique great-circle midpoint; return
+  // null so callers can fall back rather than silently sampling random
+  // geography. Threshold is |d - pi| < 1e-6 (~6 m at the antipode).
+  if (Math.PI - d < 1e-6) return null;
   var A = Math.sin((1 - f) * d) / Math.sin(d);
   var B = Math.sin(f * d) / Math.sin(d);
   var x = A * Math.cos(p1) * Math.cos(l1) + B * Math.cos(p2) * Math.cos(l2);

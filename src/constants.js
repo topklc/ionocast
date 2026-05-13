@@ -132,9 +132,8 @@ export const EIA_GAUSS_WIDTH   = 18;
 //     slope 0.003, σ 12. Polar over-prediction (TR169 +1.0, GA762
 //     +1.6, EI764 +1.4) is now visible and is a separate residual
 //     not addressable by EIA tuning.
-//   F10.7A = 70:  0.45 → 0.50  (2026-04-29 retune with N-crest basket)
-//   F10.7A = 120: 0.60 → 0.85  (cap-saturated)
-//   F10.7A = 200: 0.84 → 0.85
+// Current values (post 2026-04-29 retune): at F10.7A=70 → 0.50, at
+// F10.7A=120 → 0.85 (cap-saturated), at F10.7A=200 → 0.85.
 // 2026-04-29 retune: post-BVJ03 grid sweep landed at base=0.50, slope=0.007.
 // Combined with the wider crest (σ 12 → 18), the EIA profile is taller
 // and broader; cap stays at 0.85 (physical ceiling, ~85% lift over baseline
@@ -167,9 +166,17 @@ export function eiaAmp(f107A) {
 // basket (and a northern-crest station to close the symmetry) is
 // expected to refine these.
 export const EIA_TROUGH_WIDTH        = 6;
+// 2026-05-13 retune: prior values (base 0.30, slope 0.002, cap 0.50)
+// produced net = +0.10 at dip=0 / F10.7A=200 (the crest tail at sigma=18
+// covered the equator at +0.60, deeper than the trough's -0.50), so
+// the trough never actually depressed foF2 and the "Math.max(0.7, ...)"
+// floor was unreachable in this regime. Bumped slope so the trough
+// scales with the same fountain-strength sensitivity as the crest, and
+// raised the cap so peak-solar trough can overcome the wider sigma=18
+// crest tail.
 export const EIA_TROUGH_AMP_BASE     = 0.30;
-export const EIA_TROUGH_AMP_SLOPE    = 0.002;
-export const EIA_TROUGH_AMP_CAP      = 0.50;
+export const EIA_TROUGH_AMP_SLOPE    = 0.004;
+export const EIA_TROUGH_AMP_CAP      = 0.75;
 export function eiaTroughAmp(f107A) {
   if (f107A == null || !isFinite(f107A)) return EIA_TROUGH_AMP_BASE;
   var lift = EIA_TROUGH_AMP_SLOPE * Math.max(0, f107A - 70);
@@ -185,6 +192,22 @@ export function eiaTroughAmp(f107A) {
 // Single-midpoint fusion didn't beat climatology on the 30-day
 // basket; per-hop fusion needs further harness work before it ships.
 export const FUSION_PRIMARY_MUF = false;
+
+// fuse: when true, the per-midpoint foF2 lookup in deriveConditions
+// reads from a precomputed global fuse grid (kriging-style blend of
+// GIRO digisonde foF2, GFZ rapid GIM TEC observations, and the
+// ionocast climatology prior) instead of the legacy per-call
+// interpolateFoF2FromStations + climatology branch.
+//
+// Flipped on 2026-05-13 after the rbn-fuse calibration sweep showed:
+//   pooled mean residual -28.64 dB -> -21.56 dB (+7.1 dB improvement)
+//   17m mean residual -23.17 -> -1.02 dB (22 dB improvement)
+//   10m std 17.19 -> 5.24 dB (3x tighter)
+// Pooled std went up via Simpson's paradox (per-band means more spread
+// after differential bias correction); per-band std mostly improves
+// or stays unchanged. Lower bands (40m and down) see no change because
+// f/MUF is small there and lMufDb is saturated.
+export const FUSE_PRIMARY_FOF2 = true;
 
 // R7 calibration: F2-region scatter recovery weight on above-MUF paths.
 // scatterBonusDb (physics.js) gates on f/MUF > 1.0 and per-hop foF2
@@ -249,7 +272,7 @@ export const BAND_SIGMA_DB = {
 // Look up per-band σ by frequency. Falls back to 8 dB
 // (DEFAULT_SIGMA_DB) when frequency is outside the table.
 export function bandSigmaDb(fMHz) {
-  if (!isFinite(fMHz) || fMHz <= 0) return 8;
+  if (!isFinite(fMHz) || fMHz <= 0) return DEFAULT_SIGMA_DB;
   // Match by closest band frequency. Same logic as NOISE_FLOOR_DBM lookup.
   if (fMHz <= 2.0)  return BAND_SIGMA_DB["160 m"];
   if (fMHz <= 4.0)  return BAND_SIGMA_DB["80 m"];
@@ -396,3 +419,35 @@ export const MS_LOCAL_HOUR_END    = 10;
 // stream keeps flowing, vs. a single CME-impulse shock that dissipates
 // in ~half a day. Use a longer τ_decay in HSS windows.
 export const STORM_LAG_DECAY_HSS_H = 24;
+
+// Storm-classification thresholds (derive/storm.js classifyStormType).
+// Hoisted from inline literals so a calibration change touches one site,
+// not three.
+//   DST_CME_THRESHOLD   - Dst below this (nT) overrides HSS-vs-CME to CME.
+//   BZ_CME_THRESHOLD    - sustained Bz at or below this (nT) = CME shock.
+//   BZ_HSS_THRESHOLD    - Bz above this (nT) with elevated speed = HSS.
+//   SW_SPEED_THRESHOLD  - solar wind speed (km/s) above which we trust
+//                         the real-time wind signature over catalog inertia.
+//   HSS_WINDOW_PAST_H   - hours back a catalog HSS event still counts.
+//   HSS_WINDOW_FUTURE_H - hours forward an upcoming catalog HSS counts.
+export const STORM_DST_CME_THRESHOLD   = -80;
+export const STORM_BZ_CME_THRESHOLD    = -8;
+export const STORM_BZ_HSS_THRESHOLD    = -5;
+export const STORM_SW_SPEED_THRESHOLD  = 500;
+export const STORM_HSS_WINDOW_PAST_H   = 48;
+export const STORM_HSS_WINDOW_FUTURE_H = 24;
+
+// Sporadic-E M-factor: the geometric multiplier from vertical foEs to
+// the maximum usable frequency for a single oblique-incidence hop off
+// the ~110 km E layer. Conventional value is 5 for the canonical ~2000
+// km single-hop Es geometry. Previously hardcoded in four sites
+// (snrMarginHfEs, snrMarginVhfEs, derive/bands.js, derive/conditions.js);
+// hoisted so a calibration change touches one site.
+export const ES_M_FACTOR = 5;
+
+// Default per-prediction sigma used by tierStability / reliability when
+// no band-specific sigma is in play. Centralized here so the bandSigmaDb
+// out-of-range fallback below cannot drift from the canonical value.
+// tier.js re-exports this name for callers that already import it from
+// the physics surface.
+export const DEFAULT_SIGMA_DB = 8;

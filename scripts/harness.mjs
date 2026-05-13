@@ -79,7 +79,7 @@ import {
   interpolateFoEsFromStations,
   scatterBonusDb,
   tepBonusDb,
-  grayLineBonusDb,
+  grayLineBonusDb, grayLineBonusPathDb,
   irregularityRecoveryDb,
   nvisTailFactor,
   L_IONO_ES_DB,
@@ -845,7 +845,14 @@ export function replayMarginFromCell(cell, band, config) {
       cell.path.dst[0], cell.path.dst[1],
       cell.midLat, cell.midLon,
       cell.date, cell.f107A);
-    r4GrayLineDb = grayLineBonusDb(cell.midLat, cell.midLon, band.f, cell.date);
+    // Path-integrated form so harness and production verdict pipeline
+    // agree on the gray-line credit. The midpoint-only grayLineBonusDb
+    // is still exported for legacy spot checks but is no longer the
+    // calibration baseline.
+    r4GrayLineDb = grayLineBonusPathDb(
+      cell.path.src[0], cell.path.src[1],
+      cell.path.dst[0], cell.path.dst[1],
+      band.f, cell.date);
   }
   const r4IrregDb = config.altModeBonuses
     ? irregularityRecoveryDb(r4TepDb, r4ScatterDb)

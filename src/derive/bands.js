@@ -4,8 +4,18 @@
 // + UWyo tropospheric ducting deltaN.
 
 import { qthToLatLon, currentQth } from "../physics/qth.js";
+import { ES_M_FACTOR } from "../constants.js";
 import { t } from "../i18n.js";
 
+// Display-side band centers, intentionally aligned with the WSPR
+// channelization (the digital-mode operating frequency the user actually
+// keys up to). These differ slightly from `BAND_FREQ_MHZ` in
+// constants.js, which carries the ITU-R DX-end reference frequency the
+// physics budget uses for prediction. The two roles need different
+// frequencies: WSPR rendering should show the channel center, but the
+// SNR-margin prediction is calibrated against the ITU-R DX-end (where
+// most propagation literature anchors). Keep both tables in sync only
+// in band ordering, not in exact frequency.
 export function computeBandsHf(wspr, localMuf, drap) {
   var rowsByBand = {
     1:  ["160 m", "1.838",  "-", "-", "-", "-"],
@@ -19,18 +29,36 @@ export function computeBandsHf(wspr, localMuf, drap) {
     24: ["12 m",  "24.924", "-", "-", "-", "-"],
     28: ["10 m",  "28.126", "-", "-", "-", "-"],
   };
+  // Track unrecognized band keys for a single warning, instead of
+  // silently dropping (which masked schema drift from upstream WSPR
+  // feeds and discarded all VHF rows without surfacing the loss).
+  var unknownBands = null;
   (wspr && wspr.data || []).forEach(function(r) {
     var b = r.band;
-    if (!(b in rowsByBand)) return;
+    if (!(b in rowsByBand)) {
+      if (b != null) {
+        if (unknownBands == null) unknownBands = new Set();
+        unknownBands.add(b);
+      }
+      return;
+    }
     if (r.snr_med != null) {
       var snrV = +r.snr_med;
       var col = snrV >= -10 ? "good" : snrV <= -27 ? "warn" : null;
       rowsByBand[b][2] = { text: Math.round(snrV) + " dB", color: col };
     }
-    if (r.spots) {
+    // Use explicit null-check so a band that WSPR observed with 0 spots
+    // renders distinctly from a band with no data at all; the prior
+    // truthy check conflated the two and the WSPR-activity-override
+    // gate then misfired on silent bands.
+    if (r.spots != null) {
       rowsByBand[b][3] = (+r.spots).toLocaleString();
     }
   });
+  if (unknownBands != null && unknownBands.size > 0 && typeof console !== "undefined") {
+    console.warn("[bands.js] WSPR rows for unrecognized bands dropped:",
+                 Array.from(unknownBands).join(", "));
+  }
   if (localMuf) {
     var freq = { 1:1.838, 3:3.570, 5:5.366, 7:7.040, 10:10.140, 14:14.097, 18:18.106, 21:21.096, 24:24.924, 28:28.126 };
     Object.keys(freq).forEach(function(b) {
@@ -56,7 +84,7 @@ export function computeBandsHf(wspr, localMuf, drap) {
 export function deriveVhfBands(giro, ovation, tropo) {
   var foes = giro ? giro.foEs : null;
   var giroFresh = !!(giro && giro.foF2 != null);
-  var esMuf = foes != null ? foes * 5 : null;
+  var esMuf = foes != null ? foes * ES_M_FACTOR : null;
   var foesStr = foes != null ? foes.toFixed(1) : (giroFresh ? t("none") : "-");
   function esRatio(f) {
     if (esMuf == null) return giroFresh ? t("none") : "-";

@@ -5,18 +5,11 @@
 import { haversineKm, gcPointAtFraction } from "./qth.js";
 import { hopsForDistance } from "./geometry.js";
 
-// Blend observed (kc2g) and climatological MUFs into a consensus estimate.
-// Geometric mean when they agree (<50% divergence). On big disagreements
-// the decision is asymmetric:
-//   - kc2g LOWER than climatology by >50%: trust kc2g. A declining real
-//     ionosphere is far more common than a station reading too low.
-//   - kc2g HIGHER than climatology by >50%: fall to climatology. The
-//     station may be seeing a local anomaly (sporadic uplift, Es
-//     contamination) that doesn't apply to other paths.
-// Either input null → other wins.
-//   divergence = |log(kc2g / climo)|  (0 when identical; ln(1.5) ≈ 0.405
-//                                      marks the 50% threshold)
-//   source ∈ { "kc2g", "climo", "blend" }
+// Note: mufConsensus (the kc2g vs climatology blend referenced here in
+// earlier comments) now lives in climatology.js and uses a symmetric
+// sqrt(k*c) geometric mean rather than the asymmetric "trust kc2g
+// when lower, climo when higher" rule. The blend logic that used to
+// live in this header was retired during the R7 calibration sweep.
 // ---- GIRO digisonde station fusion (R3) ----------------------------------
 //
 // Maximum distance from a digisonde at which its observation still meaningfully
@@ -24,6 +17,12 @@ import { hopsForDistance } from "./geometry.js";
 // enough (terminator, EIA crest, polar cap edge) that the station's reading
 // is no better than climatology.
 export const STATION_FUSION_MAX_KM = 3000;
+
+// foEs is patchy on a sub-500-km coherence scale (sporadic-E layers
+// span ~100-500 km diameter), so the foF2 radius is too generous for
+// the Es fusion: a station 2000 km away usually carries zero
+// information about local Es. Use a tighter radius for foEs blending.
+export const STATION_FUSION_MAX_ES_KM = 500;
 
 const _STATION_FUSION_MIN_KM = 50;  // floor against 1/d² singularity at the station site
 
@@ -75,6 +74,7 @@ export function perHopFoF2FromStations(stations, srcLat, srcLon, dstLat, dstLon,
   for (var k = 1; k <= n; k++) {
     var frac = (2 * k - 1) / (2 * n);
     var pt = gcPointAtFraction(srcLat, srcLon, dstLat, dstLon, frac);
+    if (pt == null) { out.push(null); continue; }
     out.push(interpolateFoF2FromStations(stations, pt[0], pt[1]));
   }
   return out;
@@ -93,7 +93,7 @@ export function interpolateFoEsFromStations(stations, lat, lon) {
     if (s == null || s.lat == null || s.lon == null) continue;
     if (s.foEs == null || !isFinite(s.foEs) || s.foEs <= 0) continue;
     var d = haversineKm(lat, lon, s.lat, s.lon);
-    if (d > STATION_FUSION_MAX_KM) continue;
+    if (d > STATION_FUSION_MAX_ES_KM) continue;
     if (d < nearest) nearest = d;
     var dEff = d < _STATION_FUSION_MIN_KM ? _STATION_FUSION_MIN_KM : d;
     var w = 1 / (dEff * dEff);

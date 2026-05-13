@@ -6,11 +6,21 @@
 export {
   refDistanceHfKm,
   hopsForDistance,
+  hopCeilingKm,
   cgmLatAbs,
   dipLatitude,
   takeoffAngleDeg,
   solarCosZenith,
 } from "./geometry.js";
+export {
+  currentQth,
+  defaultQth,
+  qthToLatLon,
+  haversineKm,
+  gcMidpoint,
+  gcDestination,
+  gcPointAtFraction,
+} from "./qth.js";
 export {
   L_IONO_HF_DB,
   L_IONO_ES_DB,
@@ -38,11 +48,27 @@ export {
 } from "./climatology.js";
 export {
   STATION_FUSION_MAX_KM,
+  STATION_FUSION_MAX_ES_KM,
   interpolateFoF2FromStations,
   perHopFoF2FromStations,
   interpolateFoEsFromStations,
   midpointFoF2WithFallback,
 } from "./fusion.js";
+export {
+  SOURCES as FUSE_SOURCES,
+  PRIOR_ERROR_MHZ as FUSE_PRIOR_ERROR_MHZ,
+  buildFoF2Grid,
+  giroToObservations,
+  giroToEsObservations,
+  tecGridToObservations,
+  cosmicProfilesToObservations,
+  computeFuseGrid,
+  computeFuseEsGrid,
+} from "./fuse.js";
+export {
+  invertOneSpot,
+  wsprSpotsToObservations,
+} from "./wspr-invert.js";
 export {
   tepBonusDb,
   tepBonusMaxDb,
@@ -52,6 +78,7 @@ export {
   irregularityRecoveryDb,
   heuristicTier,
   grayLineBonusDb,
+  grayLineBonusPathDb,
 } from "./modes.js";
 export {
   REF_DISTANCE_KM_VHF,

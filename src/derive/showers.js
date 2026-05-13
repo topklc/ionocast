@@ -90,6 +90,11 @@ export function meteorScatterActive(showers, qthLat, qthLon, nowDate) {
     weight = 1;
   }
   if (showers && showers.items) {
+    // Pick the highest-ZHR active shower rather than the first in
+    // catalog order; with two simultaneously active showers (e.g. mid-
+    // November Leonids + Orionids overlap) the first-match behaviour
+    // shadowed the stronger one based purely on catalog ordering.
+    var bestSh = null;
     for (var i = 0; i < showers.items.length; i++) {
       var sh = showers.items[i] || {};
       // Prefer the structured _zhr / _phase fields (computeImoShowers
@@ -118,9 +123,14 @@ export function meteorScatterActive(showers, qthLat, qthLon, nowDate) {
       // not lift the floor since the shower is past peak and ZHR is
       // dropping.
       if (phase === "active" || phase === "building") {
-        var name = (desc.split("(")[0] || "").trim();
-        return { active: true, name: name, weight: weight };
+        if (bestSh == null || zhr > bestSh.zhr) {
+          var name = (desc.split("(")[0] || "").trim();
+          bestSh = { zhr: zhr, name: name };
+        }
       }
+    }
+    if (bestSh != null) {
+      return { active: true, name: bestSh.name, weight: weight };
     }
   }
   // No major shower active; the sporadic background still supports

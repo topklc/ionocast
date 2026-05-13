@@ -23,6 +23,8 @@ import { tropoHandler }  from "./_handlers/tropo.js";
 import { hp30Handler }   from "./_handlers/hp30.js";
 import { kyotoHandler }  from "./_handlers/kyoto.js";
 import { silsoHandler }  from "./_handlers/silso.js";
+import { tecHandler }    from "./_handlers/tec.js";
+import { cosmicRoHandler } from "./_handlers/cosmicRo.js";
 
 // Helpers used by date-parameterized passthroughs.
 function isoDay(offsetDays) {
@@ -34,6 +36,34 @@ const WSPR_AGG_SQL =
   "SELECT band, COUNT(*) AS spots, round(quantile(0.5)(snr), 0) AS snr_med " +
   "FROM wspr.rx WHERE time > now() - INTERVAL 1 HOUR " +
   "GROUP BY band ORDER BY band FORMAT JSON";
+
+// WSPR spot-level query for the inversion pipeline. Pulls the last 30
+// minutes of spots aggregated to 1° tx/rx bins so the response stays
+// reasonable (~20-50k rows, ~5-10 MB JSON). Each row is one logical
+// "path" with median SNR / TX power / frequency over all spots that
+// fell in the same 1° tx-bin × 1° rx-bin × band cell.
+//
+// distance > 500 drops same-grid receptions (NVIS / ground-wave) that
+// the F2-hop inversion can't model.
+const WSPR_SPOTS_SQL =
+  "SELECT " +
+    "round(tx_lat, 0) AS txlat, " +
+    "round(tx_lon, 0) AS txlon, " +
+    "round(rx_lat, 0) AS rxlat, " +
+    "round(rx_lon, 0) AS rxlon, " +
+    "band, " +
+    "round(quantile(0.5)(snr), 1) AS snr, " +
+    "round(quantile(0.5)(power), 1) AS pwr, " +
+    "round(quantile(0.5)(frequency), 0) AS freq, " +
+    "count() AS n " +
+  "FROM wspr.rx " +
+  "WHERE time > now() - INTERVAL 30 MINUTE " +
+    "AND distance > 500 " +
+  "GROUP BY txlat, txlon, rxlat, rxlon, band " +
+  "HAVING n >= 1 " +
+  "ORDER BY n DESC " +
+  "LIMIT 50000 " +
+  "FORMAT JSON";
 
 export const PROXIES = {
 
@@ -149,6 +179,14 @@ export const PROXIES = {
     freshSec: 120, staleSec: 30 * 60,
     desc: "WSPR live aggregate: per-band spot count + median SNR, last 1 h"
   },
+  "wspr-spots": {
+    kind: "passthrough", enabled: true,
+    urls: "https://db1.wspr.live/?query=" + encodeURIComponent(WSPR_SPOTS_SQL),
+    // Refresh every 2 min on the edge; ionospheric F-region varies on a
+    // ~15 min timescale and our window is 30 min anyway.
+    freshSec: 120, staleSec: 30 * 60,
+    desc: "WSPR spot-level rows (1°-binned, 30-min window) for fuse inversion"
+  },
 
   // ========== Custom handlers (server-side parsing / station fan-out) ==========
 
@@ -156,6 +194,20 @@ export const PROXIES = {
     kind: "custom", enabled: true, handler: giroHandler,
     freshSec: 600, staleSec: 24 * 3600,
     desc: "GIRO digisonde ionograms, fans out over nearest ionosonde stations"
+  },
+  "gim": {
+    kind: "custom", enabled: true, handler: tecHandler,
+    // GIMs publish hourly; cache 30 min on the edge so a refresh tick
+    // hits the upstream at most ~once per 30 min per pop.
+    freshSec: 1800, staleSec: 24 * 3600,
+    desc: "GFZ Potsdam rapid Global Ionosphere Map, latest TEC grid for fuse"
+  },
+  "cosmic-ro": {
+    kind: "custom", enabled: true, handler: cosmicRoHandler,
+    // Daily-cadence extract: refresh every 30 min looking for new
+    // postings from the upstream extractor job.
+    freshSec: 1800, staleSec: 24 * 3600,
+    desc: "COSMIC-2 radio-occultation foF2/hmF2 peaks for fuse (stub; awaiting RO extractor pipeline)"
   },
   "tropo": {
     kind: "custom", enabled: true, handler: tropoHandler,

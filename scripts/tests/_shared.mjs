@@ -15,7 +15,10 @@ import { fileURLToPath } from "node:url";
 import { buildSamplesFromCache } from "../harness.mjs";
 import {
   snrMarginHf, foF2Climatology, solarCosZenith, cgmLatAbs,
+  buildFoF2Grid, tecGridToObservations,
 } from "../../src/physics/index.js";
+import { parseIonex } from "../../functions/_handlers/tec.js";
+import { gunzipSync } from "node:zlib";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const SCRIPTS_DIR = resolve(HERE, "..");
@@ -126,15 +129,31 @@ export function makeKpAt(kpHistory) {
 // Shared SNR predictor for spot-residual suites (rbn, psk). Reads f107A
 // off the memoized harness cache so callers don't have to thread it
 // through.
+//
+// When fuseGrid is provided (built via buildHarnessFuseGrid below for
+// the test day), the per-spot midpoint foF2 lookup reads from the grid
+// instead of pure foF2Climatology. This is the calibration-harness side
+// of the FUSE_PRIMARY_FOF2 flag wired into production conditions.js;
+// it lets the RBN / PSK suites compare residuals with and without the
+// fuse grid in one harness run.
 export function predictSnrAtSpot({ fMHz, txLat, txLon, rxLat, rxLon, dKm, date,
                                    pTxDbm, antType, antGainDbi, antHeightM,
-                                   modeBwHz, snrRequiredDb, noiseFaAdjDb, kp }) {
+                                   modeBwHz, snrRequiredDb, noiseFaAdjDb, kp,
+                                   fuseGrid }) {
   if (!isFinite(fMHz) || fMHz <= 0) return null;
   if (!isFinite(dKm) || dKm <= 0) return null;
   const f107A = getSharedCache().f107A;
   const [midLat, midLon] = gcMidpoint(txLat, txLon, rxLat, rxLon);
   const cosZmid = solarCosZenith(midLat, midLon, date);
-  const foF2 = foF2Climatology(f107A, cosZmid, Math.abs(midLat), midLat, midLon, date);
+  let foF2;
+  if (fuseGrid) {
+    foF2 = fuseGrid.lookup(midLat, midLon);
+    if (foF2 == null || !isFinite(foF2) || foF2 <= 0) {
+      foF2 = foF2Climatology(f107A, cosZmid, Math.abs(midLat), midLat, midLon, date);
+    }
+  } else {
+    foF2 = foF2Climatology(f107A, cosZmid, Math.abs(midLat), midLat, midLon, date);
+  }
   if (foF2 == null) return null;
   const muf = foF2 * 3.0;
   const m = snrMarginHf(fMHz, muf, {
@@ -154,4 +173,70 @@ export function predictSnrAtSpot({ fMHz, txLat, txLon, rxLat, rxLon, dKm, date,
   });
   if (m == null) return null;
   return { predicted: m.margin, sigma: m.sigma };
+}
+
+// Build a fuse foF2 grid for a calibration date by fetching the GFZ
+// rapid GIM directly (same upstream the production /api/gim handler
+// hits, but called from Node-side here). Returns null on any fetch or
+// parse failure so the suite degrades to climatology-only.
+//
+// Cached on disk so repeated harness runs against the same date don't
+// re-fetch.
+
+const GPS_EPOCH_MS_H = Date.UTC(1980, 0, 6);
+function _gpsWeek(date) {
+  return Math.floor((date.getTime() - GPS_EPOCH_MS_H) / (7 * 86400000));
+}
+function _doy(date) {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+  return String(Math.floor((date.getTime() - start) / 86400000) + 1).padStart(3, "0");
+}
+function _gfzGimUrl(date) {
+  return "https://isdc-data.gfz.de/gnss/products/iono/w" + _gpsWeek(date) +
+         "/GFZ0OPSRAP_" + date.getUTCFullYear() + _doy(date) +
+         "0000_01D_02H_ION.IOX.gz";
+}
+
+import { existsSync as _existsSync, readFileSync as _readFileSync, writeFileSync as _writeFileSync } from "node:fs";
+
+export async function buildHarnessFuseGrid(date) {
+  const f107A = getSharedCache().f107A;
+  if (f107A == null || !isFinite(f107A)) return null;
+  // Try the requested date first, then walk back up to 3 days (GFZ
+  // rapid product has ~24h latency).
+  for (let dayBack = 0; dayBack < 3; dayBack++) {
+    const tryDate = new Date(date.getTime() - dayBack * 86400000);
+    const url = _gfzGimUrl(tryDate);
+    const cacheFile = resolve(CACHE_DIR, "gim-" + tryDate.toISOString().slice(0, 10) + ".json");
+    let parsed = null;
+    if (_existsSync(cacheFile)) {
+      try { parsed = JSON.parse(_readFileSync(cacheFile, "utf-8")); } catch { parsed = null; }
+    }
+    if (!parsed) {
+      if (NO_FETCH) continue;
+      try {
+        const r = await fetch(url, { headers: { "user-agent": "ionocast-harness/1" } });
+        if (!r.ok) continue;
+        const buf = Buffer.from(await r.arrayBuffer());
+        const text = gunzipSync(buf).toString("utf-8");
+        if (!/IONEX VERSION/.test(text.slice(0, 200))) continue;
+        const ionex = parseIonex(text);
+        if (!ionex || !ionex.cells || !ionex.cells.length) continue;
+        parsed = ionex;
+        try { _writeFileSync(cacheFile, JSON.stringify(parsed)); } catch {}
+      } catch {
+        continue;
+      }
+    }
+    if (!parsed) continue;
+    return buildFoF2Grid({
+      observations: tecGridToObservations(parsed),
+      climatology: (lat, lon) => {
+        const cz = solarCosZenith(lat, lon, date);
+        return foF2Climatology(f107A, cz, Math.abs(lat), lat, lon, date);
+      },
+      resolutionDeg: 10,
+    });
+  }
+  return null;
 }

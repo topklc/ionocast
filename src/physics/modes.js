@@ -4,10 +4,11 @@
 
 import {
   TEP_MIN_DIP_LAT, TEP_LOCAL_HOUR_START, TEP_LOCAL_HOUR_END,
-  TEP_BOND_F_MAX_MHZ, TEP_BONUS_DB,
+  TEP_BOND_F_MAX_MHZ,
   D_REGION_PREFACTOR
 } from "../constants.js";
 import { dipLatitude, solarCosZenith } from "./geometry.js";
+import { gcPointAtFraction } from "./qth.js";
 
 // Chordal afternoon / evening mode across the geomagnetic equator. The
 // signal couples into the equatorial F-region irregularity structure and
@@ -98,7 +99,11 @@ export function tepBonusDb(fMHz, srcLat, srcLon, dstLat, dstLon, midLat, midLon,
 export function nvisSecantFactor(dKm, hF) {
   if (dKm == null || dKm <= 0) return 1.0;
   var h = hF || 300;
-  return 1 / Math.cos(Math.atan(dKm / (2 * h)));
+  // Cap at 5 (= takeoff angle ~78 deg off vertical) so a caller that
+  // accidentally passes a very long path doesn't drive sec(atan(...))
+  // toward infinity. Callers also gate on nvisTailFactor for the same
+  // reason, but this is the defensive floor at the math level.
+  return Math.min(5, 1 / Math.cos(Math.atan(dKm / (2 * h))));
 }
 
 // NVIS-tail blending factor. The current NVIS short-path treatment is
@@ -114,7 +119,7 @@ export function nvisSecantFactor(dKm, hF) {
 //
 // Returns 0 when dKm is null or non-finite (caller falls back to F2).
 export function nvisTailFactor(dKm) {
-  if (dKm == null || !isFinite(dKm)) return 0;
+  if (dKm == null || !isFinite(dKm) || dKm <= 0) return 0;
   if (dKm <= 500)  return 1.0;
   if (dKm >= 1500) return 0.0;
   return (1500 - dKm) / 1000;
@@ -142,15 +147,21 @@ export function nvisTailFactor(dKm) {
 // The 15 dB ceiling is also the TEP plateau, which is why
 // irregularityRecoveryDb takes the max of the two rather than
 // summing them, see that helper below.
-export function scatterBonusDb(fMHz, mufMHz, foF2VarianceMHz, weight) {
+// Parameter is named ...SpreadMHz to match its semantics: the caller in
+// derive/conditions.js passes a standard deviation across per-hop foF2
+// samples (sqrt(sumSq / N) -- in MHz), which is a spread, not a
+// variance. The saturation threshold of 1.5 MHz below is also a spread.
+// Previously named foF2VarianceMHz, which invited future callers to
+// pass stdDev*stdDev (MHz^2) and silently scale wrong.
+export function scatterBonusDb(fMHz, mufMHz, foF2SpreadMHz, weight) {
   if (!weight || weight <= 0) return 0;
   if (mufMHz == null || mufMHz <= 0) return 0;
   if (!isFinite(fMHz) || fMHz <= 0) return 0;
   var fRatio = fMHz / mufMHz;
   if (fRatio <= 1.0) return 0;  // below MUF: standard model says open, scatter unnecessary
-  // foF2 variance: 0 means homogeneous path (no scatter potential),
-  // saturates at 1.5 MHz spread (substantial gradients).
-  var varNorm = Math.min(1.0, (foF2VarianceMHz || 0) / 1.5);
+  // foF2 spread (std-dev across reflection points): 0 means homogeneous
+  // path (no scatter potential), saturates at 1.5 MHz spread.
+  var varNorm = Math.min(1.0, (foF2SpreadMHz || 0) / 1.5);
   // Above-MUF excess: capped so we don't predict scatter recovery on
   // wildly over-MUF paths (3x and beyond).
   var excess = Math.min(2.0, fRatio - 1.0);
@@ -188,7 +199,13 @@ export function irregularityRecoveryDb(tepBonus, scatterBonus) {
 const _HEURISTIC_MARGIN = { excellent: 20, good: 10, fair: 0, poor: -10, closed: -18 };
 
 export function heuristicTier(groupName, sfi, kIndex, cosZ) {
-  function pack(tier) { return { tier: tier, marginEquivalent: _HEURISTIC_MARGIN[tier] }; }
+  function pack(tier) {
+    // Default to the "fair" margin when an unknown tier label is
+    // passed; better than silently returning undefined and propagating
+    // NaN through the marginEquivalent pipeline.
+    var m = _HEURISTIC_MARGIN[tier];
+    return { tier: tier, marginEquivalent: m != null ? m : _HEURISTIC_MARGIN.fair };
+  }
   if (sfi == null || isNaN(sfi)) return pack("fair");
   var day = cosZ != null && cosZ > 0.2;
   var storm = kIndex != null && kIndex >= 5;
@@ -269,60 +286,99 @@ export function heuristicTier(groupName, sfi, kIndex, cosZ) {
   return pack("fair");
 }
 
-// Gray-line / terminator bonus. Paired physics rewrite landed
-// 2026-05-07 (S0 #2): replaces the per-band sunrise/sunset table with
-// a continuous formula keyed on D_REGION_PREFACTOR (the same constant
-// that anchors lAbsDiurnalDb in loss.js). Reads as the D-region
-// absorption refund relative to local-noon overhead:
+// Gray-line / terminator bonus. Gaussian peak-at-terminator shape,
+// keyed on D_REGION_PREFACTOR (the same constant that anchors
+// lAbsDiurnalDb in loss.js). Reads as the D-region absorption refund
+// when the sample point sits near the day-night terminator:
 //
-//   bonus = dayLoss(f) * (1 - cos^0.7(zenith))
+//   bonus(cosZ) = peak(f) * exp(-(cosZ / sigma)^2)
 //
-// where dayLoss(f) = D_REGION_PREFACTOR / (f_MHz + 0.5)^2.
+// where peak(f) = min(15 dB, dayLoss(f)) and dayLoss(f) =
+// D_REGION_PREFACTOR / (f_MHz + 0.5)^2.
 //
-// The bonus is ADDITIVE on top of lAbsDiurnalDb (which charges
-// dayLoss * cos^0.7 on the day side); at the terminator the
-// combination produces a net D-region credit consistent with the
-// empirically strong gray-line propagation operators report on the
-// low / mid HF bands.
+// History: the prior shape (1 - cos^0.7(zenith)) used max(0, cosZ)^0.7
+// for the day-side factor, which floored to zero on the night side and
+// paid out the full dayLoss for any cosZ <= 0. On 160 m that over-
+// credited every path whose midpoint was past sunset, producing
+// "Excellent" verdicts on eastbound paths at local sunset where ground-
+// truth observation says the band is workable at best. Gaussian shape
+// peaks at the geometric terminator (cosZ = 0) and decays into both
+// deep day and deep night, matching the empirical ~90-minute operator
+// window for gray-line propagation on the low bands.
 //
-// Frequency window: 1.8-30 MHz (was: <= 14 MHz, which excluded 20 m
-// at 14.097; closes audit finding #2). Below 1.8 MHz the budget does
-// not predict; above 30 MHz the D-region term is operationally
-// negligible.
+// Peak cap at 15 dB replaces the prior 25 dB cap. The lower cap reflects
+// that the bonus is now physical credit at the terminator (D-region
+// refund), not a numerical safety net for a runaway formula; calibration
+// will tune this against WSPR ground truth.
 //
-// Floor at 0.2 dB suppresses sub-decibel "noise" bonuses on bands
-// where dayLoss(f) is already small (12 m / 10 m daytime).
+// sigma = 0.25 in cosZ corresponds to ~75 minutes either side of the
+// geometric terminator at mid latitudes.  FWHM ~ 0.59 in cosZ, or about
+// 2.5 hours total, matching operator-reported gray-line window length.
 //
-// Cap at 25 dB prevents the 160 m terminator bonus (which would
-// otherwise reach ~36 dB at the gray line) from inflating the budget
-// past the per-path 50 dB ionospheric ceiling.
+// Frequency window: 1.8-30 MHz. Below 1.8 the budget does not predict;
+// above 30 the D-region term is operationally negligible.
 //
-// Asymmetry: rising cosZ (sunrise) gets the full bonus; falling
-// cosZ (sunset) gets 0.5x because D-region recovery lags the F-region
-// enhancement at dusk so the empirical sunset window is shorter and
-// less generous. Matches the prior Table 6 ~2:1 sunrise:sunset ratio
-// without the per-band buckets.
+// Floor at 0.2 dB suppresses sub-decibel noise bonuses on bands where
+// dayLoss(f) is already small (12 m / 10 m daytime).
 //
-// Night gate: cosZ < 0 returns the formula's full dayLoss (because
-// max(0, cosZ)^0.7 = 0). This is the documented "physics correctness"
-// trade-off: the formula gives a generous credit at night that pairs
-// with lAbsDiurnalDb's zero-charge at night. Operationally this is
-// where the cap binds hard on the low bands. Future calibration may
-// introduce a separate night gate; for now the cap is the defence.
+// Sunrise/sunset asymmetry: rising cosZ (sunrise) gets the full bonus;
+// falling cosZ (sunset) gets 0.5x because D-region recovery lags the
+// F-region enhancement at dusk so the empirical sunset window is
+// shorter and less generous.
+function _grayLineBonusPoint(lat, lon, fMHz, date) {
+  var cosZ = solarCosZenith(lat, lon, date);
+  var dayLoss = D_REGION_PREFACTOR / Math.pow(fMHz + 0.5, 2);
+  var peak = Math.min(15, dayLoss);
+  var sigma = 0.25;
+  var bonus = peak * Math.exp(-(cosZ / sigma) * (cosZ / sigma));
+  if (bonus < 0.2) return 0;
+  // Sunrise/sunset detection: sample cosZ ahead and compare.
+  // At low / mid latitudes a 5-min step is plenty (cosZ changes by
+  // ~0.005 over 5 min near the terminator). At high latitude near
+  // solstice the sun barely moves and a 5-min delta drops below
+  // floating-point noise (~1e-7 at 89.9 N), making the rising/falling
+  // flag random. Scale the lookahead by 1/cos(lat) capped at 60 min so
+  // polar paths get a meaningful delta.
+  var latRad = lat * Math.PI / 180;
+  var cosLat = Math.max(0.05, Math.abs(Math.cos(latRad)));
+  var lookaheadMin = Math.min(60, 5 / cosLat);
+  var future = new Date(date.getTime() + lookaheadMin * 60 * 1000);
+  var cosZFuture = solarCosZenith(lat, lon, future);
+  var rising = cosZFuture > cosZ;
+  if (!rising) bonus *= 0.5;
+  return bonus;
+}
+
+// Single-point sampler. Kept for the diagnostics harness and any
+// caller that already has a midpoint and not the full endpoints.
+// New code (conditions.js) calls grayLineBonusPathDb instead, which
+// integrates along the great circle.
 export function grayLineBonusDb(midLat, midLon, fMHz, date) {
   if (midLat == null || !date || fMHz == null) return 0;
   if (fMHz < 1.8 || fMHz > 30) return 0;
-  var cosZ = solarCosZenith(midLat, midLon, date);
-  var dayLoss = D_REGION_PREFACTOR / Math.pow(fMHz + 0.5, 2);
-  var factor = Math.pow(Math.max(0, cosZ), 0.7);
-  var bonus = dayLoss * (1 - factor);
-  if (bonus < 0.2) return 0;
-  // Sunrise vs sunset asymmetry. Sample 5 min ahead to determine the
-  // sign of d(cosZ)/dt (positive = rising, sunrise side; negative =
-  // falling, sunset side).
-  var future = new Date(date.getTime() + 5 * 60 * 1000);
-  var cosZFuture = solarCosZenith(midLat, midLon, future);
-  var rising = cosZFuture > cosZ;
-  if (!rising) bonus *= 0.5;
-  return Math.min(25, bonus);
+  return _grayLineBonusPoint(midLat, midLon, fMHz, date);
+}
+
+// Path-integrated gray-line bonus. Averages the per-point bonus at 5
+// samples evenly spaced along the great circle (10 / 30 / 50 / 70 /
+// 90 % of the path), so a path whose midpoint sits in darkness but
+// whose endpoints are still in full daylight gets only a fractional
+// credit. Replaces the midpoint-only sampler in the conditions
+// derivation; the midpoint-only form was the proximate cause of the
+// eastbound 160 m over-credit at local sunset (a path midpoint past
+// the terminator paid the full bonus regardless of how much of the
+// remaining path was in full-day D-region absorption).
+export function grayLineBonusPathDb(srcLat, srcLon, dstLat, dstLon, fMHz, date) {
+  if (srcLat == null || dstLat == null || !date || fMHz == null) return 0;
+  if (fMHz < 1.8 || fMHz > 30) return 0;
+  var fractions = [0.1, 0.3, 0.5, 0.7, 0.9];
+  var sum = 0;
+  var nValid = 0;
+  for (var i = 0; i < fractions.length; i++) {
+    var pt = gcPointAtFraction(srcLat, srcLon, dstLat, dstLon, fractions[i]);
+    if (pt == null) continue;
+    sum += _grayLineBonusPoint(pt[0], pt[1], fMHz, date);
+    nValid++;
+  }
+  return nValid > 0 ? sum / nValid : 0;
 }

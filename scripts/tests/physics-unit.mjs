@@ -41,9 +41,12 @@ import {
   // station fusion
   interpolateFoF2FromStations, perHopFoF2FromStations,
   interpolateFoEsFromStations, midpointFoF2WithFallback,
+  // fuse v1 + v2
+  buildFoF2Grid, tecGridToObservations,
   // tier
   tierFromMargin, isDxOpen, tierRank, reliability, tierConfidence,
 } from "../../src/physics/physics.js";
+import { parseIonex } from "../../functions/_handlers/tec.js";
 
 
 export function runUnitTests() {
@@ -787,6 +790,239 @@ const HF_BANDS = [
   r = mufConsensus(15, 10);
   near("mufConsensus: divergence(15,10) = log(1.5)", r.divergence, Math.log(1.5), 1e-9);
 }
+
+
+  // ─── fuse v1: buildFoF2Grid ──────────────────────────────────────
+  {
+    // Pure-climatology fallback: with no observations, every cell
+    // reads exactly the climatology value (the inverse-variance blend
+    // collapses to climatology when sumW == priorInvVar).
+    const flatGrid = buildFoF2Grid({
+      observations: [],
+      climatology: () => 5.0,
+      resolutionDeg: 30,                  // coarse mesh, faster test
+      latRange: [-60, 60],
+    });
+    near("fuse: empty obs => pure climatology at (0,0)",
+         flatGrid.lookup(0, 0), 5.0, 1e-9);
+    near("fuse: empty obs => pure climatology at (40,10)",
+         flatGrid.lookup(40, 10), 5.0, 1e-9);
+    near("fuse: empty obs => pure climatology at (-30,140)",
+         flatGrid.lookup(-30, 140), 5.0, 1e-9);
+
+    // Single GIRO observation: cell lookup at the observation point
+    // should be pulled aggressively toward the obs value (giro error
+    // is 0.3 MHz vs prior 1.0 MHz).
+    const oneObs = buildFoF2Grid({
+      observations: [{ source: "giro", lat: 50.0, lon: 10.0, foF2: 8.0 }],
+      climatology: () => 5.0,
+      resolutionDeg: 10,
+      latRange: [-60, 60],
+    });
+    const lo = oneObs.lookup(50.0, 10.0);
+    check("fuse: GIRO obs pulls lookup toward 8 MHz (was 5)",
+          lo > 7.0 && lo < 8.0,
+          "lookup=" + lo.toFixed(3));
+
+    // Off-station lookup well outside the localization radius should
+    // return the climatology baseline.
+    const far = oneObs.lookup(-50.0, -170.0);
+    near("fuse: far-from-obs lookup => climatology", far, 5.0, 0.05);
+
+    // TEC observation has a larger error budget than GIRO; identical-
+    // distance lookups should pull less strongly toward the obs value.
+    const giroOnly = buildFoF2Grid({
+      observations: [{ source: "giro", lat: 0, lon: 0, foF2: 10 }],
+      climatology: () => 5.0,
+      resolutionDeg: 30,
+      latRange: [-60, 60],
+    });
+    const tecOnly = buildFoF2Grid({
+      observations: [{ source: "tec",  lat: 0, lon: 0, foF2: 10 }],
+      climatology: () => 5.0,
+      resolutionDeg: 30,
+      latRange: [-60, 60],
+    });
+    check("fuse: GIRO pulls lookup harder than TEC at same distance",
+          giroOnly.lookup(0, 0) > tecOnly.lookup(0, 0),
+          "giro=" + giroOnly.lookup(0, 0).toFixed(3) + " tec=" + tecOnly.lookup(0, 0).toFixed(3));
+
+    // Unknown source in the observations list is silently dropped (the
+    // observation has no source descriptor and the filter skips it).
+    const dropUnknown = buildFoF2Grid({
+      observations: [{ source: "doesnotexist", lat: 0, lon: 0, foF2: 99 }],
+      climatology: () => 5.0,
+      resolutionDeg: 30,
+      latRange: [-60, 60],
+    });
+    near("fuse: unknown source dropped => pure climatology",
+         dropUnknown.lookup(0, 0), 5.0, 1e-9);
+
+    // Multi-source blend with well-separated observations so each
+    // dominates its own cell. Closer-together obs cross-pollute via
+    // GIRO's wider effective reach (its low error variance lets it
+    // outweigh a closer TEC obs that has higher error variance) - that's
+    // intentional and operator-correct, but it makes a simple "TEC
+    // dominates its cell" test misleading. Use ~100° separation so the
+    // distances are 11000 km and neither obs's exp(-d²/L²) tail reaches
+    // the other significantly.
+    const blend = buildFoF2Grid({
+      observations: [
+        { source: "giro", lat: 0, lon:    0, foF2: 8.0 },
+        { source: "tec",  lat: 0, lon:  100, foF2: 6.0 },
+      ],
+      climatology: () => 5.0,
+      resolutionDeg: 10,
+      latRange: [-60, 60],
+    });
+    const atGiro = blend.lookup(0, 0);
+    const atTec  = blend.lookup(0, 100);
+    check("fuse: blend - GIRO point pulled toward 8",
+          atGiro > 7.0, "atGiro=" + atGiro.toFixed(3));
+    check("fuse: blend - TEC point pulled toward 6",
+          atTec  < 6.5 && atTec > 5.0, "atTec=" + atTec.toFixed(3));
+
+    // Also test that adding a second observation at the same point
+    // pulls the result CLOSER to the obs value than either alone
+    // would. (Inverse-variance blending is monotonic in number of
+    // in-range observations.)
+    const onlyTec6 = buildFoF2Grid({
+      observations: [{ source: "tec", lat: 0, lon: 0, foF2: 6.0 }],
+      climatology: () => 5.0,
+      resolutionDeg: 30,
+      latRange: [-60, 60],
+    });
+    const twoSources = buildFoF2Grid({
+      observations: [
+        { source: "tec",  lat: 0, lon: 0, foF2: 6.0 },
+        { source: "giro", lat: 0, lon: 0, foF2: 6.0 },
+      ],
+      climatology: () => 5.0,
+      resolutionDeg: 30,
+      latRange: [-60, 60],
+    });
+    // Climatology is 5.0, obs is 6.0; both blends are between 5 and 6;
+    // adding GIRO on top of TEC moves the cell closer to 6.
+    check("fuse: TEC+GIRO same value pulls closer to obs than TEC alone",
+          Math.abs(twoSources.lookup(0, 0) - 6.0) < Math.abs(onlyTec6.lookup(0, 0) - 6.0),
+          "two=" + twoSources.lookup(0, 0).toFixed(3) +
+          " tec=" + onlyTec6.lookup(0, 0).toFixed(3));
+
+    // Longitude wraps cleanly: lookup at lon=190 == lookup at lon=-170.
+    const wrap = buildFoF2Grid({
+      observations: [{ source: "giro", lat: 0, lon: 170, foF2: 9.0 }],
+      climatology: () => 5.0,
+      resolutionDeg: 10,
+      latRange: [-60, 60],
+    });
+    near("fuse: longitude wraps modulo 360",
+         wrap.lookup(0, -170), wrap.lookup(0, 190), 1e-9);
+  }
+
+
+  // ─── fuse v2: IONEX parser ───────────────────────────────────────
+  {
+    // Minimal but format-correct IONEX. Single map, 3 lat × 5 lon grid,
+    // EXPONENT=-1 so integer 50 reads as 5.0 TECU. 9999 is the IONEX
+    // sentinel for missing data (filtered out by the parser).
+    const ionex = [
+      "     1.0            IONOSPHERE MAPS     GPS                 IONEX VERSION / TYPE",
+      "AIUB           CCL                 26-MAY-26 12:00      PGM / RUN BY / DATE",
+      "  2026     5    12     0     0     0                        EPOCH OF FIRST MAP  ",
+      "  2026     5    12     0     0     0                        EPOCH OF LAST MAP   ",
+      "  7200                                                      INTERVAL            ",
+      "     1                                                      # OF MAPS IN FILE   ",
+      "  COSZ                                                      MAPPING FUNCTION    ",
+      "  6371.0                                                    BASE RADIUS         ",
+      "   450.0 450.0   0.0                                        HGT1 / HGT2 / DHGT  ",
+      "   -10.0  10.0  10.0                                        LAT1 / LAT2 / DLAT  ",
+      "  -180.0 180.0  90.0                                        LON1 / LON2 / DLON  ",
+      "    -1                                                      EXPONENT            ",
+      "                                                            END OF HEADER       ",
+      "     1                                                      START OF TEC MAP    ",
+      "  2026     5    12     0     0     0                        EPOCH OF CURRENT MAP",
+      "   -10.0-180.0 180.0  90.0 450.0                            LAT/LON1/LON2/DLON/H",
+      "   50   55   60   55   50",
+      "     0.0-180.0 180.0  90.0 450.0                            LAT/LON1/LON2/DLON/H",
+      "   80   90  100   90   80",
+      "    10.0-180.0 180.0  90.0 450.0                            LAT/LON1/LON2/DLON/H",
+      "   60   65   70 9999   60",
+      "                                                            END OF TEC MAP      ",
+      "                                                            END OF FILE         ",
+    ].join("\n");
+
+    const parsed = parseIonex(ionex);
+    check("ionex: parse returns non-null", parsed != null);
+    eq("ionex: cell count = 14 (15 grid minus 1 sentinel)",
+       parsed.cells.length, 14);
+    eq("ionex: lat range", parsed.lat1 + "..." + parsed.lat2, "-10...10");
+    eq("ionex: lon range", parsed.lon1 + "..." + parsed.lon2, "-180...180");
+    eq("ionex: dLat", parsed.dLat, 10);
+    eq("ionex: dLon", parsed.dLon, 90);
+
+    const at = (la, lo) => parsed.cells.find(c => c.lat === la && c.lon === lo);
+    near("ionex: cell (-10,-180) = 5.0 TECU", at(-10, -180).tec, 5.0, 1e-9);
+    near("ionex: cell (0, 0)     = 10.0 TECU", at(0, 0).tec, 10.0, 1e-9);
+    near("ionex: cell (0, -90)   = 9.0 TECU",  at(0, -90).tec, 9.0, 1e-9);
+    check("ionex: cell (10, 90) sentinel-removed", at(10, 90) === undefined);
+    near("ionex: cell (10, 180)  = 6.0 TECU",  at(10, 180).tec, 6.0, 1e-9);
+
+    // Malformed / missing header returns null cleanly.
+    check("ionex: empty input returns null", parseIonex("") == null);
+    check("ionex: garbage returns null", parseIonex("just garbage, no header") == null);
+  }
+
+
+  // ─── fuse v2: TEC -> foF2 inversion ──────────────────────────────
+  {
+    // Equivalent-slab inversion: foF2 = sqrt(TEC_TECU * 1000 / (1.24 * slabKm))
+    // Calibration points from published literature (slabKm=300 default):
+    //   15 TECU  ->  ~6.35 MHz (mid-lat daytime)
+    //   30 TECU  ->  ~8.98 MHz
+    //   60 TECU  -> ~12.70 MHz (EIA peak under solar max)
+    //    3 TECU  ->  ~2.84 MHz (polar night)
+    var obs15 = tecGridToObservations({ cells: [{ lat: 0, lon: 0, tec: 15 }] });
+    near("tec inversion: 15 TECU @ slab300 -> 6.35 MHz",
+         obs15[0].foF2, 6.35, 0.05);
+
+    var obs30 = tecGridToObservations({ cells: [{ lat: 0, lon: 0, tec: 30 }] });
+    near("tec inversion: 30 TECU @ slab300 -> 8.98 MHz",
+         obs30[0].foF2, 8.98, 0.05);
+
+    var obs60 = tecGridToObservations({ cells: [{ lat: 0, lon: 0, tec: 60 }] });
+    near("tec inversion: 60 TECU @ slab300 -> 12.70 MHz",
+         obs60[0].foF2, 12.70, 0.05);
+
+    // slabKm tunable: at 400 km (nighttime ionosphere thicker), foF2
+    // for the same TEC drops.
+    var obs15Night = tecGridToObservations(
+      { cells: [{ lat: 0, lon: 0, tec: 15 }] },
+      { slabKm: 400 });
+    near("tec inversion: 15 TECU @ slab400 -> 5.50 MHz",
+         obs15Night[0].foF2, 5.50, 0.05);
+
+    // Filters: zero/negative TEC, non-finite, missing lat/lon all
+    // produce no observation entry.
+    var dropped = tecGridToObservations({ cells: [
+      { lat: 0, lon: 0, tec: 0 },                 // zero
+      { lat: 0, lon: 0, tec: -1 },                // negative
+      { lat: 0, lon: 0, tec: NaN },               // NaN
+      { lat: NaN, lon: 0, tec: 10 },              // bad lat
+      { lat: 0, lon: 0, tec: 9999 },              // would be huge; not filtered (sentinel-removal is upstream)
+      { lat: 0, lon: 0, tec: 10 },                // valid
+    ]});
+    eq("tec inversion: filters zero/neg/NaN/bad-coords",
+       dropped.length, 2);
+
+    // Array-shaped input (not wrapped in {cells: ...}) also accepted.
+    var asArr = tecGridToObservations([{ lat: 0, lon: 0, tec: 10 }]);
+    eq("tec inversion: accepts bare array input", asArr.length, 1);
+
+    // Null / undefined / empty input returns empty list.
+    eq("tec inversion: null input -> []", tecGridToObservations(null).length, 0);
+    eq("tec inversion: undefined input -> []", tecGridToObservations(undefined).length, 0);
+    eq("tec inversion: empty grid -> []", tecGridToObservations({ cells: [] }).length, 0);
+  }
 
 
   return { passed, failed, fails };

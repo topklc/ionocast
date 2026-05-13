@@ -16,7 +16,9 @@
 // documents, slightly tighter given our per-path + diurnal corrections.
 // Used by reliability() and tierStability() but not by tierFromMargin
 // itself (which is now sigma-independent).
-export const DEFAULT_SIGMA_DB    = 8;
+// Re-exported from constants.js so a retune touches one literal site.
+export { DEFAULT_SIGMA_DB } from "../constants.js";
+import { DEFAULT_SIGMA_DB } from "../constants.js";
 
 // Fixed-dB tier boundaries. The verdict is read off the absolute margin
 // (in dB above SNR-required) without any sigma scaling. These match
@@ -69,7 +71,11 @@ export const TIER_DB_POOR      = -14;
 export const TIER_DX_MIN_KM    = 6000;
 
 export function tierFromMargin(margin) {
-  if (margin == null || isNaN(margin)) return null;
+  // Use !isFinite to also reject ±Infinity, matching the policy in
+  // isDxOpen below. Previously isNaN allowed Infinity through, which
+  // returned "excellent" silently for +Infinity and "closed" for
+  // -Infinity; neither is a meaningful verdict.
+  if (margin == null || !isFinite(margin)) return null;
   if (margin >= TIER_DB_EXCELLENT) return "excellent";
   if (margin >= TIER_DB_GOOD)      return "good";
   if (margin >= TIER_DB_FAIR)      return "fair";
@@ -93,7 +99,11 @@ export function isDxOpen(margin, dKm) {
 
 const TIER_RANK = { closed: 0, poor: 1, fair: 2, good: 3, excellent: 4 };
 
-export function tierRank(t) { return TIER_RANK[t] != null ? TIER_RANK[t] : 0; }
+// Return null on unknown labels rather than 0 ("closed"). Callers that
+// want "treat unknown as closed" can do `tierRank(t) ?? 0` explicitly.
+// Previously a typo'd tier like "excelent" silently became 0 and was
+// indistinguishable from a legitimate closed verdict.
+export function tierRank(t) { return TIER_RANK[t] != null ? TIER_RANK[t] : null; }
 
 // Normal CDF via Abramowitz & Stegun 26.2.17 rational approximation.
 // Max error ~7.5e-8 in the tails.

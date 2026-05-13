@@ -77,9 +77,15 @@ export function foF2Climatology(f107A, cosZ, latAbs, lat, lon, date) {
   // midlatFactor + polarFactor + EIA refit would close the gradient
   // but would also touch every other latitude band's calibration.
   // Tracked in BACKLOG.md as "latitude-gradient joint refit".
-  var lat = latAbs != null ? latAbs : 0;
-  var midlatFactor = 1 - 0.003 * lat;
-  var polarFactor  = 1 / (1 + Math.exp((lat - 73) / 8));
+  // latAbsLocal: |lat| for midlat/polar envelopes (factor and dayBump
+  // are intentionally functions of magnitude). Keep `lat` as the signed
+  // parameter so winter-anomaly hemisphere selection and the lagged-sun
+  // cosZ probe both use the actual hemisphere; the prior `var lat = ...`
+  // shadowed the parameter, pinning isNorth permanently true and sampling
+  // the lagged cosZ at +|lat| for southern hemisphere callers.
+  var latAbsLocal = latAbs != null ? latAbs : (lat != null ? Math.abs(lat) : 0);
+  var midlatFactor = 1 - 0.003 * latAbsLocal;
+  var polarFactor  = 1 / (1 + Math.exp((latAbsLocal - 73) / 8));
   var dayBump = 4.0 * midlatFactor * polarFactor;
 
   // F-region "memory" lag for evening tail (Eq 37): peak foF2 lags
@@ -111,7 +117,10 @@ export function foF2Climatology(f107A, cosZ, latAbs, lat, lon, date) {
   //                  multiplier operates, decaying to ~3.3 MHz near
   //                  midnight and recovering toward sunrise.
   if (cosZ < 0) {
-    foF2 = foF2 * Math.max(0.6, 1 + 0.4 * cosZ);
+    // cosZ is clamped to [-1, 1] upstream, so (1 + 0.4*cosZ) is in
+    // [0.6, 1.0] for cosZ in [-1, 0]; the prior Math.max(0.6, ...)
+    // floor was unreachable.
+    foF2 = foF2 * (1 + 0.4 * cosZ);
   }
   foF2 = Math.max(2, foF2);
 
@@ -265,6 +274,7 @@ export function pathMinMuf(mufMidpoint, climoMufMidpoint, f107A,
     for (var i = 1; i <= n; i++) {
       var fr = (2 * i - 1) / (2 * n);
       var p = gcPointAtFraction(srcLat, srcLon, dstLat, dstLon, fr);
+      if (p == null) continue;
       var cz = solarCosZenith(p[0], p[1], date);
       var muf_i = mufMidpoint * _zenithShape(cz, f) / shapeMid0;
       if (muf_i < minMuf0) minMuf0 = muf_i;
@@ -279,6 +289,7 @@ export function pathMinMuf(mufMidpoint, climoMufMidpoint, f107A,
   for (var k = 1; k <= n; k++) {
     var frac = (2 * k - 1) / (2 * n);
     var pt = gcPointAtFraction(srcLat, srcLon, dstLat, dstLon, frac);
+    if (pt == null) continue;
     var cosZ_k = solarCosZenith(pt[0], pt[1], date);
     var foF2_k = foF2Climatology(f107A, cosZ_k, Math.abs(pt[0]), pt[0], pt[1], date);
     if (foF2_k == null) continue;

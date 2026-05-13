@@ -12,6 +12,7 @@ import {
   CACHE_DIR, NO_FETCH,
   loadHarnessCache, makeKpAt,
   haversineKm, gridToLatLon, residualStats, predictSnrAtSpot,
+  buildHarnessFuseGrid,
 } from "./_shared.mjs";
 
 export const RBN_SKIMMERS = {
@@ -97,13 +98,25 @@ function rbnFetchDay(yyyymmdd) {
   return rows;
 }
 
-export function runRbnSuite() {
+// Core walk of the RBN spot set with optional fuseGrid. When fuseGrid
+// is supplied, per-spot midpoint foF2 lookups read from the grid (the
+// calibration-harness path through the FUSE_PRIMARY_FOF2 flag wired
+// into production conditions.js). Returns the residual stats so the
+// caller can compare with/without numbers side by side.
+async function _runRbn(opts) {
+  opts = opts || {};
   const cache = loadHarnessCache();
   const kpAt = makeKpAt(cache.kpHistory);
   const d = new Date(Date.now() - 24 * 3600 * 1000);
   const day = `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,"0")}${String(d.getUTCDate()).padStart(2,"0")}`;
   const rows = rbnFetchDay(day);
   if (!rows) return { skipped: "RBN data unavailable" };
+
+  const fuseGrid = opts.useFuse ? await buildHarnessFuseGrid(d) : null;
+  const fuseStatus = opts.useFuse
+    ? (fuseGrid ? "fuse grid built" : "fuse grid unavailable, fell back to climatology")
+    : "fuse disabled";
+
   const residuals = [];
   const byBand = {}, bySkimmer = {};
   let dropNoLoc = 0, dropPhys = 0;
@@ -127,6 +140,7 @@ export function runRbnSuite() {
       antType: skimmer.antType, antGainDbi: skimmer.gainDbi, antHeightM: skimmer.heightM,
       modeBwHz: 500, snrRequiredDb: 0, noiseFaAdjDb: 5,
       kp: kpAt(date.getTime()),
+      fuseGrid,
     });
     if (p == null) { dropPhys++; continue; }
     const residual = row.snrDb - p.predicted;
@@ -144,6 +158,10 @@ export function runRbnSuite() {
     perBand: Object.fromEntries(Object.entries(byBand).map(([k, v]) => [k, residualStats(v)])),
     perSkimmer: Object.fromEntries(Object.entries(bySkimmer).map(([k, v]) =>
       [k, { ...residualStats(v), grid: RBN_SKIMMERS[k].grid }])),
-    assumptions: { txPowerDbm: ASSUMED_TX_DBM, modeBwHz: 500, txLocation: "DXCC centroid" },
+    assumptions: { txPowerDbm: ASSUMED_TX_DBM, modeBwHz: 500, txLocation: "DXCC centroid",
+                   fuse: fuseStatus },
   };
 }
+
+export function runRbnSuite()      { return _runRbn({ useFuse: false }); }
+export function runRbnFuseSuite()  { return _runRbn({ useFuse: true  }); }
