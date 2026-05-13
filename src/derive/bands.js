@@ -32,11 +32,30 @@ export function computeBandsHf(wspr, localMuf, drap) {
   // Track unrecognized band keys for a single warning, instead of
   // silently dropping (which masked schema drift from upstream WSPR
   // feeds and discarded all VHF rows without surfacing the loss).
+  //
+  // WSPRnet feeds carry rows for every amateur band, not just HF, so
+  // a flat "anything not in rowsByBand" warning fires noisily on
+  // legitimate VHF / UHF / microwave entries that this HF-only table
+  // intentionally skips. Suppress those silently; warn only on band
+  // codes that are neither HF (handled below) nor known non-HF.
+  // The VHF table is built separately by deriveVhfBands from GIRO +
+  // OVATION + tropo, not from WSPR.
+  var KNOWN_NON_HF = new Set([
+    0,        // LF / MF (2200 m = 137 kHz, 630 m = 474 kHz; both report 0)
+    50,       // 6 m
+    70,       // 4 m (EU)
+    144,      // 2 m
+    222,      // 1.25 m
+    430, 432, // 70 cm (region-dependent code)
+    902,      // 33 cm
+    1296,     // 23 cm
+    2300, 2400, 3400, 5650, 10368, 24048, // microwave
+  ]);
   var unknownBands = null;
   (wspr && wspr.data || []).forEach(function(r) {
     var b = r.band;
     if (!(b in rowsByBand)) {
-      if (b != null) {
+      if (b != null && !KNOWN_NON_HF.has(b)) {
         if (unknownBands == null) unknownBands = new Set();
         unknownBands.add(b);
       }

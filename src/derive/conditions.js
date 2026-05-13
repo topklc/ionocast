@@ -714,6 +714,19 @@ export function deriveConditions(ctx) {
         anchorMargin = best.m.margin;
       }
       var tier = tierFromMargin(anchorMargin);
+
+      // TEMP diagnostic for the 2nd-best-margin verdict (see
+      // docs/HF-TIER-AGGREGATION.md). Fires once per HF band group per
+      // refresh (~10/refresh). Remove after validation.
+      if (typeof console !== "undefined" && console.debug) {
+        var sorted = bandMargins.slice().sort(function (a, b) { return b - a; })
+                                .map(function (x) { return Math.round(x); });
+        console.debug("[hf-tier-anchor]", best.name,
+          "best=" + Math.round(best.m.margin) + "dB",
+          "anchor=" + Math.round(anchorMargin) + "dB",
+          "n=" + bandMargins.length,
+          "margins=" + JSON.stringify(sorted));
+      }
       // D-RAP absorption gate: if D-RAP flags this band as absorbed AND
       // observed spot activity sits below half the band's 30-day
       // baseline, close it out. Previously the threshold was a flat 50
