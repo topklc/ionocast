@@ -132,7 +132,7 @@ export function deriveConditions(ctx) {
   // by ~30-60 min, so the lagged kernel (which is decay-only) misses the
   // ramp. Add a small additive Kp from sustained negative Bz before the
   // 3 h Kp index catches up.
-  var bzBump = bzForwardKpBump(bzHistory, nowDateForStorm);
+  var bzBump = bzForwardKpBump(bzHistory, nowDate);
 
   // Dst storm adjustment: when Dst < -50, the ring current is
   // enhanced (storm in progress), bump the effective Kp for model purposes.
@@ -155,7 +155,7 @@ export function deriveConditions(ctx) {
   // bump down on each 3-hour tick rather than smoothly hand off to
   // σ_storm, briefly inflating the in-quadrature σ at the catch-up
   // moment (per whitepaper §7.3.1).
-  var forecastSigmaDb = forecastKpPenaltyDb(kpForecast, nowDateForStorm, kpEffective);
+  var forecastSigmaDb = forecastKpPenaltyDb(kpForecast, nowDate, kpEffective);
 
   var opts = snrOpts();              // tx power, antenna, mode, noise env
 
