@@ -60,6 +60,31 @@ const BANDS = [
 ];
 const N_BANDS = BANDS.length;
 
+// ── P.453 class anchors ───────────────────────────────────────────
+// Drive both the color-band breakpoints and isoline levels off the
+// radiosonde-validated cuts produced by tropo/calibrate.mjs (see the
+// "Best cut" line of its output). Keeping these as named constants so
+// a recalibration only touches one place.
+//   tropo_index < CUT_STANDARD       → standard refractivity (rendered dim)
+//   CUT_STANDARD ≤ x < CUT_DUCTING   → super-refractive (mid palette)
+//   x ≥ CUT_DUCTING                  → ducting (warm palette + heavier isoline)
+//   CUT_MAX                          → top of the visible scale (clip)
+// Values reflect the calibration anchored in tropo-map.js's panel
+// caption ("≥ 90 M-units → ducting, 100 % precision against sondes").
+export const CUT_STANDARD = 20;
+export const CUT_DUCTING  = 90;
+export const CUT_MAX      = 200;
+// Index of the first warm-side band; bands 0..(BAND_DUCT_INDEX-1) cover
+// the standard→super-refractive range, the rest cover ducting. Picked
+// so the visual transition into yellow (~band 10) coincides with x ≈
+// CUT_DUCTING. Tuned manually against the 15-band ramp above; if the
+// ramp is ever swapped, re-tune so the warm onset aligns with sondes.
+export const BAND_DUCT_INDEX = 10;
+
+// Public copy of the palette so UI builders can render a legend that
+// matches the exact band colors and break positions.
+export const TROPO_BANDS = BANDS;
+
 const MERCATOR_LAT = 85.05112878;
 function mercY01ToLat(y) {
   const my = (1 - 2 * y) * Math.PI;
@@ -69,7 +94,11 @@ function mercY01ToLat(y) {
 function pickIndex(cell) {
   if (cell == null) return null;
   if (cell.tropo_index != null) return cell.tropo_index;
-  if (cell.m_deficit  != null) return cell.m_deficit;
+  // Legacy-ingest fallback: composite tropo_index = 5·m_deficit + ...
+  // (see ingest.mjs reduceMprofile). Scaling raw m_deficit by 5 keeps
+  // legacy-grid renderings near the same brightness band as fresh ones,
+  // rather than darkening to ~1/5 of the expected value.
+  if (cell.m_deficit  != null) return cell.m_deficit * 5;
   return null;
 }
 
@@ -173,12 +202,14 @@ function buildSampler(data) {
     }
   }
 
-  // Separable Gaussian pre-smooth (binomial [1,4,6,4,1]/16, σ≈1).
-  // Operational forecast products all apply a small spatial filter
-  // before contouring; this softens polygon edges where the
-  // underlying field has neighbour-cell jitter.
+  // Separable Gaussian pre-smooth (binomial order 6, [1,6,15,20,15,6,1]/64,
+  // σ≈√(6/4) ≈ 1.22 grid cells). Operational MOS products typically
+  // smooth at 2-4× grid spacing before contouring; this 7-tap kernel
+  // is at the conservative end of that range and matches the smoothness
+  // the eye expects from a global tropo product.
   {
-    const K = [1, 4, 6, 4, 1];
+    const K = [1, 6, 15, 20, 15, 6, 1];
+    const HALF = 3;
     const tmp = new Float32Array(ROWS * COLS);
     for (let r = 0; r < ROWS; r++) {
       const rowBase = r * COLS;
@@ -186,12 +217,12 @@ function buildSampler(data) {
         const i = rowBase + c;
         if (!vGrid[i]) continue;
         let sum = 0, w = 0;
-        for (let dc = -2; dc <= 2; dc++) {
+        for (let dc = -HALF; dc <= HALF; dc++) {
           let cc = c + dc;
           cc = ((cc % COLS) + COLS) % COLS;
           const j = rowBase + cc;
           if (!vGrid[j]) continue;
-          const k = K[dc + 2];
+          const k = K[dc + HALF];
           sum += mGrid[j] * k;
           w   += k;
         }
@@ -204,13 +235,13 @@ function buildSampler(data) {
         const i = r * COLS + c;
         if (!vGrid[i]) continue;
         let sum = 0, w = 0;
-        for (let dr = -2; dr <= 2; dr++) {
+        for (let dr = -HALF; dr <= HALF; dr++) {
           let rr = r + dr;
           if (rr < 0) rr = 0;
           else if (rr >= ROWS) rr = ROWS - 1;
           const j = rr * COLS + c;
           if (!vGrid[j]) continue;
-          const k = K[dr + 2];
+          const k = K[dr + HALF];
           sum += tmp[j] * k;
           w   += k;
         }
@@ -275,81 +306,11 @@ function buildSampler(data) {
   };
 }
 
-// 16-case marching squares with cell-center saddle resolver.
-function marchingSquares(g, levels) {
-  const { ROWS, COLS, m, v, latMax, latStep, lonMin, lonStep } = g;
-  const features = [];
-  for (const level of levels) {
-    for (let r = 0; r < ROWS - 1; r++) {
-      for (let c = 0; c < COLS - 1; c++) {
-        const i00 = r * COLS + c;
-        const i01 = r * COLS + c + 1;
-        const i10 = (r + 1) * COLS + c;
-        const i11 = (r + 1) * COLS + c + 1;
-        if (!v[i00] || !v[i01] || !v[i10] || !v[i11]) continue;
-        const a = m[i00];
-        const b = m[i01];
-        const cv = m[i11];
-        const d = m[i10];
-        const code = ((a >= level) << 3) | ((b >= level) << 2)
-                   | ((cv >= level) << 1) | (d >= level);
-        if (code === 0 || code === 15) continue;
-        const lat0 = latMax - r * latStep;
-        const lat1 = latMax - (r + 1) * latStep;
-        const lon0 = lonMin + c * lonStep;
-        const lon1 = lonMin + (c + 1) * lonStep;
-        const top   = () => [lon0 + (level - a) / (b - a)  * (lon1 - lon0), lat0];
-        const right = () => [lon1, lat0 + (level - b) / (cv - b) * (lat1 - lat0)];
-        const bot   = () => [lon0 + (level - d) / (cv - d) * (lon1 - lon0), lat1];
-        const left  = () => [lon0, lat0 + (level - a) / (d - a)  * (lat1 - lat0)];
-        const emit = (p0, p1) => features.push({
-          type: "Feature",
-          properties: { level },
-          geometry: { type: "LineString", coordinates: [p0, p1] },
-        });
-        switch (code) {
-          case 1:  emit(left(), bot());            break;
-          case 2:  emit(bot(),  right());          break;
-          case 3:  emit(left(), right());          break;
-          case 4:  emit(top(),  right());          break;
-          case 5: {
-            const center = (a + b + cv + d) * 0.25;
-            if (center >= level) {
-              emit(top(),  left());
-              emit(right(), bot());
-            } else {
-              emit(top(),  right());
-              emit(left(), bot());
-            }
-            break;
-          }
-          case 6:  emit(top(),  bot());            break;
-          case 7:  emit(top(),  left());           break;
-          case 8:  emit(top(),  left());           break;
-          case 9:  emit(top(),  bot());            break;
-          case 10: {
-            const center = (a + b + cv + d) * 0.25;
-            if (center >= level) {
-              emit(top(),  right());
-              emit(left(), bot());
-            } else {
-              emit(top(),  left());
-              emit(right(), bot());
-            }
-            break;
-          }
-          case 11: emit(top(),  right());          break;
-          case 12: emit(left(), right());          break;
-          case 13: emit(bot(),  right());          break;
-          case 14: emit(left(), bot());            break;
-        }
-      }
-    }
-  }
-  return { type: "FeatureCollection", features };
-}
-
-const DISPLAY_THRESHOLD = 20;
+// Backwards-compatible alias. Cells with tropo_index below this value
+// render as background (no band fill). Anchored to the calibrated
+// standard/super-refractive cut so the dim region matches "P.453
+// standard atmosphere".
+const DISPLAY_THRESHOLD = CUT_STANDARD;
 
 function linesToGeoJSON(lines) {
   return {
@@ -520,10 +481,12 @@ export async function mountTropoMap(container) {
     t("{n}-level profile", { n: data.pressure_levels_hpa.length }) + " · " +
     data.source;
 
-  const { sampleM, grid } = buildSampler(data);
-  const denom = Math.max(DISPLAY_THRESHOLD + 60, 200);
-  const range = denom - DISPLAY_THRESHOLD;
+  const { sampleM } = buildSampler(data);
 
+  // Bicubic-resample to a fine mercator grid. Don't zero sub-threshold
+  // cells here: contouring on the raw field gives smooth iso-curves at
+  // the standard/super-refractive boundary; masking the dim regions
+  // happens via the band selection (no band fill below CUT_STANDARD).
   const FINE_W = 1440, FINE_H = 720;
   const fineGrid = new Float32Array(FINE_W * FINE_H);
   let observedMax = 0;
@@ -533,23 +496,49 @@ export async function mountTropoMap(container) {
     for (let x = 0; x < FINE_W; x++) {
       const lon = -180 + ((x + 0.5) / FINE_W) * 360;
       const m = sampleM(lat, lon);
-      const v = (isFinite(m) && m > DISPLAY_THRESHOLD) ? m : 0;
+      const v = isFinite(m) ? m : 0;
       fineGrid[rowBase + x] = v;
       if (v > observedMax) observedMax = v;
     }
   }
 
+  // Two-segment threshold ramp anchored to P.453 cuts. Bands
+  // 0..BAND_DUCT_INDEX-1 span [CUT_STANDARD, CUT_DUCTING] (super-
+  // refractive, cold→warm-mid palette). Bands BAND_DUCT_INDEX..end
+  // span [CUT_DUCTING, CUT_MAX] (ducting, warm→hot palette). A mild
+  // gamma inside each segment keeps the transition smooth without
+  // washing out the boundary at CUT_DUCTING.
+  const SEG_GAMMA = 1 / 0.8;
   const allThresholds = [];
   for (let i = 0; i < N_BANDS; i++) {
-    const f = Math.pow(i / N_BANDS, 1 / 0.7);
-    allThresholds.push(DISPLAY_THRESHOLD + f * range);
+    let v;
+    if (i < BAND_DUCT_INDEX) {
+      const f = Math.pow(i / BAND_DUCT_INDEX, SEG_GAMMA);
+      v = CUT_STANDARD + f * (CUT_DUCTING - CUT_STANDARD);
+    } else {
+      const f = Math.pow((i - BAND_DUCT_INDEX) / (N_BANDS - BAND_DUCT_INDEX),
+                         SEG_GAMMA);
+      v = CUT_DUCTING + f * (CUT_MAX - CUT_DUCTING);
+    }
+    allThresholds.push(v);
   }
+  // Force the two regime-boundary values to be exact (no floating-point
+  // drift from the gamma curve at the endpoints). The isoline extraction
+  // below indexes back to these values.
+  allThresholds[0] = CUT_STANDARD;
+  allThresholds[BAND_DUCT_INDEX] = CUT_DUCTING;
   const liveThresholds = allThresholds.filter(t => t <= observedMax);
 
   const contourGen = d3.contours()
     .size([FINE_W, FINE_H])
     .thresholds(liveThresholds);
   const rawContours = contourGen(fineGrid);
+
+  // Convert pixel coords back to lon/lat. Used for both fills and
+  // isolines so they share the same vertex set.
+  function pxToLonLat(px, py) {
+    return [-180 + (px / FINE_W) * 360, mercY01ToLat(py / FINE_H)];
+  }
 
   const idxByValue = new Map();
   allThresholds.forEach((t, i) => idxByValue.set(t, i));
@@ -559,23 +548,56 @@ export async function mountTropoMap(container) {
     geometry: {
       type: "MultiPolygon",
       coordinates: feat.coordinates.map(polygon =>
-        polygon.map(ring =>
-          ring.map(([px, py]) => [
-            -180 + (px / FINE_W) * 360,
-            mercY01ToLat(py / FINE_H),
-          ])
-        )
+        polygon.map(ring => ring.map(([px, py]) => pxToLonLat(px, py)))
       ),
     },
   }));
   const bandsCollection = { type: "FeatureCollection", features: bandFeatures };
 
-  const indexMax = data.tropo_index_max ?? data.m_deficit_max ?? 200;
-  const visibleRange = Math.max(20, indexMax - DISPLAY_THRESHOLD);
-  const isoLevels = [0.0, 0.15, 0.30, 0.50, 0.70, 0.90].map(
-    f => DISPLAY_THRESHOLD + f * visibleRange
-  );
-  const isolines = marchingSquares(grid, isoLevels);
+  // Isolines come from the same contour pass, sharing the fineGrid
+  // resolution as the fills. Render at the two P.453 class boundaries
+  // (heavy stroke) plus two intermediate guide levels (lighter stroke).
+  // Each contour is the outer ring of the >=t MultiPolygon, so a
+  // MapLibre line layer over the same MultiPolygon source would stroke
+  // every band edge; we extract dedicated linestring features for the
+  // iso levels we want emphasized.
+  const ISO_HEAVY = new Set([CUT_STANDARD, CUT_DUCTING]);
+  const ISO_LIGHT_LEVELS = (function () {
+    const mid = (CUT_STANDARD + CUT_DUCTING) / 2;
+    const hi  = (CUT_DUCTING + CUT_MAX) / 2;
+    return [mid, hi];
+  })();
+  // Pick the band thresholds nearest each light-iso target so we reuse
+  // the existing contour features (no extra contour pass needed).
+  const ISO_LIGHT = new Set();
+  for (const target of ISO_LIGHT_LEVELS) {
+    let best = liveThresholds[0], bestD = Infinity;
+    for (const t of liveThresholds) {
+      const d = Math.abs(t - target);
+      if (d < bestD) { best = t; bestD = d; }
+    }
+    if (best !== undefined && !ISO_HEAVY.has(best)) ISO_LIGHT.add(best);
+  }
+  const isoFeatures = [];
+  for (const feat of rawContours) {
+    const isHeavy = ISO_HEAVY.has(feat.value);
+    const isLight = ISO_LIGHT.has(feat.value);
+    if (!isHeavy && !isLight) continue;
+    // Each polygon's first ring is the outer boundary; inner rings
+    // (holes) are also valid contour curves at the same level. Emit
+    // all of them as closed LineStrings.
+    for (const polygon of feat.coordinates) {
+      for (const ring of polygon) {
+        const coords = ring.map(([px, py]) => pxToLonLat(px, py));
+        isoFeatures.push({
+          type: "Feature",
+          properties: { value: feat.value, weight: isHeavy ? "heavy" : "light" },
+          geometry: { type: "LineString", coordinates: coords },
+        });
+      }
+    }
+  }
+  const isolines = { type: "FeatureCollection", features: isoFeatures };
 
   const map = new maplibregl.Map({
     container: mapDiv,
@@ -605,11 +627,27 @@ export async function mountTropoMap(container) {
             "fill-antialias": true,
           },
         })),
-        { id: "isoline-layer", type: "line", source: "isolines",
+        // Light guide isolines (super-refractive midpoint, ducting
+        // midpoint).  Thin and translucent so they don't compete with
+        // the heavy class-boundary lines below.
+        { id: "isoline-light", type: "line", source: "isolines",
+          filter: ["==", ["get", "weight"], "light"],
           paint: {
             "line-color":   "#000",
-            "line-width":   ["interpolate", ["linear"], ["zoom"], 1, 0.4, 6, 0.7],
-            "line-opacity": 0.55,
+            "line-width":   ["interpolate", ["linear"], ["zoom"], 1, 0.3, 6, 0.55],
+            "line-opacity": 0.35,
+            "line-dasharray": [3, 3],
+          },
+          layout: { "line-cap": "round", "line-join": "round" } },
+        // Heavy class-boundary isolines at CUT_STANDARD and CUT_DUCTING.
+        // These mark the two P.453 regime transitions and read as
+        // hard lines a viewer can trace by eye.
+        { id: "isoline-heavy", type: "line", source: "isolines",
+          filter: ["==", ["get", "weight"], "heavy"],
+          paint: {
+            "line-color":   "#000",
+            "line-width":   ["interpolate", ["linear"], ["zoom"], 1, 0.6, 6, 1.1],
+            "line-opacity": 0.7,
           },
           layout: { "line-cap": "round", "line-join": "round" } },
         { id: "state-50m", type: "line", source: "state_50m",

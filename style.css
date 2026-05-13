@@ -402,31 +402,34 @@ html.dark #term-popover{background:#0e1116;box-shadow:0 4px 14px rgba(0,0,0,.5)}
   border:1px solid #533;background:#2a1414;padding:8px 10px;border-radius:4px
 }
 .tropo-status[hidden]{display:none}
-.tropo-legend{margin-top:10px}
+.tropo-legend{margin-top:10px;width:360px}
 .tropo-strip{
-  height:14px;width:360px;border:1px solid var(--border);margin:6px 0 2px;
-  background:linear-gradient(to right,
-    rgb(30,40,110)   0%,    rgb(30,40,110)   6.66%,
-    rgb(35,70,150)   6.66%, rgb(35,70,150)  13.33%,
-    rgb(35,105,185) 13.33%, rgb(35,105,185) 20.00%,
-    rgb(35,140,215) 20.00%, rgb(35,140,215) 26.66%,
-    rgb(35,175,220) 26.66%, rgb(35,175,220) 33.33%,
-    rgb(35,205,205) 33.33%, rgb(35,205,205) 40.00%,
-    rgb(50,220,165) 40.00%, rgb(50,220,165) 46.66%,
-    rgb(90,225,125) 46.66%, rgb(90,225,125) 53.33%,
-    rgb(150,225,90) 53.33%, rgb(150,225,90) 60.00%,
-    rgb(210,220,60) 60.00%, rgb(210,220,60) 66.66%,
-    rgb(245,215,45) 66.66%, rgb(245,215,45) 73.33%,
-    rgb(250,175,30) 73.33%, rgb(250,175,30) 80.00%,
-    rgb(250,120,30) 80.00%, rgb(250,120,30) 86.66%,
-    rgb(240,60,30)  86.66%, rgb(240,60,30)  93.33%,
-    rgb(200,30,30)  93.33%, rgb(200,30,30)  100%
-  );
+  height:14px;width:100%;border:1px solid var(--border);margin:6px 0 2px;
+  /* background is injected from JS using the live TROPO_BANDS palette */
 }
+/* Tick numbers and region labels are positioned absolutely so they land
+   under the matching point on the strip (e.g. "90" sits under the band
+   where the renderer's CUT_DUCTING break actually falls). */
 .tropo-scale{
-  width:360px;display:flex;justify-content:space-between;
-  font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;
-  margin-bottom:4px
+  position:relative;height:14px;width:100%;
+  font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums
+}
+.tropo-tick{
+  position:absolute;top:0;transform:translateX(-50%);white-space:nowrap
+}
+.tropo-tick:first-child{transform:none}
+.tropo-tick:last-child{transform:translateX(-100%)}
+.tropo-regions{
+  position:relative;height:14px;width:100%;
+  font-size:10px;color:var(--muted);font-style:italic;margin-top:2px
+}
+.tropo-region{
+  position:absolute;top:0;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+}
+.tropo-legend-note{
+  font-size:10px;color:var(--muted);font-style:italic;
+  margin:6px 0 0;line-height:1.4
 }
 
 /* MapLibre control restyle to match dark panel aesthetic. */

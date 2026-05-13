@@ -10,7 +10,10 @@
 
 import { el, interpEl } from "../dom.js";
 import { t } from "../../i18n.js";
-import { mountTropoMap } from "../../tropo/runtime.mjs";
+import {
+  mountTropoMap,
+  CUT_STANDARD, CUT_DUCTING, CUT_MAX, BAND_DUCT_INDEX, TROPO_BANDS,
+} from "../../tropo/runtime.mjs";
 
 export const tropoMapBuilders = {
   "tropo-map": function(b) {
@@ -43,16 +46,41 @@ export const tropoMapBuilders = {
     const mount = el("div", { className: "tropo-mount" });
     root.appendChild(mount);
 
-    // Color ramp + 0-50+ scale.  Custom UI (no analogue elsewhere in
-    // the site), but the surrounding chrome matches.  Data + library
-    // attributions live in the page-level Credits section, not here.
-    const legend = el("div", { className: "tropo-legend" });
-    legend.innerHTML = `
-      <div class="tropo-strip" aria-hidden="true"></div>
-      <div class="tropo-scale" aria-hidden="true">
-        <span>0</span><span>50+</span>
-      </div>
-    `;
+    // Color ramp matched to the renderer's actual scale. The strip is
+    // a CSS linear-gradient over evenly-spaced bands (each band's
+    // visual width = 1/N_BANDS of the strip). Tick marks sit at
+    // CUT_STANDARD (left edge), CUT_DUCTING (at BAND_DUCT_INDEX / N
+    // along the strip, where the palette transitions into warm), and
+    // CUT_MAX (right edge). Region labels below name the P.453 class
+    // each segment of the strip represents.
+    const N_BANDS = TROPO_BANDS.length;
+    const stripStops = TROPO_BANDS.map(function (rgb, i) {
+      var a = (i      / N_BANDS) * 100;
+      var b = ((i + 1) / N_BANDS) * 100;
+      var c = "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")";
+      return c + " " + a.toFixed(2) + "%, " + c + " " + b.toFixed(2) + "%";
+    }).join(", ");
+    var ductPct = (BAND_DUCT_INDEX / N_BANDS) * 100;
+    var legend = el("div", { className: "tropo-legend" });
+    legend.innerHTML =
+      '<div class="tropo-strip" aria-hidden="true" style="background:linear-gradient(to right,' +
+        stripStops + ')"></div>' +
+      '<div class="tropo-scale" aria-hidden="true">' +
+        '<span class="tropo-tick" style="left:0%">' + CUT_STANDARD + '</span>' +
+        '<span class="tropo-tick" style="left:' + ductPct.toFixed(2) + '%">' + CUT_DUCTING + '</span>' +
+        '<span class="tropo-tick" style="left:100%">' + CUT_MAX + '+</span>' +
+      '</div>' +
+      '<div class="tropo-regions" aria-hidden="true">' +
+        '<span class="tropo-region" style="left:0%;width:' + ductPct.toFixed(2) + '%">' +
+          t("super-refractive") + '</span>' +
+        '<span class="tropo-region" style="left:' + ductPct.toFixed(2) +
+          '%;width:' + (100 - ductPct).toFixed(2) + '%">' +
+          t("ducting") + '</span>' +
+      '</div>' +
+      '<p class="tropo-legend-note">' +
+        t("M-units · cells below {n} render as background (standard atmosphere).",
+          { n: CUT_STANDARD }) +
+      '</p>';
     root.appendChild(legend);
 
     // Italic descriptive paragraph under the color scale, in the same
