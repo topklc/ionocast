@@ -14,7 +14,8 @@ import {
 import {
   snrMarginHf, snrMarginHfEs, snrMarginVhfEs, snrMarginVhfAurora,
   solarCosZenith,
-  tierFromMargin, isDxOpen, tierRank, tierStability, TIER_DB_GOOD,
+  tierFromMargin, isDxOpen, tierRank, tierStability,
+  TIER_DB_GOOD, TIER_DB_POOR,
   cgmLatAbs,
   foF2Climatology, mufConsensus, pathMinMuf, grayLineBonusPathDb,
   midpointFoF2WithFallback, perHopFoF2FromStations,
@@ -311,12 +312,14 @@ export function deriveConditions(ctx) {
     // for the HF-table renderer (each row gets the band's predicted
     // tier / margin / mode / best destination).
     var bestPerBand = {};
-    // Per-band list of every valid path margin (any mode). The group-
-    // level tier below is anchored on the 2nd-best margin rather than
-    // the single hottest path, so a basket where one path is excellent
-    // and the rest are over-MUF no longer reads as "Excellent" purely
-    // on that one path. See docs/HF-TIER-AGGREGATION.md for rationale
-    // and the long-term plan (coverage-fraction).
+    // Per-band list of every valid path as { margin, eligible }. The
+    // group-level tier below is a coverage fraction over the *eligible*
+    // subset (paths that are geometrically/temporally viable right
+    // now), so a band reads Excellent only when a real fraction of its
+    // reachable directions are loud -- not when one lonely hot path
+    // carries it, and not diluted by structurally-dead long hops the
+    // way a raw-basket median/coverage would be. See
+    // docs/HF-TIER-AGGREGATION.md for the aggregation history.
     var marginsByBand = {};
 
     // tryMargin: for a given band and path context, compute the SNR
@@ -587,10 +590,23 @@ export function deriveConditions(ctx) {
       // regional.  Without this, a band whose best path is the 2.5 Mm
       // ring would always read dx=false even when 6000+ km paths
       // also clear +18 dB.
-      // Feed the per-band margin list used by the 2nd-best-anchored
-      // group tier below. Pushed after the Es/F2 reconciliation, so
-      // m.margin is the final mode-resolved margin for this path.
-      (marginsByBand[name] = marginsByBand[name] || []).push(m.margin);
+      // Feed the per-band list used by the coverage-fraction group
+      // tier below. Pushed after the Es/F2 reconciliation, so m.margin
+      // is the final mode-resolved margin for this path.
+      //
+      // eligible := the band can physically support this path right
+      // now. True when the frequency clears the effective MUF
+      // (f <= effMuf, the standard propagation-eligibility test) OR
+      // the final margin reached at least the Poor floor (a recovery
+      // mode -- Es / TEP / scatter -- is demonstrably propagating it
+      // above MUF). Paths that are over-MUF with no recovery are
+      // structurally dead at this hour and are excluded from the
+      // coverage denominator so they cannot dilute a band that is
+      // genuinely open in every direction it can reach.
+      var eligible = (f <= effMuf) || (m.margin >= TIER_DB_POOR);
+      (marginsByBand[name] = marginsByBand[name] || []).push({
+        margin: m.margin, eligible: eligible
+      });
 
       var thisIsDx = isDxOpen(m.margin, pathCtx.dKm);
       var existing = bestPerBand[name];
@@ -694,38 +710,58 @@ export function deriveConditions(ctx) {
       // heuristicTier stays exported in physics.js for the scenarios
       // diagnostic harness but is no longer in the verdict path.
 
-      // best.m carries the physics budget; the group tier is anchored
-      // on the band's 2nd-best path margin so a single hot path can no
-      // longer carry the verdict by itself. Falls back to best.m.margin
-      // when only one path produced a valid margin for the band (the
-      // absorbed / no-MUF cases short-circuit above, so this only fires
-      // on baskets that genuinely have a single open path).
-      // The DX flag rides on per-band-best via isDxOpen() and is
-      // rendered next to the tier in the band-table; the group-level
-      // verdict here is band-agnostic, so we do not annotate DX at
-      // this layer. See tier.js for the tier/DX split rationale and
-      // docs/HF-TIER-AGGREGATION.md for the aggregation history.
-      var bandMargins = marginsByBand[best.name] || [];
-      var anchorMargin;
-      if (bandMargins.length >= 2) {
-        var desc = bandMargins.slice().sort(function (a, b) { return b - a; });
-        anchorMargin = desc[1];
-      } else {
-        anchorMargin = best.m.margin;
-      }
-      var tier = tierFromMargin(anchorMargin);
+      // Group tier = best-path physics (tierFromMargin on the loudest
+      // path's margin). This is the pre-2026-05 baseline the in-code
+      // history below records at 92.36 % harness binary accuracy.
+      //
+      // It is deliberately NOT coverage fraction. We tried that
+      // (2026-05-15) and the live diagnostic showed why it fails: the
+      // path basket is computePaths' uniform global lat/lon grid
+      // (~250 cells), so a coverage fraction over it measures day/night
+      // terminator geometry, not band quality -- a 40 m band with a
+      // +26 dB best path read "fair" because most of the planet was on
+      // the wrong side of the terminator. Eligible-normalization
+      // (f<=MUF || margin>=Poor) removes the over-MUF dead mass on the
+      // HIGH bands but is a no-op on 160-40 m (under-MUF even on the
+      // dark side), so low/mid bands systematically under-read. The
+      // grid is the wrong population for the tier.
+      //
+      // The grid IS the right population for *breadth* ("in how many
+      // directions is this band open"), which is an annotation, not the
+      // tier -- same tier/DX-split logic (see tier.js): tier answers
+      // "how good where it's open", breadth answers "in how many
+      // directions". breadthFrac below feeds that note segment.
+      // coverageTier + the eligible flag are retained as the breadth
+      // computer. See docs/HF-TIER-AGGREGATION.md for the full history.
+      var tier = tierFromMargin(best.m.margin);
+      var displayMargin = best.m.margin;
 
-      // TEMP diagnostic for the 2nd-best-margin verdict (see
-      // docs/HF-TIER-AGGREGATION.md). Fires once per HF band group per
-      // refresh (~10/refresh). Remove after validation.
+      // Breadth: fraction of the band's *eligible* grid paths that are
+      // at least workable (>= Good). Eligible = geometrically/temporally
+      // viable (f<=MUF, or a recovery mode is propagating it). This is
+      // the honest "open in N% of reachable directions" denominator;
+      // raw-grid fraction would be terminator-dominated.
+      var bandPaths = marginsByBand[best.name] || [];
+      var eligibleMargins = bandPaths
+        .filter(function (p) { return p.eligible; })
+        .map(function (p) { return p.margin; });
+      var breadthFrac = eligibleMargins.length
+        ? eligibleMargins.filter(function (mg) { return mg >= TIER_DB_GOOD; }).length /
+          eligibleMargins.length
+        : 0;
+
+      // TEMP diagnostic (see docs/HF-TIER-AGGREGATION.md). Fires once
+      // per HF band group per refresh (~10/refresh). Used to tune the
+      // breadth phrasing thresholds. Remove after validation.
       if (typeof console !== "undefined" && console.debug) {
-        var sorted = bandMargins.slice().sort(function (a, b) { return b - a; })
-                                .map(function (x) { return Math.round(x); });
-        console.debug("[hf-tier-anchor]", best.name,
+        var allSorted = bandPaths.map(function (p) { return Math.round(p.margin); })
+                                 .sort(function (a, b) { return b - a; });
+        console.debug("[hf-tier-breadth]", best.name,
+          "tier=" + tier,
           "best=" + Math.round(best.m.margin) + "dB",
-          "anchor=" + Math.round(anchorMargin) + "dB",
-          "n=" + bandMargins.length,
-          "margins=" + JSON.stringify(sorted));
+          "breadthFrac=" + breadthFrac.toFixed(2),
+          "eligible=" + eligibleMargins.length + "/" + bandPaths.length,
+          "margins=" + JSON.stringify(allSorted));
       }
       // D-RAP absorption gate: if D-RAP flags this band as absorbed AND
       // observed spot activity sits below half the band's 30-day
@@ -790,21 +826,22 @@ export function deriveConditions(ctx) {
       // dropped here: rare ones are surfaced by the soft-alert bar at
       // the top of the page, and D-RAP is already shown per-band in
       // the dedicated HF Bands panel.
-      // Display the anchor margin (2nd-best, or fallback to best when
-      // only one valid path), so the dB shown in the note is consistent
-      // with the tier. Otherwise the note can read "good · margin 22 dB"
-      // when 22 dB sits in the Excellent band but the verdict was
-      // demoted because no other path was loud.
-      var parts = [t("margin") + " " + Math.round(anchorMargin) + " dB"];
+      // Display the coverage boundary margin (the weakest path inside
+      // the winning tier's qualifying count, or best.m.margin on the
+      // closed/no-eligible fallbacks), so the dB shown in the note is
+      // consistent with the tier. Otherwise the note can read "good ·
+      // margin 22 dB" when 22 dB sits in the Excellent band but the
+      // group verdict landed lower on coverage.
+      var parts = [t("margin") + " " + Math.round(displayMargin) + " dB"];
 
       // Pre-compute confidence once for both override and non-override
-      // branches. Anchored on the anchorMargin used by the verdict so
-      // the "X% confident" reading describes the tier the operator
-      // actually sees, not the best-path's tier confidence. Sigma is
-      // approximated by best.m.sigma; path-to-path sigma drift is small
-      // and tracking the 2nd-best path's sigma explicitly is deferred
-      // to the coverage-fraction rework.
-      var stabilityPct = Math.round(tierStability(anchorMargin, best.m.sigma) * 100);
+      // branches. Anchored on displayMargin (the verdict's boundary
+      // margin) so the "X% confident" reading describes the tier the
+      // operator actually sees, not the best-path's tier confidence.
+      // Sigma is approximated by best.m.sigma; path-to-path sigma drift
+      // is small and tracking per-path sigma alongside margin in
+      // marginsByBand is deferred (see HF-TIER-AGGREGATION.md).
+      var stabilityPct = Math.round(tierStability(displayMargin, best.m.sigma) * 100);
 
       if (spotOverride) {
         parts.push(t("unusually active: {n} spots/h vs avg {m}",
@@ -821,18 +858,16 @@ export function deriveConditions(ctx) {
         if (tier === "good" || tier === "excellent") {
           var opens = openDirs.slice();
           if (opens.length === 0 && best.dest) opens = [best.dest];
-          // "open worldwide" when most of the distinct destination
-          // labels are open. Count the basket's unique destShort labels
-          // rather than total path rows so the 75% threshold scales
-          // sanely across basket geometries. Previous code used a flat
-          // 4-of-5 threshold that could never fire on baskets with
-          // fewer than 5 distinct destinations.
-          var distinctDests = {};
-          (paths && paths.paths || []).forEach(function(p) {
-            if (p.destShort) distinctDests[p.destShort] = true;
-          });
-          var basketSize = Object.keys(distinctDests).length || opens.length;
-          if (basketSize > 0 && opens.length / basketSize >= 0.75) {
+          // Breadth segment. "open worldwide" when at least half the
+          // band's *eligible* (geometrically/temporally viable) grid
+          // paths are workable -- this is the principled replacement
+          // for the prior 75%-of-distinct-destShort heuristic, which
+          // counted over the raw global grid and so was dominated by
+          // day/night terminator geometry rather than band breadth
+          // (see docs/HF-TIER-AGGREGATION.md). Below that threshold,
+          // fall back to listing the open directions so a narrow
+          // opening still says which way it is going.
+          if (breadthFrac >= 0.5) {
             parts.push(t("open worldwide"));
           } else if (opens.length > 0) {
             parts.push(opens.join(", "));

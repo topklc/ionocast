@@ -45,6 +45,7 @@ import {
   buildFoF2Grid, tecGridToObservations,
   // tier
   tierFromMargin, isDxOpen, tierRank, reliability, tierConfidence,
+  coverageTier, TIER_COVERAGE_TARGET,
 } from "../../src/physics/physics.js";
 import { parseIonex } from "../../functions/_handlers/tec.js";
 
@@ -636,6 +637,75 @@ const HF_BANDS = [
           tierRank(order[i]) > tierRank(order[i-1]),
           `${tierRank(order[i-1])} vs ${tierRank(order[i])}`);
   }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 15a-cov. coverageTier (HF group aggregation, replaces 2nd-best)
+// Targets: excellent .30 / good .40 / fair .60 / poor .30.
+// dB cuts:  +18      / +6       / -5       / -14.
+// `margins` is the ELIGIBLE-path list; the caller filters structurally
+// dead paths so the denominator is "reachable directions".
+// ════════════════════════════════════════════════════════════════════
+{
+  // Sanity: targets are usable fractions in (0, 1].
+  for (const k of ["excellent", "good", "fair", "poor"]) {
+    const v = TIER_COVERAGE_TARGET[k];
+    check(`TIER_COVERAGE_TARGET.${k} in (0,1]`, v > 0 && v <= 1, `${v}`);
+  }
+
+  // Case A: broadly open band. 4/10 clear +18 (0.40 >= 0.30) -> excellent.
+  // boundaryMargin = weakest of the 4 qualifying paths (+19).
+  const A = coverageTier([28,24,22,19,15,12,9,4,-3,-20]);
+  eq("coverageTier A tier        = excellent", A.tier, "excellent");
+  eq("coverageTier A boundary    = 19",        A.boundaryMargin, 19);
+  near("coverageTier A fraction  ~= 0.40",     A.fraction, 0.40, 1e-9);
+
+  // Case B: one hot path, the rest eligible-but-weak. excellent/good/fair
+  // all miss target; 10/10 clear -14 -> poor. The lone +30 cannot carry
+  // the headline (this is the bias the aggregator exists to kill).
+  const B = coverageTier([30,-8,-12,-10,-9,-11,-13,-7,-6,-4]);
+  eq("coverageTier B tier        = poor",      B.tier, "poor");
+  eq("coverageTier B boundary    = -13",       B.boundaryMargin, -13);
+
+  // Case C: half the band open. 5/10 clear +6 (0.50 >= 0.40) -> good;
+  // only 1/10 clears +18 (0.10 < 0.30) so excellent is skipped.
+  const C = coverageTier([20,16,14,11,8,3,-6,-15,-25,-35]);
+  eq("coverageTier C tier        = good",      C.tier, "good");
+  eq("coverageTier C boundary    = 8",         C.boundaryMargin, 8);
+
+  // Case D: the eligible-normalization fix. The 8 structurally-dead long
+  // hops were filtered by the caller, leaving the 2 genuinely reachable
+  // directions. 1/2 clear +18 (0.50 >= 0.30) -> excellent. Under the old
+  // raw-basket math this band read Poor/Closed (1/10). Small eligible set
+  // with every direction open => a strong verdict is operator-honest.
+  const D = coverageTier([25,14]);
+  eq("coverageTier D tier        = excellent", D.tier, "excellent");
+  eq("coverageTier D boundary    = 25",        D.boundaryMargin, 25);
+
+  // Lone eligible path keeps its own tier (lone-TEP / lone-Es opening:
+  // 1/1 = 100% coverage). Mirrors the prior single-path fallback.
+  eq("coverageTier [22] (lone)   = excellent", coverageTier([22]).tier, "excellent");
+  eq("coverageTier [-10] (lone)  = poor",      coverageTier([-10]).tier, "poor");
+
+  // Exact-threshold: 2/5 clear +6 = 0.40, meets good target exactly.
+  const E = coverageTier([10,8,-1,-2,-3]);
+  eq("coverageTier E tier        = good (0.40 == target)", E.tier, "good");
+  eq("coverageTier E boundary    = 8",         E.boundaryMargin, 8);
+
+  // Nothing meets any target -> closed, null boundary (caller falls back
+  // to best.m.margin for the displayed dB).
+  const Z = coverageTier([-20,-30]);
+  eq("coverageTier Z tier        = closed",    Z.tier, "closed");
+  eq("coverageTier Z boundary    = null",      Z.boundaryMargin, null);
+
+  // Degenerate input -> null (caller uses single-path fallback).
+  eq("coverageTier([])           = null",      coverageTier([]), null);
+  eq("coverageTier(null)         = null",      coverageTier(null), null);
+  eq("coverageTier([NaN,Infinity]) = null",    coverageTier([NaN, Infinity]), null);
+
+  // Non-finite entries are dropped, not counted in the denominator:
+  // [22, NaN] behaves as the lone-[22] case.
+  eq("coverageTier [22,NaN] tier = excellent", coverageTier([22, NaN]).tier, "excellent");
 }
 
 // ════════════════════════════════════════════════════════════════════

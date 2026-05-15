@@ -1,7 +1,41 @@
-# HF tier aggregation: best-path bias and the 2nd-best fix
+# HF tier aggregation: best-path bias, the 2nd-best fix, coverage fraction
 
-Status: **temporary stop-gap in place (2026-05-13).** The long-term
-plan is coverage-fraction; see `Next: coverage fraction` below.
+Status: **tier = best-path physics; coverage repurposed as a breadth
+annotation (2026-05-15).** Coverage-fraction-for-tier was implemented,
+calibrated against live data, and **rejected** the same day: the path
+basket is a uniform global grid, so coverage measures terminator
+geometry, not band quality (a +26 dB 40 m band read "fair"). The tier
+returned to the harness-validated best-path baseline; the eligible-
+coverage fraction now drives only the "open worldwide" breadth
+segment. History of all prior fixes is preserved below.
+
+## Calibration finding (2026-05-15): why coverage-for-tier was rejected
+
+`computePaths` (`src/derive/paths.js`) builds a uniform lat/lon grid
+of ~250 cells over the reachable distance annulus, NOT ~9 named
+destinations (the original premise in this doc was simply wrong). A
+coverage fraction over that grid answers "what fraction of all
+geographically-reachable points on Earth is open right now", which is
+dominated by the day/night terminator and clusters at ~0.5-0.8 for
+every band regardless of quality.
+
+Eligible-normalization (`f<=effMuf || margin>=TIER_DB_POOR`) removes
+the over-MUF dead mass on the HIGH bands (10/12/15 m: eligible drops
+to ~50-130/250) but is a complete no-op on 160-40 m (eligible
+244/244): low bands are under-MUF even on the dark/closed side, so
+their dead mass stays in the denominator. Net effect, observed live:
+
+| Band | best path | coverage tier | correct |
+|------|-----------|---------------|---------|
+| 40 m | +26 dB | fair | excellent |
+| 60 m | +20 dB | poor | excellent |
+
+That is the reverted-median pathology, reproduced on exactly the
+bands eligibility cannot filter. No per-tier target choice fixes a
+metric computed over the wrong population. Decision: the tier is the
+wrong place for a breadth metric (same reasoning as the tier/DX
+split). Tier answers "how good where it's open" (best-path physics);
+breadth answers "in how many directions" (annotation).
 
 ## Problem
 
@@ -22,54 +56,46 @@ A prior attempt to aggregate by median-across-all-paths was reverted
 because the dead-mass dominated the median and buried genuinely open
 short paths (see `tryMargin` comment block in `conditions.js`).
 
-## Current behavior (2026-05-13)
+## Current behavior (2026-05-15): best-path tier + breadth annotation
 
-Group tier is anchored on the **2nd-best margin** in the band's
-valid-margin list. The `best` candidate stays unchanged so the
-directional note ("best to Joburg") and the per-band-best HF-table
-row still surface the loudest-path data; only the group-level tier
-flips.
+Group tier = `tierFromMargin(best.m.margin)` -- the loudest path's
+physics budget. This is the pre-2026-05 baseline the in-code history
+records at 92.36 % harness binary accuracy. `displayMargin` and the
+confidence percent are `best.m.margin` too, so the note dB matches
+the tier. The TEP/Es pathology is gone for free: a lone hot path is
+the best path, so its tier is the headline (it never crashes).
 
-The displayed margin in the note string and the stability percent
-both anchor on the 2nd-best margin too, so the displayed dB and the
-confidence reading describe the tier the operator actually sees, not
-the best path's tier.
+The eligible-coverage machinery is retained, repointed at **breadth**:
 
-Behavior across baskets:
+- `marginsByBand[band]` holds `{ margin, eligible }` per grid path.
+  `eligible = (f <= effMuf) || (margin >= TIER_DB_POOR)` -- the path
+  is geometrically/temporally viable, or a recovery mode is carrying
+  it. This is the honest "reachable directions" denominator.
+- `breadthFrac` = fraction of eligible paths that are at least Good.
+- The note's "open worldwide" segment fires when `breadthFrac >= 0.5`
+  (on Good/Excellent bands), replacing the prior
+  75 %-of-distinct-`destShort` heuristic, which counted over the raw
+  global grid and so tracked terminator geometry, not band breadth.
+  Below the threshold the open directions are listed instead.
 
-| Best path | 2nd-best path | Verdict |
-|-----------|---------------|---------|
-| Excellent | Excellent     | Excellent (no change) |
-| Excellent | Good          | Good (demoted one tier) |
-| Excellent | Closed        | Closed (demoted hard) |
-| Good      | Good          | Good (no change) |
-| Good      | Fair          | Fair (demoted one tier) |
-
-On broadly-open bands (multiple paths in the same tier) the verdict
-does not change at all. On bands where the headline was carried by
-one lonely hot path, the verdict drops to whatever the 2nd-best path
-actually says.
-
-### Small-basket fallback
-
-When fewer than 2 paths produced a valid margin (e.g. heavy
-absorption that closed most paths, or a band where only one
-destination's MUF clears the frequency), the anchor falls back to
-`best.m.margin`. The absorbed-blackout and no-MUF cases short-circuit
-earlier in `hfGroupVerdict` regardless, so the fallback only fires
-on baskets that genuinely have a single open path.
+Breadth is an annotation, never the tier (tier/DX-split reasoning):
+tier = "how good where it's open", breadth = "in how many directions".
+`coverageTier` stays exported and unit-tested in `tier.js` as the
+breadth/aggregation primitive even though `hfGroupVerdict` now uses
+the simpler at-least-Good fraction inline.
 
 ### Spot override interaction
 
-The WSPR spot override (promotes a sub-Good tier to Good when
-observed spots exceed 1.3× the 30-day baseline) reads the post-anchor
-tier. So a band where the 2nd-best path is Fair but spots are well
-above baseline still promotes to Good. The override never demotes,
-so the new aggregator never fights it.
+Unchanged. The WSPR spot override (promotes a sub-Good tier to Good
+when observed spots exceed 1.3× the 30-day baseline) reads the
+best-path tier and is one-way, so it never fights it.
 
-## Known pathologies of the temporary fix
+## Known pathologies of the 2nd-best stop-gap
 
-Two known cases where 2nd-best produces a too-harsh verdict:
+Two cases where the 2nd-best stop-gap produced a too-harsh verdict.
+Both are moot under best-path tier (the lone hot path is the best
+path, so its tier is the headline); kept here as the historical
+rationale for why the aggregator was reworked at all:
 
 1. **TEP openings to one continent on 15 m / 12 m / 10 m.** Best path
    excellent via TEP (Joburg or São Paulo), all other paths over-MUF
@@ -82,11 +108,10 @@ Two known cases where 2nd-best produces a too-harsh verdict:
    Same mechanism: best path Excellent via Es, F2 closed everywhere,
    verdict crashes.
 
-Both are real but acceptable trade-offs for a stop-gap. The per-band
-note (`best.dest`) and the band's `mode` tag still surface the
-narrow opening for operators who look past the headline. The
-permanent fix (per-mode aggregation, see below) is the proper
-treatment for these cases.
+Both are moot under best-path tier: the lone TEP/Es path *is* the
+best path, so `tierFromMargin(best.m.margin)` returns its tier and the
+headline stays hot. No eligibility logic is needed for this; the
+2nd-best stop-gap was the only scheme that ever broke it.
 
 ## Alternatives considered
 
@@ -94,9 +119,10 @@ Thirteen aggregation options were ranked during design. Shortlist:
 
 | Approach | Verdict |
 |----------|---------|
-| Coverage fraction (per-tier path-count gates) | Best permanent answer; deferred until operator feedback on the temporary fix lands. |
-| Per-mode aggregation (F2 / Es / TEP separately) | Most operator-honest; larger refactor, denser UI. |
-| **2nd-best margin (this fix)** | Shipped. |
+| **Best-path physics (tier) + eligible-coverage breadth annotation** | **Shipped 2026-05-15.** Tier = harness-validated baseline; breadth surfaced separately so the two axes don't fight. |
+| Coverage fraction for the tier | Implemented and rejected same day. The basket is a uniform global grid, so coverage-for-tier measures terminator geometry; eligible-normalization only fixes the high bands. See "Calibration finding". |
+| Per-mode aggregation (F2 / Es / TEP separately) | Most operator-honest; larger refactor, denser UI. Still open as a future refinement. |
+| 2nd-best margin | Superseded 2026-05-15. Was inert on broad bands and crashed lone-TEP/Es openings. |
 | Sector-binned aggregation | Solves a different bias (azimuthal density); compose on top of coverage-fraction later. |
 | Reliability-weighted in probability space | Building block, not a complete answer. |
 | Concentration penalty (Gini / HHI on max) | Smooth version of "demote if narrow"; harder to explain than coverage. |
@@ -111,62 +137,65 @@ Thirteen aggregation options were ranked during design. Shortlist:
 The full discussion lives in the conversation log; this table is the
 cheatsheet for revisiting.
 
-## Next: coverage fraction (long-term)
+## Why coverageTier still exists
 
-Coverage fraction is the planned permanent replacement. Spec:
+`coverageTier` + `TIER_COVERAGE_TARGET` remain in `tier.js`, exported
+and unit-tested, even though the tier no longer uses them. They are
+the aggregation primitive for the breadth annotation and any future
+per-mode / sector work. The targets are NOT on the tier path now, so
+they need no calibration to be safe; they only matter if a future
+caller reintroduces a coverage-style metric. The shipped breadth
+segment uses a simpler inline "fraction of eligible paths >= Good"
+rather than the full tier-walk, since it only needs one threshold.
 
-1. For each tier threshold (`TIER_DB_EXCELLENT`, `TIER_DB_GOOD`,
-   `TIER_DB_FAIR`, `TIER_DB_POOR`), count the number of paths in
-   `marginsByBand[band]` that exceed it. Normalize by basket size.
-2. Walk thresholds from Excellent down to Poor. The verdict is the
-   highest tier whose coverage fraction meets its target.
-3. Per-tier coverage targets are independent knobs (e.g. Excellent
-   needs ≥ 30% of the basket above +18 dB; Good needs ≥ 40% above
-   +6 dB; Fair needs ≥ 60% above −5 dB).
+## Calibration / future work
 
-Migration path from the current 2nd-best fix:
-
-- `marginsByBand` is already collected in `tryMargin`; coverage
-  fraction is a different function of the same list.
-- The note's "open worldwide" annotation already uses a coverage-like
-  75%-of-distinct-destinations test (see `hfGroupVerdict`); the
-  group tier moves to the same family of metrics.
-- Per-tier targets need calibration against operator-labeled bands.
-  Defer until the 2nd-best fix has been in place long enough to
-  collect feedback on what feels right/wrong.
-
-Sector binning (azimuthal-density normalization) is a separable
-refinement that can compose on top of coverage-fraction. Per-mode
-aggregation is the orthogonal fix to the TEP / Es pathologies listed
-above and would land alongside coverage-fraction, not before it.
+- **Breadth phrasing threshold.** "open worldwide" fires at
+  `breadthFrac >= 0.5`. Tune against the `[hf-tier-breadth]`
+  diagnostic (`best.name`, tier, best dB, breadthFrac, eligible
+  count, full margin list; ~10 lines/refresh). Live spot-check
+  2026-05-15: narrow bands read ~0.00-0.07, broad mid-bands
+  ~0.5-0.6, so 0.5 separates them cleanly. Remove the diagnostic
+  once the phrasing is settled.
+- **Per-mode aggregation** (F2 / Es / TEP separately) remains the
+  most operator-honest long-term refinement, now optional.
+- **Per-path sigma.** Confidence uses `best.m.sigma`; since tier and
+  displayMargin are both `best.m.margin` this is now exact for the
+  displayed path, not an approximation. (Was a known gap under the
+  coverage scheme; resolved by reverting to best-path.)
 
 ## Implementation notes
 
-Touch points (all in `src/derive/conditions.js`):
-
-- `marginsByBand` declared inside `hfGroupVerdict` next to
-  `bestPerBand`.
-- Push every final-mode-resolved margin in `tryMargin` after the
-  Es/F2 reconciliation block. The push happens once per (band, path)
-  call, regardless of which mode wins.
-- Tier source in the `if (best)` block uses `anchorMargin`
-  (`marginsByBand[best.name][1]` after descending sort, falling back
-  to `best.m.margin` when length < 2).
-- Note string (`Math.round(anchorMargin)`) and stability percent
-  (`tierStability(anchorMargin, best.m.sigma)`) anchor on the same
-  value as the tier. Sigma is approximated by `best.m.sigma`; the
-  proper fix is to track per-path sigma alongside margin in
-  `marginsByBand`, deferred to the coverage-fraction rework.
-- `bestPerBand[name]` (drives per-band-best HF-table rows) and
-  `best` (drives the directional note) are deliberately untouched,
-  so they still surface the loudest-path data.
+- `coverageTier` + `TIER_COVERAGE_TARGET` in `src/physics/tier.js`
+  (re-exported via `physics/index.js`); pure, unit-tested in
+  `physics-unit.mjs` section 15a-cov. Retained as a primitive; not on
+  the tier path.
+- `src/derive/conditions.js`: `marginsByBand[band]` holds
+  `{ margin, eligible }` per grid path. `eligible = (f <= effMuf) ||
+  (m.margin >= TIER_DB_POOR)`, computed at the push site in
+  `tryMargin` after the Es/F2 reconciliation.
+- The `if (best)` block sets `tier = tierFromMargin(best.m.margin)`
+  and `displayMargin = best.m.margin` (no aggregation). It then
+  computes `breadthFrac` = (eligible margins >= TIER_DB_GOOD) /
+  (eligible margins), used only for the "open worldwide" note
+  segment and the `[hf-tier-breadth]` diagnostic.
+- The note's breadth segment fires `t("open worldwide")` at
+  `breadthFrac >= 0.5` on Good/Excellent bands, else lists open
+  directions. This replaced the 75 %-of-distinct-`destShort`
+  heuristic, which was terminator-dominated.
+- `bestPerBand[name]` and `best` are deliberately untouched, so the
+  per-band HF-table row and directional note still surface the
+  loudest-path data.
 - VHF (`vhfVerdict`) is untouched. VHF tier is single-mode and
   inherently regional; no path basket to aggregate over.
 
-Test fixtures most affected:
-- Any unit test asserting on `hfGroupVerdict` return values for
-  baskets with one hot path and the rest closed will see a tier
-  shift. Spot-check expected verdicts before reblessing.
-- The 753-assertion suite (per session memory 2026-04-26) should be
-  rerun and any tier shifts triaged against the expected behavior
-  documented in this file.
+Validation status (2026-05-15):
+- `coverageTier` unit-tested in `physics-unit.mjs` (cases A-D from
+  the design discussion + eligible-normalization + degenerate input).
+- Fast unit suite green: physics-unit 679/0, harness-unit 128/0,
+  derive-unit 52/0. No unit test asserted the old aggregator
+  internals, so no reblessing was required.
+- Harness / calibration suites (verdict-level, need the data cache)
+  not yet run. Run `node scripts/harness.mjs --no-cache` then
+  `node scripts/tests.mjs --suite=harness,calibration` and triage
+  any tier shifts against this file, then calibrate the targets.

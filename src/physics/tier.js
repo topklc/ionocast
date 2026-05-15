@@ -52,6 +52,34 @@ export const TIER_DB_FAIR      = -5;
 
 export const TIER_DB_POOR      = -14;
 
+// Coverage-fraction targets for the HF group verdict. coverageTier
+// (below) reads a band's per-path margins and asks, for each tier,
+// "what fraction of paths clear this tier's dB threshold?". The
+// verdict is the highest tier whose fraction meets its target here.
+//
+// The numbers are deliberately well below 1.0: the denominator is the
+// *eligible* path set (the caller filters out paths that are
+// structurally non-viable right now -- over-MUF with no recovery mode,
+// deep-night blackout -- see hfGroupVerdict). Over eligible paths,
+// "30 % of reachable directions are loud" is a real Excellent and
+// "60 % are at least workable" is a real Fair. Targets ramp DOWN as
+// the tier drops because a usable-somewhere band should still surface
+// as Fair/Poor even when only a minority of directions are strong.
+//
+// Poor's target was left unspecified in the original coverage-fraction
+// spec (docs/HF-TIER-AGGREGATION.md); 0.30 mirrors Excellent so a band
+// where < 30 % of eligible paths reach even the Poor floor reads
+// "closed" rather than limping in as Poor on one weak path.
+//
+// These are calibration knobs, not physics. Per docs they want tuning
+// against operator-labeled bands once the change has run a while.
+export const TIER_COVERAGE_TARGET = {
+  excellent: 0.30,
+  good:      0.40,
+  fair:      0.60,
+  poor:      0.30,
+};
+
 // DX-reach threshold.  An Excellent margin on a short F2 hop is true
 // physics ("the signal is loud") but does not match what an operator
 // means by "DX is open" -- DX implies continent-crossing reach.  We
@@ -104,6 +132,58 @@ const TIER_RANK = { closed: 0, poor: 1, fair: 2, good: 3, excellent: 4 };
 // Previously a typo'd tier like "excelent" silently became 0 and was
 // indistinguishable from a legitimate closed verdict.
 export function tierRank(t) { return TIER_RANK[t] != null ? TIER_RANK[t] : null; }
+
+// coverageTier: aggregate a band's per-path margins into one group
+// tier by coverage fraction. Replaces the 2nd-best-margin stop-gap
+// (see docs/HF-TIER-AGGREGATION.md). PURE function of the margin
+// list: the caller is responsible for passing only the *eligible*
+// path margins (geometrically/temporally viable paths), so the
+// fraction denominator is "reachable directions" rather than the raw
+// fixed basket. That eligible-normalization is what stops this from
+// regressing to the reverted median pathology -- a band genuinely
+// open to its two reachable directions reads 2/2 = 100 %, not
+// 2/10 = 20 % diluted by eight structurally-dead long hops.
+//
+// Walk tiers Excellent -> Poor; the verdict is the highest tier whose
+// fraction of margins clearing its dB threshold meets
+// TIER_COVERAGE_TARGET. Returns:
+//   { tier, fraction, boundaryMargin }
+// boundaryMargin is the weakest margin still inside the winning
+// tier's qualifying count -- the dB the verdict actually rests on,
+// used for the note string and confidence so the displayed margin is
+// consistent with the tier. Returns null for an empty/all-non-finite
+// list (caller falls back to single-path behavior). When no tier
+// meets its target, returns tier "closed" with boundaryMargin null.
+export function coverageTier(margins) {
+  var xs = (margins || []).filter(function (m) {
+    return m != null && isFinite(m);
+  });
+  var n = xs.length;
+  if (n === 0) return null;
+  var desc = xs.slice().sort(function (a, b) { return b - a; });
+  var order = [
+    ["excellent", TIER_DB_EXCELLENT],
+    ["good",      TIER_DB_GOOD],
+    ["fair",      TIER_DB_FAIR],
+    ["poor",      TIER_DB_POOR],
+  ];
+  for (var i = 0; i < order.length; i++) {
+    var label = order[i][0];
+    var thr   = order[i][1];
+    var count = 0;
+    for (var j = 0; j < n; j++) {
+      if (xs[j] >= thr) count++;
+    }
+    var fraction = count / n;
+    if (fraction >= TIER_COVERAGE_TARGET[label]) {
+      // desc[count-1] is the count-th largest margin: the weakest
+      // path still inside this tier's qualifying group. >= thr by
+      // construction, so boundaryMargin never sits outside the tier.
+      return { tier: label, fraction: fraction, boundaryMargin: desc[count - 1] };
+    }
+  }
+  return { tier: "closed", fraction: 0, boundaryMargin: null };
+}
 
 // Normal CDF via Abramowitz & Stegun 26.2.17 rational approximation.
 // Max error ~7.5e-8 in the tails.
