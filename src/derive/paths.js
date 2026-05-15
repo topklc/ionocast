@@ -157,6 +157,33 @@ const GRID_LAT_MAX   =  70;
 const GRID_MIN_KM    = 1500;   // NVIS dead-zone exclusion
 const GRID_MAX_KM    = 18000;  // antipodal degenerate-geometry exclusion
 
+// Worldwide activity anchors for the hub-coverage verdict experiment
+// (docs/HF-TIER-AGGREGATION.md, Option A). These are major amateur
+// population centres spanning all inhabited continents and the full
+// distance range from any QTH (regional -> DX), so a coverage /
+// mean-reliability over them answers "general yet accurate, worldwide"
+// without the terminator + ocean bias of the uniform grid. The
+// shadow consumer snaps each anchor to its nearest already-scored
+// grid cell (the 10° mesh guarantees a cell within ~785 km of every
+// anchor), so no extra geometry or MUF lookup is needed. Equal
+// weight, first pass. NOT yet wired into the verdict.
+export const HUB_ANCHORS = [
+  { region: "US East",      lat:  40.7, lon:  -74.0 },
+  { region: "US West",      lat:  34.0, lon: -118.2 },
+  { region: "W Europe",     lat:  51.5, lon:   -0.1 },
+  { region: "C/E Europe",   lat:  52.2, lon:   21.0 },
+  { region: "Japan",        lat:  35.7, lon:  139.7 },
+  { region: "China/E Asia", lat:  31.2, lon:  121.5 },
+  { region: "S Asia",       lat:  28.6, lon:   77.2 },
+  { region: "Russia/Sib",   lat:  55.0, lon:   82.9 },
+  { region: "Middle East",  lat:  25.2, lon:   55.3 },
+  { region: "Australia",    lat: -33.9, lon:  151.2 },
+  { region: "New Zealand",  lat: -36.8, lon:  174.8 },
+  { region: "Brazil",       lat: -23.5, lon:  -46.6 },
+  { region: "Argentina",    lat: -34.6, lon:  -58.4 },
+  { region: "S Africa",     lat: -26.2, lon:   28.0 },
+];
+
 export function computePaths(stations, qth) {
   var ll = qthToLatLon(qth);
   var QLAT = ll[0], QLON = ll[1];

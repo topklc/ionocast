@@ -1,13 +1,43 @@
-# HF tier aggregation: best-path bias, the 2nd-best fix, coverage fraction
+# HF tier aggregation: best-path bias, 2nd-best, coverage, worldwide hubs
 
-Status: **tier = best-path physics; coverage repurposed as a breadth
-annotation (2026-05-15).** Coverage-fraction-for-tier was implemented,
-calibrated against live data, and **rejected** the same day: the path
-basket is a uniform global grid, so coverage measures terminator
-geometry, not band quality (a +26 dB 40 m band read "fair"). The tier
-returned to the harness-validated best-path baseline; the eligible-
-coverage fraction now drives only the "open worldwide" breadth
-segment. History of all prior fixes is preserved below.
+Status: **tier = mean margin over a curated worldwide hub set
+(2026-05-15, Option A).** The path basket is `computePaths`' uniform
+10° global grid, so any statistic over it (best, median, coverage)
+is either best-path-biased or terminator/ocean-dominated. The fix is
+to change the *population*, not the statistic: snap ~14 worldwide
+amateur-activity anchors to their nearest grid cells, gate on
+reachability, and read `tierFromMargin(mean of eligible hub
+margins)`. Averaging is legitimate here precisely because the
+population is curated, not the uniform grid. Lineage of prior
+attempts (best-path → 2nd-best → grid-coverage → worldwide hubs) is
+preserved below.
+
+### Two gotchas worth stating up front
+
+1. **The visible HF Bands table renders `bestPerBand[name]`, NOT the
+   group verdict `v[0]`.** Every aggregation change in this file's
+   history (2nd-best, coverage) only ever moved the group summary
+   string; the table stayed best-path. The worldwide tier is written
+   *into* `bestPerBand[best.name].{tier,margin,confidence}` (mirroring
+   the spot-override sync) so the table actually reflects it. The
+   loudest path stays as the informational "Best Path" column.
+2. **The WSPR spot-override is suppressed under the worldwide basis.**
+   Its promote-to-good premise is best-path semantics (WSPR volume is
+   receiver-geography / regional). Promoting a worldwide tier on raw
+   spot count would reintroduce the regional bias the worldwide tier
+   removes (160 m heavy regional traffic was promoting a worldwide-
+   closed band to "good −39 dB"). Promotion now fires only on the
+   best-path *fallback* basis; the activity still shows as the
+   display-only "exceptionally active" decoration.
+
+### Accepted trade-off
+
+160/80 m and often 10 m read low when they are only regionally open,
+because they genuinely are not worldwide bands at that hour. The
+per-band best path / DX flag still surface the regional opening; a
+per-region heatmap drill-down (deferred, planned next) will recover
+the "to work whom" detail. This is the deliberate consequence of the
+tier meaning "general yet accurate, worldwide".
 
 ## Calibration finding (2026-05-15): why coverage-for-tier was rejected
 

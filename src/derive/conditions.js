@@ -9,7 +9,7 @@ import {
   FUSE_PRIMARY_FOF2
 } from "../constants.js";
 import {
-  currentQth, qthToLatLon, gcPointAtFraction
+  currentQth, qthToLatLon, gcPointAtFraction, haversineKm
 } from "../physics/qth.js";
 import {
   snrMarginHf, snrMarginHfEs, snrMarginVhfEs, snrMarginVhfAurora,
@@ -28,6 +28,7 @@ import { computeFuseGrid, computeFuseEsGrid } from "../physics/fuse.js";
 import { snrOpts } from "../settings.js";
 import { t } from "../i18n.js";
 import { spotBaselineMean } from "./spots.js";
+import { HUB_ANCHORS } from "./paths.js";
 import {
   classifyStormType, bzForwardKpBump,
   forecastKpPenaltyDb, stormLagEffectiveKp
@@ -202,6 +203,36 @@ export function deriveConditions(ctx) {
   var ll = qthToLatLon(currentQth());
   var qthLatAbs = ll ? Math.abs(ll[0]) : null;
   var qthCgmLatAbs = ll ? cgmLatAbs(ll[0], ll[1]) : null;
+
+  // Worldwide-hub verdict population (docs/HF-TIER-AGGREGATION.md,
+  // Option A). Snap each HUB_ANCHOR once to its nearest already-scored
+  // grid cell; the per-band tier below is the mean margin over the
+  // eligible hubs (a "general yet accurate, worldwide" statement
+  // instead of the loudest single path). Computed once per refresh:
+  // the grid geometry is band-independent, so this is O(anchors x
+  // grid) total, not per band. A hub whose nearest grid cell is
+  // farther than HUB_SNAP_MAX_KM is dropped -- that means the cell was
+  // distance-filtered out of the basket (QTH cannot reach that region
+  // at all right now), which is the correct population-level
+  // reachability gate, complementing the per-band eligibility test.
+  var HUB_SNAP_MAX_KM = 1500;  // ~ one 10-degree grid diagonal
+  var hubCells = [];
+  (function buildHubCells() {
+    var gp = (paths && paths.paths) || [];
+    if (!gp.length) return;
+    HUB_ANCHORS.forEach(function (a) {
+      var bestP = null, bestD = Infinity;
+      for (var i = 0; i < gp.length; i++) {
+        var p = gp[i];
+        if (p.destLat == null || p.destLon == null) continue;
+        var d = haversineKm(p.destLat, p.destLon, a.lat, a.lon);
+        if (d < bestD) { bestD = d; bestP = p; }
+      }
+      if (bestP && bestD <= HUB_SNAP_MAX_KM) {
+        hubCells.push({ region: a.region, key: bestP.destLat + "," + bestP.destLon });
+      }
+    });
+  })();
   var auroraHp = ovation ? (ll && ll[0] >= 0 ? ovation.north_hp_gw : ovation.south_hp_gw) : null;
   var haf = drap ? drap.qth_freq : null;
   // nowDate already constructed up-top; reusing it here so every
@@ -312,15 +343,16 @@ export function deriveConditions(ctx) {
     // for the HF-table renderer (each row gets the band's predicted
     // tier / margin / mode / best destination).
     var bestPerBand = {};
-    // Per-band list of every valid path as { margin, eligible }. The
-    // group-level tier below is a coverage fraction over the *eligible*
-    // subset (paths that are geometrically/temporally viable right
-    // now), so a band reads Excellent only when a real fraction of its
-    // reachable directions are loud -- not when one lonely hot path
-    // carries it, and not diluted by structurally-dead long hops the
-    // way a raw-basket median/coverage would be. See
-    // docs/HF-TIER-AGGREGATION.md for the aggregation history.
+    // Per-band list of every valid path as { margin, eligible }.
+    // Feeds the breadth annotation (fraction of eligible paths >= Good
+    // -> "open worldwide"). See docs/HF-TIER-AGGREGATION.md.
     var marginsByBand = {};
+
+    // Per-band, per-grid-cell { margin, eligible } keyed by
+    // "destLat,destLon". The worldwide-hub tier reads the cells that
+    // hubCells snapped the HUB_ANCHORS to. Grid lat/lon are integer
+    // 10-degree steps, so the string key is exact.
+    var marginByBandCell = {};
 
     // tryMargin: for a given band and path context, compute the SNR
     // margin with full data-layer treatment: kc2g↔climatology consensus
@@ -607,6 +639,11 @@ export function deriveConditions(ctx) {
       (marginsByBand[name] = marginsByBand[name] || []).push({
         margin: m.margin, eligible: eligible
       });
+      if (pathCtx.destLat != null && pathCtx.destLon != null) {
+        (marginByBandCell[name] || (marginByBandCell[name] = {}))[
+          pathCtx.destLat + "," + pathCtx.destLon
+        ] = { margin: m.margin, eligible: eligible };
+      }
 
       var thisIsDx = isDxOpen(m.margin, pathCtx.dKm);
       var existing = bestPerBand[name];
@@ -710,37 +747,70 @@ export function deriveConditions(ctx) {
       // heuristicTier stays exported in physics.js for the scenarios
       // diagnostic harness but is no longer in the verdict path.
 
-      // Group tier = best-path physics (tierFromMargin on the loudest
-      // path's margin). This is the pre-2026-05 baseline the in-code
-      // history below records at 92.36 % harness binary accuracy.
+      // Group tier = mean margin over the worldwide hub set (Option A,
+      // docs/HF-TIER-AGGREGATION.md). `hubCells` snapped each
+      // HUB_ANCHOR once to its nearest grid cell; here we read this
+      // band's margin for those cells, keep the eligible (reachable-
+      // now) ones, and the verdict is tierFromMargin(mean). This is a
+      // "general yet accurate, worldwide" statement: it cannot be
+      // carried by one loud short hop (the best-path bias the 2nd-best
+      // and coverage attempts tried and failed to fix), and it is not
+      // terminator/ocean-dominated, because the population is 14
+      // curated activity regions rather than the uniform grid (which
+      // is exactly why grid-coverage failed -- see the doc's
+      // "Calibration finding").
       //
-      // It is deliberately NOT coverage fraction. We tried that
-      // (2026-05-15) and the live diagnostic showed why it fails: the
-      // path basket is computePaths' uniform global lat/lon grid
-      // (~250 cells), so a coverage fraction over it measures day/night
-      // terminator geometry, not band quality -- a 40 m band with a
-      // +26 dB best path read "fair" because most of the planet was on
-      // the wrong side of the terminator. Eligible-normalization
-      // (f<=MUF || margin>=Poor) removes the over-MUF dead mass on the
-      // HIGH bands but is a no-op on 160-40 m (under-MUF even on the
-      // dark side), so low/mid bands systematically under-read. The
-      // grid is the wrong population for the tier.
+      // Accepted trade-off: 160/80 m and often 10 m read low when they
+      // are only regionally open, because they genuinely are not
+      // worldwide bands at that hour. The per-band best path / DX flag
+      // still surface the regional opening; a per-region heatmap
+      // drill-down (deferred) will recover the "to work whom" detail.
       //
-      // The grid IS the right population for *breadth* ("in how many
-      // directions is this band open"), which is an annotation, not the
-      // tier -- same tier/DX-split logic (see tier.js): tier answers
-      // "how good where it's open", breadth answers "in how many
-      // directions". breadthFrac below feeds that note segment.
-      // coverageTier + the eligible flag are retained as the breadth
-      // computer. See docs/HF-TIER-AGGREGATION.md for the full history.
-      var tier = tierFromMargin(best.m.margin);
-      var displayMargin = best.m.margin;
+      // Fallback: when no hub cell is eligible, or the local-MUF
+      // fallback produced no grid cells at all, fall back to best-path
+      // physics so the band still surfaces its opening rather than
+      // going dark. displayMargin / confidence follow the chosen
+      // basis so the note dB matches the tier.
+      var cellMap = marginByBandCell[best.name] || {};
+      var hubMargins = [];
+      for (var hc = 0; hc < hubCells.length; hc++) {
+        var cellRec = cellMap[hubCells[hc].key];
+        if (cellRec && cellRec.eligible && cellRec.margin != null &&
+            isFinite(cellRec.margin)) {
+          hubMargins.push(cellRec.margin);
+        }
+      }
+      var hubMean = hubMargins.length
+        ? hubMargins.reduce(function (x, y) { return x + y; }, 0) / hubMargins.length
+        : null;
+      var tier, displayMargin;
+      if (hubMean != null) {
+        tier = tierFromMargin(hubMean);
+        displayMargin = hubMean;
+      } else {
+        tier = tierFromMargin(best.m.margin);
+        displayMargin = best.m.margin;
+      }
+
+      // Push the worldwide verdict into the per-band-best row so the
+      // HF Bands table (which renders bestPerBand[name], not the group
+      // verdict v[0]) shows the worldwide tier/margin/confidence. The
+      // loudest-path dest + mode stay untouched -- they remain the
+      // informational "Best Path" column. Mirrors the spot-override
+      // sync below, which already mutates bestPerBand[best.name].tier.
+      // Without this, every aggregation change only ever moved the
+      // group summary string and the visible table stayed best-path.
+      if (best && bestPerBand[best.name]) {
+        bestPerBand[best.name].tier = tier;
+        bestPerBand[best.name].margin = displayMargin;
+        bestPerBand[best.name].confidence =
+          tierStability(displayMargin, best.m.sigma);
+      }
 
       // Breadth: fraction of the band's *eligible* grid paths that are
-      // at least workable (>= Good). Eligible = geometrically/temporally
-      // viable (f<=MUF, or a recovery mode is propagating it). This is
-      // the honest "open in N% of reachable directions" denominator;
-      // raw-grid fraction would be terminator-dominated.
+      // at least workable (>= Good). Feeds the "open worldwide" note
+      // segment. Eligible = geometrically/temporally viable (f<=MUF,
+      // or a recovery mode is propagating it).
       var bandPaths = marginsByBand[best.name] || [];
       var eligibleMargins = bandPaths
         .filter(function (p) { return p.eligible; })
@@ -751,17 +821,22 @@ export function deriveConditions(ctx) {
         : 0;
 
       // TEMP diagnostic (see docs/HF-TIER-AGGREGATION.md). Fires once
-      // per HF band group per refresh (~10/refresh). Used to tune the
-      // breadth phrasing thresholds. Remove after validation.
+      // per HF band group per refresh. Used to validate the worldwide
+      // tier against WSPR reality and to tune the hub set. Remove
+      // after validation.
       if (typeof console !== "undefined" && console.debug) {
-        var allSorted = bandPaths.map(function (p) { return Math.round(p.margin); })
-                                 .sort(function (a, b) { return b - a; });
-        console.debug("[hf-tier-breadth]", best.name,
+        var regionDump = hubCells.map(function (h) {
+          var r = cellMap[h.key];
+          var mv = (r && r.margin != null) ? Math.round(r.margin) : "x";
+          return h.region + ":" + mv + (r && r.eligible ? "" : "*");
+        });
+        console.debug("[hf-tier-worldwide]", best.name,
           "tier=" + tier,
-          "best=" + Math.round(best.m.margin) + "dB",
+          "hubMean=" + (hubMean != null ? Math.round(hubMean) + "dB" : "n/a"),
+          "eligHubs=" + hubMargins.length + "/" + hubCells.length,
+          "bestPath=" + Math.round(best.m.margin) + "dB",
           "breadthFrac=" + breadthFrac.toFixed(2),
-          "eligible=" + eligibleMargins.length + "/" + bandPaths.length,
-          "margins=" + JSON.stringify(allSorted));
+          "regions=" + JSON.stringify(regionDump));
       }
       // D-RAP absorption gate: if D-RAP flags this band as absorbed AND
       // observed spot activity sits below half the band's 30-day
@@ -802,9 +877,22 @@ export function deriveConditions(ctx) {
       //     plain "Excellent · margin 22 dB" line doesn't say so.
       var spotsExceedBaseline = spots > avg * SPOT_OVERRIDE_RATIO;
       var spotOverride = false;
+      // The promotion was designed and calibrated for the best-path
+      // semantic ("is this band alive somewhere -> usable"). WSPR spot
+      // counts are dominated by receiver geography (NA/EU) and short
+      // regional paths, so promoting a *worldwide* tier on raw spot
+      // volume would reintroduce the exact regional bias the worldwide
+      // tier exists to remove (e.g. 160 m heavy regional traffic
+      // promoting a worldwide-closed band to "good"). So the promotion
+      // fires only on the best-path fallback basis (hubMean == null);
+      // under the worldwide basis the activity still surfaces as the
+      // display-only "exceptionally active" decoration below, just
+      // without moving the tier. See docs/HF-TIER-AGGREGATION.md.
+      var worldwideBasis = hubMean != null;
       // (tierRank ?? 0) so a hypothetical unknown tier label doesn't
       // sneak through the override gate via null < 3 coercion.
-      if (spotsExceedBaseline && (tierRank(tier) ?? 0) < tierRank("good")) {
+      if (spotsExceedBaseline && !worldwideBasis &&
+          (tierRank(tier) ?? 0) < tierRank("good")) {
         tier = "good";
         spotOverride = true;
         // Keep the per-band-best row in sync with the override-applied
