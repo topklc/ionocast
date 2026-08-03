@@ -1,0 +1,210 @@
+name: daily
+
+# All daily automation in one file, on two cron lines:
+#
+#   05/11/17/23 UTC  tropo grid refresh (the GFS cycle cadence:
+#                    each cycle publishes ~3-4 h after start, the
+#                    cron fires ~5 h after for NOMADS margin)
+#   06:00 UTC        wspr-baselines refresh (after wspr.live's
+#                    UTC-day rollover settles), then the full
+#                    non-heavy test-suite run + lychee link scan
+#                    (the suites job checks out branch main so it
+#                    sees the baseline commit the wspr job just
+#                    pushed)
+#
+# Jobs are gated on github.event.schedule so each cron firing runs
+# only its own jobs. Manual dispatch runs everything.
+#
+# Required repository secrets (tropo job):
+#   CLOUDFLARE_API_TOKEN   token scoped to "Account / Workers R2
+#                          Storage / Edit" on the target bucket.
+#   CLOUDFLARE_ACCOUNT_ID  account ID from the CF dashboard.
+# Required repository variables:
+#   R2_BUCKET  the R2 bucket name (e.g. "ionocast-data").
+#   R2_KEY     object key for the binary (e.g. "tropo/grid.bin").
+#
+# Failure modes:
+#   - NOMADS unreachable: tropo job fails, deployed binary stays on
+#     the previous cycle (R2 keeps the last successful upload).
+#   - wspr.live unreachable: wspr job fails, baselines stay stale
+#     (runtime falls back to the existing module); suites still run.
+#   - suites: upstream API unreachable or drift detector exceeded;
+#     investigate via the uploaded tests.report.json artifact. The
+#     hepburn suite alarming means the tropo index drifted from
+#     Hepburn's field (or his format changed; a skip streak means
+#     network or format trouble).
+#   - lychee: dead link (404 / 410 / DNS fail); update or remove the
+#     reference. 403 / 429 / 503 are accepted as success.
+
+on:
+  schedule:
+    - cron: "0 5,11,17,23 * * *"
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  tropo:
+    name: tropo grid refresh
+    if: github.event.schedule == '0 5,11,17,23 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install eccodes
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libeccodes-tools
+          grib_get_data -V 2>&1 | head -1 || true
+
+      - name: Pull GFS and compute tropo grid
+        run: node --max-old-space-size=4096 src/tropo/ingest.mjs
+
+      - name: Pack binary
+        run: node src/tropo/pack-binary.mjs
+
+      - name: Verify R2 access (lists buckets the token can see)
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Account ID prefix: ${CLOUDFLARE_ACCOUNT_ID:0:6}..."
+          echo "Buckets visible to this token:"
+          npx --yes wrangler@4 r2 bucket list
+
+      - name: Upload to Cloudflare R2
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET:             ${{ vars.R2_BUCKET }}
+          R2_KEY:                ${{ vars.R2_KEY }}
+        run: |
+          echo "Uploading to bucket: '$R2_BUCKET' key: '$R2_KEY'"
+          npx --yes wrangler@4 r2 object put \
+            "$R2_BUCKET/$R2_KEY" \
+            --file=src/tropo/data/grid.bin \
+            --content-type=application/octet-stream \
+            --remote
+
+  wspr:
+    name: wspr-baselines refresh
+    if: github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Refresh WSPR spot baselines
+        run: node scripts/harness.mjs wspr-baselines
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "topklc"
+          git config user.email "197289236+topklc@users.noreply.github.com"
+          if git diff --quiet src/data/spot-baselines.mjs; then
+            echo "[wspr-baselines] no change; nothing to commit"
+            exit 0
+          fi
+          git add src/data/spot-baselines.mjs
+          git commit -m "refresh WSPR baselines (auto, daily-sliding)"
+          git pull --rebase origin main
+          git push
+
+  suites:
+    name: all suites (no heavy)
+    # Runs after the baseline refresh; still runs when it failed
+    # (stale baselines are usable). Checks out branch main, not the
+    # trigger SHA, so the fresh baseline commit is in the tree.
+    needs: wspr
+    if: ${{ !cancelled() && (github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # The harness suites all consume scripts/data/.cache/harness.json,
+      # which is gitignored (regenerated from upstream API calls).  CI
+      # runners start clean, so prime the cache first; without this,
+      # most suites fail with "missing harness.json" before running.
+      # --window-days=30 matches the monthly heavy run for consistency;
+      # takes ~5-15 minutes to fetch WSPR + Kp + F10.7 + GIRO.
+      - name: Prime harness cache
+        run: node scripts/harness.mjs --window-days=30 --no-cache
+
+      - name: Run all non-heavy suites
+        run: node scripts/tests.mjs --suite=all
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-report-daily
+          path: scripts/outputs/tests.report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  links:
+    name: lychee scan
+    if: github.event.schedule == '0 6 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Suppress the action's GitHub job-summary; the same data is
+          # in the lychee-report artifact uploaded below.
+          jobSummary: false
+          # Scope: docs (README + licenses page + paper bibliography)
+          # plus the one JS file that hosts the CREDITS array and the
+          # SECTIONS image URLs.  Other src/* files reference /api/*
+          # paths only, no external URLs worth checking.
+          args: |
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --max-retries 3
+            --retry-wait-time 5
+            --accept 200,203,206,301,302,304,403,429,503
+            --base https://ionocast.org/
+            --exclude ^https://db1\.wspr\.live/?$
+            --exclude ^https://github\.com/topklc/ionocast/?$
+            ./README.md
+            ./licenses.html
+            ./index.html
+            ./src/ui/sections.js
+            ./paper/ionocast-methodology.tex
+          fail: true
+          # --exclude rationale (verified 2026-05-06):
+          #   db1.wspr.live (bare endpoint): always 400 with body
+          #     "DB::Exception: Empty query" because ClickHouse
+          #     requires ?query=...; runtime never hits the bare URL.
+          #   github.com/topklc/ionocast: 404 to unauthenticated
+          #     visitors while the repo is private.
+
+      - name: Upload lychee report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: ./lychee/out.md
+          if-no-files-found: warn
+          retention-days: 14

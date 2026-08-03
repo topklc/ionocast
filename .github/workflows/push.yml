@@ -1,0 +1,120 @@
+name: push
+
+# Everything that runs on push, in one file:
+#   - fast:  unit suites + i18n + strict ESM parse-check (all branches
+#            and PRs; catches failures on feature branches before a PR
+#            is opened, not after)
+#   - paper: rebuilds paper/ionocast-methodology.pdf and auto-commits
+#            it, but only on main and only when the LaTeX source or
+#            Makefile actually changed in the push (the dev machines
+#            carry no LaTeX toolchain, so without this the committed
+#            PDF goes silently stale)
+#
+# Failure modes:
+#   - fast fails: broken unit test or ESM syntax error; fix and push.
+#   - paper fails: LaTeX error in the .tex; fix the source and push.
+#   - paper PDF byte-identical (comment-only edit): no commit, no-op.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  fast:
+    name: fast (unit + i18n + parse-check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: unit tests + i18n
+        run: node scripts/tests.mjs --suite=physics-unit,harness-unit,derive-unit,i18n
+
+      - name: parse-check ES modules
+        run: |
+          # Glob all *.js / *.mjs under src/ and scripts/ so newly
+          # added modules (e.g. the builders/ subdirectory) are picked
+          # up automatically without editing this workflow.
+          #
+          # Use `node --input-type=module --check` per file (read from
+          # stdin) instead of `node --check file.js`. Node 20+ silently
+          # exits 0 on `.js` ESM syntax errors when invoked the latter
+          # way (auto-detect-module fallback hides real bugs); the
+          # stdin form forces strict ESM parsing and propagates exit 1
+          # on any syntax error. Verified 2026-05-06 against a known-
+          # bad ESM input.
+          fail=0
+          while IFS= read -r f; do
+            node --input-type=module --check < "$f" || fail=$((fail + 1))
+          done < <(find src scripts -type f \( -name '*.js' -o -name '*.mjs' \))
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::$fail file(s) failed parse-check"
+            exit 1
+          fi
+
+  paper:
+    name: whitepaper PDF rebuild
+    # Only meaningful on main; the changed-files gate below narrows it
+    # to pushes that touched the LaTeX source. Manual dispatch always
+    # rebuilds.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect .tex / Makefile changes in this push
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+            echo "manual dispatch: rebuilding unconditionally"
+            exit 0
+          fi
+          # First commit or force-push without a parent: rebuild to be
+          # safe rather than guessing.
+          if ! git rev-parse HEAD^ >/dev/null 2>&1; then
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+            echo "no parent commit: rebuilding"
+            exit 0
+          fi
+          if git diff --name-only HEAD^ HEAD | grep -qE '^paper/.*\.tex$|^paper/Makefile$'; then
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=0" >> "$GITHUB_OUTPUT"
+            echo "no paper source changes; skipping rebuild"
+          fi
+
+      - name: Install TeX Live (subset)
+        if: steps.detect.outputs.changed == '1'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            texlive-latex-recommended texlive-latex-extra \
+            texlive-pictures texlive-fonts-recommended lmodern
+
+      - name: Build PDF
+        if: steps.detect.outputs.changed == '1'
+        run: make -C paper pdf
+
+      - name: Commit refreshed PDF
+        if: steps.detect.outputs.changed == '1'
+        run: |
+          git config user.name  "topklc"
+          git config user.email "197289236+topklc@users.noreply.github.com"
+          git add paper/ionocast-methodology.pdf
+          if git diff --cached --quiet; then
+            echo "PDF unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "rebuild whitepaper PDF (auto, on .tex change)"
+          git pull --rebase origin main
+          git push

@@ -1,0 +1,26 @@
+/* Local-only helpers for the theme reference sheet. Everything else
+   inherits from style.css so swatches and components render exactly
+   as they do on the live page.
+
+   Extracted from reference.html on 2026-05-06 so the page satisfies
+   the strict CSP (`style-src 'self'`) declared in /_headers, which
+   blocks inline <style>. */
+.sheet-row{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.sheet-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sheet-row.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:800px){.sheet-row,.sheet-row.cols-3,.sheet-row.cols-4{grid-template-columns:1fr}}
+.swatch{display:flex;align-items:center;gap:10px;font-size:12px;font-variant-numeric:tabular-nums}
+.swatch-chip{width:36px;height:36px;border-radius:4px;flex:none;border:1px solid var(--border)}
+.swatch-name{font-weight:600;color:var(--ink)}
+.swatch-val{color:var(--muted);font-family:var(--font-mono);font-size:11px}
+.anno{color:var(--muted);font-size:11px;font-family:var(--font-mono);margin-top:2px;line-height:1.5}
+.ruler{height:1px;background:var(--border);margin:6px 0}
+.gap-box{background:var(--accent-muted);border:1px dashed var(--accent);text-align:center;font-size:10px;color:var(--accent);font-family:var(--font-mono)}
+.demo-block{padding:10px;border:1px solid var(--border);border-radius:4px;background:var(--accent-muted)}
+.demo-block + .demo-block{margin-top:22px}
+table.sheet-meta{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+table.sheet-meta td{padding:3px 8px;border-bottom:1px dotted var(--border);vertical-align:baseline}
+table.sheet-meta td:first-child{color:var(--muted);width:40%}
+table.sheet-meta td:last-child{font-family:var(--font-mono);color:var(--ink)}
+/* Make the local label tag distinct from the type sample beside it. */
+.type-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}

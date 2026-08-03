@@ -1,0 +1,302 @@
+name: monthly
+
+# All monthly automation in one file, on the 3rd of each month at
+# 09:00 UTC (GFS 00z is published by then and Hepburn's
+# 12z-previous-day maps cover the retune's valid times; clear of the
+# daily 05/06/07 UTC cluster). Four independent jobs:
+#
+#   - giro:   GIRO station list audit (was quarterly). `verify` diffs
+#             GIRO_STATIONS coordinates against kc2g's registry;
+#             `probe` queries DIDB for kc2g stations not yet in the
+#             basket. Opens an issue when either finds something; the
+#             operator patches scripts/harness.mjs by hand. No
+#             auto-merge: station changes need human judgement.
+#   - swpc:   SWPC schema fingerprint check (was quarterly). Diffs
+#             every consumed endpoint's structural fingerprint against
+#             scripts/data/swpc-schema.json; refreshes the snapshot
+#             and opens a PR on drift. PR is the only path to change
+#             the snapshot; never pushes to main.
+#   - retune: tropo coefficient autotune against Hepburn's maps.
+#             Ingests five GFS leads with TROPO_EMIT_TERMS=1, sweeps
+#             K_CLIFF x CLIFF_MIN_DROP x K_NOCT, appends the verdict
+#             to the seasonal evidence ledger (auto-commit), and opens
+#             a PR ONLY when the best combo beats the current defaults
+#             by > 0.005 mean Spearman AND wins on >= 80% of frames;
+#             K moves at most 0.5 per month inside [3, 8].
+#   - heavy:  the full test matrix including heavy suites (tune-r7
+#             coordinate descent, voacap-fixtures regen; was weekly).
+#             Catches calibration drift the daily non-heavy run
+#             cannot detect.
+#
+# Failure modes:
+#   - kc2g / lgdc.uml.edu unreachable: giro steps report and skip.
+#   - SWPC outage (majority of endpoints down): swpc script aborts
+#     without writing; no PR.
+#   - Hepburn or NOMADS unreachable: retune's autotune exits 1 ("not
+#     enough evidence"), job fails visibly, nothing changes.
+#   - tune-r7 optimum shifted / voacap fixtures disagree: heavy job
+#     fails; investigate via the uploaded report artifact.
+
+on:
+  schedule:
+    - cron: "0 9 3 * *"
+  workflow_dispatch:
+
+jobs:
+  giro:
+    name: GIRO station audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify GIRO_STATIONS coordinates vs kc2g registry
+        id: verify
+        run: |
+          set +e
+          node scripts/harness.mjs verify > verify.txt 2>&1
+          rc=$?
+          bad=$(grep -oE '^[0-9]+ stations with coord errors' verify.txt | grep -oE '^[0-9]+' || echo 0)
+          echo "bad=$bad" >> "$GITHUB_OUTPUT"
+          echo "rc=$rc"  >> "$GITHUB_OUTPUT"
+          cat verify.txt
+
+      - name: Probe candidate stations from kc2g not in GIRO_STATIONS
+        id: probe
+        run: |
+          set +e
+          node scripts/harness.mjs probe > probe.txt 2>&1
+          rc=$?
+          # grep -c already prints 0 on no match (it just exits 1,
+          # which set +e tolerates).
+          ok=$(grep -cE '   ok        ' probe.txt || true)
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          cat probe.txt
+
+      - name: Decide whether to open an issue
+        id: decide
+        run: |
+          bad="${{ steps.verify.outputs.bad }}"
+          ok="${{ steps.probe.outputs.ok }}"
+          if [ "${bad:-0}" -gt 0 ] || [ "${ok:-0}" -gt 0 ]; then
+            echo "open=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "open=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open audit issue
+        if: steps.decide.outputs.open == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          bad="${{ steps.verify.outputs.bad }}"
+          ok="${{ steps.probe.outputs.ok }}"
+          today=$(date -u +%Y-%m-%d)
+          title="chore(giro): monthly audit ${today}, ${bad:-0} coord drift, ${ok:-0} active candidates"
+          {
+            echo "Automated monthly GIRO_STATIONS audit. Source: \`.github/workflows/monthly.yml\` (job: giro)."
+            echo
+            echo "**Coord drift (\`verify\`):** ${bad:-0} stations off by > 2 degrees vs kc2g registry."
+            echo "**New candidates (\`probe\`):** ${ok:-0} kc2g stations not yet in GIRO_STATIONS that returned fresh DIDB data."
+            echo
+            echo "If \`verify\` shows drift, edit \`scripts/harness.mjs\` GIRO_STATIONS to match the kc2g coordinates."
+            echo "If \`probe\` shows active candidates, evaluate each for inclusion (proximity to fusion gaps, data-provider crediting, uptime history)."
+            echo
+            echo "## verify"
+            echo
+            echo '```'
+            cat verify.txt
+            echo '```'
+            echo
+            echo "## probe"
+            echo
+            echo '```'
+            cat probe.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
+
+  swpc:
+    name: SWPC schema check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run SWPC schema fingerprint check (with --write)
+        id: check
+        run: |
+          set +e
+          node scripts/swpc-schema-check.mjs --write > report.txt 2>&1
+          rc=$?
+          changes=$(grep -c '^### ' report.txt || true)
+          aborted=$(grep -c '^# SWPC schema check: aborted' report.txt || true)
+          [ -z "$changes" ] && changes=0
+          [ -z "$aborted" ] && aborted=0
+          echo "changes=$changes" >> "$GITHUB_OUTPUT"
+          echo "aborted=$aborted" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- scripts/data/swpc-schema.json; then
+            echo "snapshot_modified=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "snapshot_modified=1" >> "$GITHUB_OUTPUT"
+          fi
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          cat report.txt
+
+      - name: Open PR with the snapshot refresh
+        if: steps.check.outputs.snapshot_modified == '1'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/swpc-schema-refresh
+          delete-branch: true
+          commit-message: |
+            chore(swpc): refresh schema snapshot
+
+            Automated regeneration of scripts/data/swpc-schema.json
+            from the monthly workflow.
+
+            Reviewer: inspect the diff to decide whether the upstream
+            change is benign (merge the PR) or breaks one of our
+            fetchers (close PR, patch functions/_proxies.js or the
+            relevant handler first, then re-run the workflow).
+          title: "chore(swpc): refresh schema snapshot"
+          body-path: report.txt
+          add-paths: scripts/data/swpc-schema.json
+
+  retune:
+    name: tropo autotune (Hepburn-anchored)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install eccodes
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libeccodes-tools
+
+      - name: Ingest five leads with term emission
+        run: |
+          for LEAD in 6 18 30 42 54; do
+            echo "=== lead $LEAD ==="
+            TROPO_EMIT_TERMS=1 TROPO_LEAD=$LEAD \
+              TROPO_OUT=/tmp/grid-f$LEAD.json \
+              node --max-old-space-size=4096 src/tropo/ingest.mjs
+          done
+
+      - name: Read current defaults from ingest.mjs
+        id: cur
+        run: |
+          K=$(grep -oP 'TROPO_K_CLIFF \|\| "\K[0-9.]+' src/tropo/ingest.mjs)
+          D=$(grep -oP 'TROPO_CLIFF_MIN_DROP \|\| "\K[0-9.]+' src/tropo/ingest.mjs)
+          N=$(grep -oP 'TROPO_K_NOCT \|\| "\K[0-9.]+' src/tropo/ingest.mjs)
+          echo "kdn=$K:$D:$N" >> "$GITHUB_OUTPUT"
+          echo "current defaults: K=$K D=$D N=$N"
+
+      - name: Autotune verdict
+        id: verdict
+        run: |
+          # Run from /tmp so the downloaded Hepburn PNGs (copyrighted,
+          # reference-use only) never touch the repo tree.
+          cd /tmp
+          python3 "$GITHUB_WORKSPACE/scripts/hepburn-compare.py" autotune \
+            /tmp/grid-f*.json \
+            --emitted "${{ steps.cur.outputs.kdn }}" --json > autotune.json
+          cat autotune.json | python3 -m json.tool
+          echo "change=$(python3 -c 'import json;print(str(json.load(open("autotune.json"))["recommend"]["change"]).lower())')" >> "$GITHUB_OUTPUT"
+          echo "newk=$(python3 -c 'import json;print(json.load(open("autotune.json"))["recommend"]["K"])')" >> "$GITHUB_OUTPUT"
+          echo "newd=$(python3 -c 'import json;print(json.load(open("autotune.json"))["recommend"]["D"])')" >> "$GITHUB_OUTPUT"
+          echo "newn=$(python3 -c 'import json;print(json.load(open("autotune.json"))["recommend"]["N"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Append seasonal evidence ledger (auto-commit)
+        run: |
+          python3 -c 'import json; print(json.dumps(json.load(open("/tmp/autotune.json"))))' \
+            >> scripts/data/hepburn-calibration-history.jsonl
+          git config user.name  "topklc"
+          git config user.email "197289236+topklc@users.noreply.github.com"
+          git add scripts/data/hepburn-calibration-history.jsonl
+          git commit -m "hepburn autotune ledger (auto, monthly)"
+          git pull --rebase origin main
+          git push
+
+      - name: Apply recommended defaults
+        if: steps.verdict.outputs.change == 'true'
+        run: |
+          K="${{ steps.verdict.outputs.newk }}"
+          D="${{ steps.verdict.outputs.newd }}"
+          N="${{ steps.verdict.outputs.newn }}"
+          sed -i "s/TROPO_K_CLIFF || \"[0-9.]*\"/TROPO_K_CLIFF || \"$K\"/" src/tropo/ingest.mjs
+          sed -i "s/TROPO_CLIFF_MIN_DROP || \"[0-9.]*\"/TROPO_CLIFF_MIN_DROP || \"$D\"/" src/tropo/ingest.mjs
+          sed -i "s/TROPO_K_NOCT || \"[0-9.]*\"/TROPO_K_NOCT || \"$N\"/" src/tropo/ingest.mjs
+          git diff --stat
+
+      - name: Open PR with the recommended change
+        if: steps.verdict.outputs.change == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: auto/tropo-retune
+          title: "tropo autotune: coefficient change recommended by monthly Hepburn sweep"
+          commit-message: "tropo autotune: update cliff/noct defaults (monthly Hepburn sweep)"
+          body: |
+            The monthly Hepburn-anchored sweep found a coefficient set that
+            beats the current defaults by > 0.005 mean Spearman on >= 80%
+            of frames.  Full evidence is the newest line of
+            `scripts/data/hepburn-calibration-history.jsonl`.
+
+            Guardrails applied: K stepped at most 0.5 from the current
+            default, clamped to [3, 8].
+
+            Review the ledger trend before merging: a single strong month
+            can pass the gate; two consecutive months pointing the same
+            way is a season, one is weather.
+
+  heavy:
+    name: full suite + heavy
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Populate harness cache (required by tune-r7)
+        # tune-r7 reads scripts/data/.cache/harness.json; without this
+        # step it reports `{ skipped: "missing harness.json" }` and the
+        # run never exercises the calibration grid. `--no-cache` forces
+        # a fresh ~30-day fetch (WSPR + Kp + F10.7 + GIRO), ~5-15 min.
+        run: node scripts/harness.mjs --window-days=30 --no-cache
+
+      - name: Run all suites including heavy
+        run: node scripts/tests.mjs --suite=all --heavy
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-report-monthly
+          path: scripts/outputs/tests.report.json
+          if-no-files-found: warn
+          retention-days: 90

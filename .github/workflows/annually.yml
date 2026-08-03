@@ -1,0 +1,504 @@
+name: annually
+
+# All annual automation in one file, 04:00 UTC on 20 October (late
+# enough that IMO has typically published next year's calendar; early
+# enough that any drift lands before December's Geminids). Six
+# independent jobs:
+#
+#   - imo:        IMO meteor calendar refresh. --apply rewrites
+#                 src/derive/showers.js rows in place ONLY when parser
+#                 confidence >= 8/9 and every shift is same-month
+#                 within 3 days, then opens a PR. Larger drift opens
+#                 an issue instead. Never pushes to main.
+#   - citations:  bibliography review tickler. Always opens an issue
+#                 (the value is the human walk-through); embeds a
+#                 lychee dead-link scan of citation-bearing files.
+#   - retune:     the heavy 7-parameter solar-cycle retune (tune-r7)
+#                 against a fresh 30-day window. NEVER auto-commits:
+#                 opens an issue with recommended vs current values
+#                 for the operator to weigh against on-air experience.
+#   - igrf:       IGRF magnetic-pole generation watchdog (5-year
+#                 upstream cycle). Issue when NOAA mentions a newer
+#                 generation than committed, or committed age > 6 yr.
+#   - itu_r:      ITU-R P.533 / P.842 / P.372 revision reminder,
+#                 fires every 3 years from LAST_VERIFIED_DATE.
+#   - cycle:      solar-cycle phase watcher; issue when the F10.7
+#                 81-day mean drops below the cycle-minimum threshold
+#                 so the cycle-26 calibration campaign gets lead time.
+#
+# Failure modes: each job is independent; one failing does not affect
+# the others. Network failures fail the affected job visibly.
+
+on:
+  schedule:
+    - cron: "0 4 20 10 *"
+  workflow_dispatch:
+
+jobs:
+  imo:
+    name: IMO calendar refresh
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run IMO calendar check in --apply mode
+        id: check
+        run: |
+          set +e
+          node scripts/imo-calendar-check.mjs --apply > report.txt 2>&1
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- src/derive/showers.js; then
+            echo "modified=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "modified=1" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^## (peak-date drift|major peak-date discrepancy|parser confidence low|fetch failed)' report.txt; then
+            echo "drift_signal=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift_signal=0" >> "$GITHUB_OUTPUT"
+          fi
+          cat report.txt
+
+      - name: Open PR with the catalog refresh
+        if: steps.check.outputs.modified == '1'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/imo-calendar-refresh
+          delete-branch: true
+          commit-message: |
+            chore(showers): IMO calendar peak-date refresh
+
+            Automated rewrite of src/derive/showers.js catalog rows
+            from the annual workflow.  Parser confidence >= 8/9,
+            per-shower shifts within +-3 days same month.
+
+            Reviewer: confirm against https://www.imo.net/resources/calendar/
+            before merging.
+          title: "chore(showers): IMO calendar refresh"
+          body-path: report.txt
+          add-paths: src/derive/showers.js
+
+      - name: Open issue (drift detected but apply was skipped)
+        if: steps.check.outputs.modified == '0' && steps.check.outputs.drift_signal == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(showers): IMO calendar review needed ${today}"
+          {
+            echo "Automated IMO calendar check detected drift but could not safely auto-apply. Source: \`.github/workflows/annually.yml\` (job: imo), script: \`scripts/imo-calendar-check.mjs\`."
+            echo
+            echo "**Why not auto-PR'd:** at least one of the parser safety gates failed (parser confidence < 8/9 showers, or per-shower shift > 3 days, or month mismatch). Manual review of the IMO page is required this cycle."
+            echo
+            echo "Walk the report below alongside https://www.imo.net/resources/calendar/ and patch \`src/derive/showers.js\` by hand if real drift is confirmed."
+            echo
+            echo "## report"
+            echo
+            echo '```'
+            cat report.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
+
+  citations:
+    name: citation review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run lychee on citation-bearing files
+        id: lychee
+        uses: lycheeverse/lychee-action@v2
+        continue-on-error: true
+        with:
+          jobSummary: false
+          output: lychee-citations.md
+          args: |
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --max-retries 3
+            --retry-wait-time 5
+            --accept 200,203,206,301,302,304,403,429,503
+            --base https://ionocast.org/
+            --exclude ^https://db1\.wspr\.live/?$
+            --exclude ^https://github\.com/topklc/ionocast/?$
+            ./paper/ionocast-methodology.tex
+            ./src/data/data-sources.js
+            ./licenses.html
+
+      - name: Open annual review issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(citations): annual bibliography review ${today}"
+          {
+            echo "Automated annual citation / bibliography review tickler. Source: \`.github/workflows/annually.yml\` (job: citations)."
+            echo
+            echo "The lychee scan below catches URLs that are dead at the HTTP level (404, 410, DNS failure). It does NOT catch the more common citation-rot pattern: URLs that still respond 200 OK but now point at unrelated content because the institution reorganized their page tree. Walking the bibliography by eye once a year catches the latter."
+            echo
+            echo "## Manual review checklist"
+            echo
+            echo "- [ ] **Paper bibliography** (\`paper/ionocast-methodology.tex\`): scan the bibitem entries for any URL that has moved. Spot-check 5 random entries by opening their URLs and confirming the page still describes what the bibitem says it does."
+            echo "- [ ] **data-sources.js CREDITS** (\`src/data/data-sources.js\`): each upstream's homepage should still match the description and license claim. Particularly watch for SWPC product reorganizations and GIRO data-provider attributions."
+            echo "- [ ] **licenses.html per-source acknowledgements**: every data provider that requires per-station attribution (GIRO CC-BY-NC-SA) needs the listed institution name to still match the upstream's current branding."
+            echo "- [ ] **DOIs**: any DOI-form citation should still resolve at https://doi.org/<id>. DOIs almost never rot but a manual check is cheap."
+            echo
+            echo "## lychee report (dead-link-only subset)"
+            echo
+            if [ -s lychee-citations.md ]; then
+              cat lychee-citations.md
+            else
+              echo "_(lychee produced no report file; either all links passed or the action errored. Check the workflow run logs.)_"
+            fi
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
+
+  retune:
+    name: heavy retune review
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build 30-day harness cache
+        run: |
+          set -euo pipefail
+          # --no-cache forces a fresh wspr.live aggregate + GIRO
+          # history pull so the retune sees current solar conditions.
+          node scripts/harness.mjs --window-days=30 --no-cache
+
+      - name: Run heavy retune suite (tune-r7)
+        id: retune
+        run: |
+          set +e
+          node scripts/tests.mjs --suite=tune-r7 > retune.txt 2>&1
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          tail -200 retune.txt
+
+      - name: Extract recommended config from report
+        id: extract
+        run: |
+          set +e
+          if [ ! -f scripts/outputs/tests.report.json ]; then
+            echo "skip=missing-report" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node -e "
+            const fs = require('node:fs');
+            const r = JSON.parse(fs.readFileSync('scripts/outputs/tests.report.json','utf-8'));
+            const t = (r.results || {})['tune-r7'];
+            if (!t || !t.winner) { console.log('NO_WINNER'); process.exit(0); }
+            const w = t.winner.config;
+            console.log('RECOMMENDED:');
+            for (const k of Object.keys(w)) console.log('  ' + k + ' = ' + w[k]);
+            console.log('METRICS:');
+            console.log('  brier = ' + t.winner.brier);
+            console.log('  acc   = ' + t.winner.acc);
+            console.log('  seed  = ' + t.winner.seed);
+          " > extracted.txt 2>&1
+          cat extracted.txt
+          {
+            echo "CURRENT (from src/constants.js):"
+            for sym in SCATTER_WEIGHT FUSION_PRIMARY_MUF DEFOCUS_DB_PER_EXTRA_HOP STORM_LAG_PEAK_H STORM_LAG_DECAY_H; do
+              line=$(grep -E "^export const $sym " src/constants.js | head -1)
+              echo "  $line"
+            done
+          } > current.txt
+          cat current.txt
+
+      - name: Open audit issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(retune): annual solar-cycle-phase retune review ${today}"
+          {
+            echo "Automated annual heavy-suite retune. Source: \`.github/workflows/annually.yml\` (job: retune)."
+            echo
+            echo "**DO NOT AUTO-COMMIT THE RECOMMENDED VALUES.** Brier optimisation has structural ceilings that do not encode operator-experience-side reality. Always weigh the suggested config against the last year's on-air observations before patching \`src/constants.js\`."
+            echo
+            echo "**Workflow:**"
+            echo "1. Read the **Recommended** values below alongside the **Current** values."
+            echo "2. For any constant that shifted meaningfully (e.g. \`scatterWeight\` 1.5 -> 1.0), check whether the operator-side experience this cycle supports the change (did 12 m / 10 m feel different than the model expected?)."
+            echo "3. If the change aligns with operator memory, edit \`src/constants.js\` by hand, run the unit tests, and commit. If it does not align, leave the constants alone; the harness is telling you something the operator should investigate, not auto-apply."
+            echo "4. Even when not applying, recording the year-on-year drift in a comment somewhere is useful for cycle-26 transition planning."
+            echo
+            echo "## Recommendation"
+            echo
+            echo '```'
+            if [ -f extracted.txt ]; then
+              cat extracted.txt
+            else
+              echo "(no extracted recommendation; check workflow logs)"
+            fi
+            echo '```'
+            echo
+            echo "## Current production values"
+            echo
+            echo '```'
+            if [ -f current.txt ]; then
+              cat current.txt
+            else
+              echo "(no current.txt; check workflow logs)"
+            fi
+            echo '```'
+            echo
+            echo "## Full retune log (tail)"
+            echo
+            echo '```'
+            tail -120 retune.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
+
+  igrf:
+    name: IGRF generation watcher
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # Update both values when a new IGRF is incorporated into
+      # src/physics/geometry.js. COMMITTED_VERSION is the highest IGRF
+      # generation folded into POLE_LAT / POLE_LON; INCORPORATED_YEAR
+      # is the calendar year of that update (the time-based reminder
+      # fires when current year minus this exceeds 6).
+      COMMITTED_VERSION: "13"
+      INCORPORATED_YEAR: "2020"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check NOAA NCEI IGRF page for newer generation
+        id: detect
+        run: |
+          set +e
+          curl -sSL --max-time 30 "https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html" -o igrf-page.html
+          rc=$?
+          echo "fetch_rc=$rc" >> "$GITHUB_OUTPUT"
+          # Any "IGRF-NN" with NN >= 10; two-digit minimum avoids the
+          # legacy IGRF-1 through IGRF-9 historical references.
+          latest=$(grep -oE 'IGRF-[0-9]{2,}' igrf-page.html 2>/dev/null | grep -oE '[0-9]+' | sort -n | tail -1)
+          [ -z "$latest" ] && latest=0
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          year=$(date -u +%Y)
+          age=$((year - INCORPORATED_YEAR))
+          echo "age=$age" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to open an issue
+        id: decide
+        run: |
+          latest="${{ steps.detect.outputs.latest }}"
+          age="${{ steps.detect.outputs.age }}"
+          reason=""
+          if [ "${latest:-0}" -gt "${COMMITTED_VERSION:-0}" ]; then
+            reason="parser: NOAA page mentions IGRF-$latest (committed: IGRF-$COMMITTED_VERSION)"
+          elif [ "${age:-0}" -gt 6 ]; then
+            reason="time-based: committed IGRF is $age years old ($INCORPORATED_YEAR); next generation due"
+          fi
+          if [ -n "$reason" ]; then
+            echo "open=1" >> "$GITHUB_OUTPUT"
+            echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          else
+            echo "open=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open IGRF audit issue
+        if: steps.decide.outputs.open == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          title="chore(igrf): magnetic-pole coordinates review ${today}"
+          {
+            echo "Automated IGRF generation watchdog. Source: \`.github/workflows/annually.yml\` (job: igrf)."
+            echo
+            echo "**Trigger:** ${{ steps.decide.outputs.reason }}"
+            echo
+            echo "**Files to update:**"
+            echo "- \`src/physics/geometry.js\`: POLE_LAT, POLE_LON"
+            echo "- \`.github/workflows/annually.yml\`: bump \`COMMITTED_VERSION\` and \`INCORPORATED_YEAR\` env vars when a new IGRF is folded in."
+            echo
+            echo "**Procedure:**"
+            echo "1. Download the latest IGRF coefficient file from https://www.ngdc.noaa.gov/IAGA/vmod/igrf.html"
+            echo "2. Compute the geomagnetic dipole pole at current epoch (or grab NOAA's published pole position directly)."
+            echo "3. Update POLE_LAT / POLE_LON in \`src/physics/geometry.js\`."
+            echo "4. Run \`node scripts/tests.mjs --suite=physics-unit\` to confirm geomagnetic latitude tests still pass."
+            echo "5. Update the workflow env vars to suppress next year's reminder."
+            echo
+            echo "**Severity:** degrading. Pole drifts ~50 km/year; ~0.5 degrees per 5 years on a constant the harness can detect but operators can't. Two-line edit when ratified."
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
+
+  itu_r:
+    name: ITU-R P-series reminder
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # Update when the operator confirms (via manual visit to
+      # https://www.itu.int/rec/R-REC-P/en) that the committed versions
+      # are still current. After that, the workflow stays silent for
+      # 3 years.
+      LAST_VERIFIED_DATE: "2026-05-11"
+      COMMITTED_P533: "P.533-14"
+      COMMITTED_P842: "P.842-5"
+      COMMITTED_P372: "P.372-15"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check verification age
+        id: age
+        run: |
+          set -euo pipefail
+          today=$(date -u +%s)
+          last=$(date -u -d "$LAST_VERIFIED_DATE" +%s)
+          days_old=$(( (today - last) / 86400 ))
+          years_old=$(( days_old / 365 ))
+          echo "days_old=$days_old"   >> "$GITHUB_OUTPUT"
+          echo "years_old=$years_old" >> "$GITHUB_OUTPUT"
+          if [ "$years_old" -ge 3 ]; then
+            echo "open=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "open=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open ITU-R reminder issue
+        if: steps.age.outputs.open == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          years_old="${{ steps.age.outputs.years_old }}"
+          title="chore(itu-r): P-series recommendation review ${today}"
+          {
+            echo "Automated 3-year ITU-R recommendation review tickler. Source: \`.github/workflows/annually.yml\` (job: itu_r)."
+            echo
+            echo "**Trigger:** last verified ${years_old} years ago. ITU updates P.533 / P.842 / P.372 on an irregular 7-15 year cycle without an RSS feed; this reminder fires every 3 years so a new revision does not slip through."
+            echo
+            echo "**Manual checks:**"
+            echo "- [ ] **ITU-R P.533** at https://www.itu.int/rec/R-REC-P.533/en. Committed version: \`${{ env.COMMITTED_P533 }}\`."
+            echo "- [ ] **ITU-R P.842** at https://www.itu.int/rec/R-REC-P.842/en. Committed version: \`${{ env.COMMITTED_P842 }}\`."
+            echo "- [ ] **ITU-R P.372** at https://www.itu.int/rec/R-REC-P.372/en. Committed version: \`${{ env.COMMITTED_P372 }}\`."
+            echo
+            echo "**If a newer version is published:** read the change-bar PDF for any shift in reliability bucket boundaries (P.842), day-to-day SNR spread (P.533), or noise-floor reference values (P.372). Update the affected constants in \`src/constants.js\` (\`BAND_SIGMA_DB\`, \`NOISE_FLOOR_DBM\`) if so. The tier verdicts are sigma-relative so small absolute-value shifts rarely move the verdict columns."
+            echo
+            echo "**If no newer version (most common case):** update the workflow env var \`LAST_VERIFIED_DATE: \"${today}\"\` to suppress next year's reminder."
+            echo
+            echo "**Severity:** degrading, small absolute-value shifts; tier verdicts insensitive to a few dB because they're sigma-relative."
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md
+
+  cycle:
+    name: solar cycle phase watcher
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # F10.7 81-day mean threshold for the cycle-minimum signal.
+      # Cycle 24 minimum reached ~70 sfu in 2019; the threshold is
+      # conservative so the cycle-26 retune campaign gets lead time.
+      F107_MIN_THRESHOLD: "80"
+    steps:
+      - name: Fetch and analyse F10.7
+        id: f107
+        run: |
+          set -euo pipefail
+          curl -sSL --max-time 30 \
+            "https://services.swpc.noaa.gov/json/f107_cm_flux.json" \
+            -o f107.json
+          mean=$(node -e "
+            const fs = require('node:fs');
+            const data = JSON.parse(fs.readFileSync('f107.json','utf-8'));
+            // Sort by time descending (do not assume feed order);
+            // take the most recent 81 distinct days.
+            const byTime = data.slice().sort((a, b) =>
+              (new Date(b.time_tag)) - (new Date(a.time_tag))
+            );
+            const seenDays = new Set();
+            const recent = [];
+            for (const row of byTime) {
+              const day = row.time_tag.slice(0, 10);
+              if (seenDays.has(day)) continue;
+              const f = parseFloat(row.flux);
+              if (!(f > 0 && f < 400)) continue;
+              seenDays.add(day);
+              recent.push(f);
+              if (recent.length >= 81) break;
+            }
+            const mean = recent.reduce((a, b) => a + b, 0) / recent.length;
+            console.log(mean.toFixed(1));
+          ")
+          echo "mean=$mean" >> "$GITHUB_OUTPUT"
+          echo "F10.7 81-day mean: $mean sfu  (threshold: $F107_MIN_THRESHOLD sfu)"
+
+      - name: Decide whether to open an issue
+        id: decide
+        run: |
+          mean="${{ steps.f107.outputs.mean }}"
+          th="${F107_MIN_THRESHOLD:-80}"
+          mean_int=$(echo "$mean" | awk '{printf "%.0f", $1 * 10}')
+          th_int=$(( th * 10 ))
+          if [ "$mean_int" -lt "$th_int" ]; then
+            echo "open=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "open=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open cycle-phase issue
+        if: steps.decide.outputs.open == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          today=$(date -u +%Y-%m-%d)
+          mean="${{ steps.f107.outputs.mean }}"
+          title="chore(cycle): F10.7 below cycle-minimum threshold (${mean} sfu) ${today}"
+          {
+            echo "Automated solar cycle phase watchdog. Source: \`.github/workflows/annually.yml\` (job: cycle)."
+            echo
+            echo "**Trigger:** F10.7 81-day mean is ${mean} sfu, below the ${F107_MIN_THRESHOLD} sfu cycle-minimum threshold. Cycle 25 minimum approaching (or cycle 26 has started)."
+            echo
+            echo "**What this means:** the whole calibration suite (storm-lag, EIA, sigma tables, scatter weight) was fitted on cycle-25 ascending/peak data. Cycle 26 ascending phase has different storm response, different EIA amplitude scaling, different upper-band activity. The annual retune continues to run but its recommendations should be weighted heavily during the transition window."
+            echo
+            echo "**Recommended actions:**"
+            echo "1. Plan a multi-month retune campaign with fresh basket data through the minimum and into cycle 26 ascending phase."
+            echo "2. Watch the monthly heavy-suite tune-r7 output more carefully than usual; suggestions during a cycle transition are more meaningful than mid-cycle drift."
+            echo "3. Capture operator-side observations: do bands behave as the model predicts during the minimum? Where does it under- / over-predict?"
+            echo "4. Consider an interim retune commit if multi-month operator experience supports it. Do not auto-commit."
+            echo
+            echo "**Severity:** degrading. ionocast keeps working; accuracy drifts measurably for ~2 years until retuned. The annual retune catches incremental drift but not the structural change from cycle phase."
+          } > issue-body.md
+          gh issue create --title "$title" --body-file issue-body.md

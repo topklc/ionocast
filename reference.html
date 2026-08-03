@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ionocast theme test sheet</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/reference.css">
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <h1><a href="/">ionocast theme test sheet</a></h1>
+  </div>
+  <div class="sub">Static reference page. Loads /style.css; no JS, no live data. Use to spot color, type, and spacing drift.</div>
+  <div class="toc">
+    <a href="#color">color</a>
+    <a href="#severity">severity</a>
+    <a href="#type">typography</a>
+    <a href="#spacing">spacing</a>
+    <a href="#captions">captions</a>
+    <a href="#headings">headings</a>
+    <a href="#inline">inline</a>
+    <a href="#tables">tables</a>
+    <a href="#components">components</a>
+    <a href="#alerts">alerts</a>
+    <a href="#tiers">tiers</a>
+    <a href="#forms">forms</a>
+  </div>
+</header>
+
+
+<!-- ============================================================
+     1. Color tokens
+     ============================================================ -->
+<section id="color">
+  <h2>Color tokens</h2>
+  <p class="interp">Five core CSS custom properties drive almost everything. Dark mode swaps the entire set in one rule. Anything keyed to var(--ink), var(--muted), etc. follows automatically.</p>
+
+  <div class="sheet-row cols-4">
+    <div class="swatch">
+      <div class="swatch-chip" style="background:var(--accent)"></div>
+      <div><div class="swatch-name">--accent</div><div class="swatch-val">links, focus, charts</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-chip" style="background:var(--ink)"></div>
+      <div><div class="swatch-name">--ink</div><div class="swatch-val">primary text, headings</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-chip" style="background:var(--text)"></div>
+      <div><div class="swatch-name">--text</div><div class="swatch-val">body paragraph reading color</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-chip" style="background:var(--muted)"></div>
+      <div><div class="swatch-name">--muted</div><div class="swatch-val">secondary text, hints</div></div>
+    </div>
+  </div>
+  <div class="sheet-row cols-4" style="margin-top:14px">
+    <div class="swatch">
+      <div class="swatch-chip" style="background:var(--bg);border:1px solid var(--border)"></div>
+      <div><div class="swatch-name">--bg</div><div class="swatch-val">page background</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-chip" style="background:var(--accent-muted);border:1px solid var(--border)"></div>
+      <div><div class="swatch-name">--accent-muted</div><div class="swatch-val">accent tint background</div></div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-chip" style="background:transparent;border:1px solid var(--border)"></div>
+      <div><div class="swatch-name">--border</div><div class="swatch-val">divider lines</div></div>
+    </div>
+  </div>
+
+  <h3>Type tokens</h3>
+  <table class="sheet-meta" style="max-width:680px">
+    <tr><td>--font-system</td><td>-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif</td></tr>
+    <tr><td>--font-mono</td><td>Menlo, Consolas, monospace</td></tr>
+  </table>
+  <p class="anno">Body, bootstrap-warn, and settings-panel form controls all reference these tokens; the long Apple stack and the monospace stack are each defined exactly once.</p>
+
+  <h3>Body text colors in use</h3>
+  <div class="sheet-row">
+    <div>
+      <div class="type-label">--text / paragraph</div>
+      <p>Quick brown fox jumps over the lazy dog. 0123456789 - this paragraph uses var(--text).</p>
+    </div>
+    <div>
+      <div class="type-label">--muted / .interp / captions</div>
+      <p style="color:var(--muted)">Quick brown fox jumps over the lazy dog. 0123456789 - this paragraph uses var(--muted).</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     2. Severity tokens (unified)
+     ============================================================ -->
+<section id="severity">
+  <h2>Severity tokens</h2>
+  <p class="interp">Seven tokens drive every severity color in the codebase: .q-* tier classes, .alert-* pill backgrounds, kpColor / bzColor / speedColor JS helpers, the bootstrap warning, and the dscovr Pdyn / xray / sym-H sparklines. Four primary tiers (excellent / good / warn / bad) get dark-mode variants; three secondary tokens (strong / extreme / info) reuse the same hex in both modes.</p>
+
+  <div class="sheet-row cols-4">
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-excellent)"></div><div><div class="swatch-name" style="color:var(--sev-excellent)">--sev-excellent</div><div class="swatch-val">.q-excellent / verdict tier 5</div></div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-good)"></div><div><div class="swatch-name" style="color:var(--sev-good)">--sev-good</div><div class="swatch-val">.q-good / kp&lt;active / bz&gt;0 / speed&lt;400</div></div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-warn)"></div><div><div class="swatch-name" style="color:var(--sev-warn)">--sev-warn</div><div class="swatch-val">.q-warn / .alert-watch / pdyn≥5</div></div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-strong)"></div><div><div class="swatch-name" style="color:var(--sev-strong)">--sev-strong</div><div class="swatch-val">kp G1-G2 / bz storm-severe</div></div></div>
+  </div>
+  <div class="sheet-row cols-4" style="margin-top:18px">
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-bad)"></div><div><div class="swatch-name" style="color:var(--sev-bad)">--sev-bad</div><div class="swatch-val">.q-bad / .alert-alert / .bootstrap-warn</div></div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-extreme)"></div><div><div class="swatch-name" style="color:var(--sev-extreme)">--sev-extreme</div><div class="swatch-val">.alert-extreme only</div></div></div>
+    <div class="swatch"><div class="swatch-chip" style="background:var(--sev-info)"></div><div><div class="swatch-name" style="color:var(--sev-info)">--sev-info</div><div class="swatch-val">.alert-info pill background</div></div></div>
+  </div>
+
+  <p class="panel-caption">.q-muted reuses var(--muted) directly; not a dedicated severity token. Toggle the OS dark-mode preference to see the four primary tokens shift; --sev-strong / --sev-extreme / --sev-info stay constant pending dedicated dark tuning.</p>
+</section>
+
+
+<!-- ============================================================
+     3. Typography
+     ============================================================ -->
+<section id="type">
+  <h2>Typography scale</h2>
+  <p class="interp">Every distinct text style currently in use, with its measurements. Sorted big to small.</p>
+
+  <h1 style="margin:8px 0">H1 / page title</h1>
+  <p class="anno">22px - .01em - flex with .logo (52px / scrolled 28px)</p>
+
+  <h2 style="margin:14px 0 4px;border-left:3px solid var(--ink);padding:2px 0 2px 10px">H2 / section heading</h2>
+  <p class="anno">16px - ink - 3px ink left-border</p>
+
+  <h3>H3 / block subhead</h3>
+  <p class="anno">12px - muted - uppercase - .6px tracking - 700 weight</p>
+
+  <h4 style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;margin:18px 0 6px">H4 / drivers-group / iono-panel title</h4>
+  <p class="anno">10px - muted - uppercase - .5px tracking - 500 weight (lighter than h3)</p>
+
+  <div class="utc-clock" style="margin:18px 0 0">18:42:07 UTC clock</div>
+  <p class="anno">.utc-clock - 18px - tabular-nums - 600 weight - .5px tracking</p>
+
+  <p style="margin:14px 0 0">Body paragraph. The quick brown fox jumps over the lazy dog. 0123456789.</p>
+  <p class="anno">browser default (16px) - var(--text) - var(--font-system)</p>
+
+  <p class="simple-intro" style="margin:14px 0 0">.simple-intro - 13px muted prose, used at top of glance / about sections, max-width 720px.</p>
+  <p class="anno">13px - muted - 1.5 line-height - max-width 720px</p>
+
+  <p class="interp" style="margin:14px 0 0">.interp - 11px italic muted, sits under chart / table / image to explain what you are looking at. max-width 520px.</p>
+  <p class="anno">11px - muted - italic - 1.4 line-height - max-width 520px</p>
+
+  <p class="panel-caption" style="margin:14px 0 0">.panel-caption - same family as interp but no max-width. Used for source / license attributions.</p>
+  <p class="anno">11px - muted - italic - 1.4 line-height - no max-width</p>
+
+  <p class="freshness-note" style="margin:14px 0 0">.freshness-note - 10px tabular muted (NOT italic). Sits at the bottom of every refreshable panel.</p>
+  <p class="anno">10px - muted - tabular-nums - NOT italic - distinct from caption family</p>
+</section>
+
+
+<!-- ============================================================
+     4. Spacing rhythm
+     ============================================================ -->
+<section id="spacing">
+  <h2>Spacing rhythm</h2>
+  <p class="interp">Section padding 28px top / 20px bottom. Inside a section, every direct child gets 22px above. Tight pairings (interp+content, h3+content) override to 6px so they read as a single unit.</p>
+
+  <table class="sheet-meta" style="max-width:520px">
+    <tr><td>section padding</td><td>28px 0 20px</td></tr>
+    <tr><td>section block rhythm</td><td>section &gt; * + * { margin-top: 22px }</td></tr>
+    <tr><td>tight pair (interp/h3 → content)</td><td>6px</td></tr>
+    <tr><td>alert stack (within wrap)</td><td>8px</td></tr>
+    <tr><td>alerts strip (between wraps)</td><td>8px</td></tr>
+    <tr><td>figure + figure</td><td>16px</td></tr>
+    <tr><td>simple-table cell padding</td><td>4px 8px</td></tr>
+    <tr><td>data-table cell padding</td><td>3px 8px</td></tr>
+    <tr><td>page max-width</td><td>1100px</td></tr>
+  </table>
+
+  <h3>Visualized rhythm (block heights for scale)</h3>
+  <div class="demo-block" style="height:48px;display:flex;align-items:center;justify-content:center">block A</div>
+  <div class="gap-box" style="height:22px;display:flex;align-items:center;justify-content:center">22px - section &gt; * + *</div>
+  <div class="demo-block" style="height:48px;display:flex;align-items:center;justify-content:center;margin-top:0">block B</div>
+  <div class="gap-box" style="height:6px;display:flex;align-items:center;justify-content:center">6px - tight (interp + content)</div>
+  <div class="demo-block" style="height:48px;display:flex;align-items:center;justify-content:center;margin-top:0">block C (interp child)</div>
+</section>
+
+
+<!-- ============================================================
+     5. Captions / muted-italic family
+     ============================================================ -->
+<section id="captions">
+  <h2>Captions (muted-italic family)</h2>
+  <p class="interp">Five class names share one visual rule (11px muted italic), but they encode four distinct semantic roles. Listed here so the overlap is visible.</p>
+
+  <p class="panel-caption">.panel-caption - "Courtesy of NASA/SDO and the AIA, EVE, and HMI science teams."</p>
+  <p class="anno">role: source / license attribution. Margin 4px / 14px.</p>
+
+  <p class="pending-note">.pending-note - "Loading band data..."</p>
+  <p class="anno">role: loading state placeholder. Margin 4px / 8px.</p>
+
+  <p class="empty-list pending-note">.empty-list - "No active entries."</p>
+  <p class="anno">role: empty data state. Same rule, different name.</p>
+
+  <p class="iono-note">.iono-note - "ARTIST-5 autoscale (GIRO). Data provider: ..."</p>
+  <p class="anno">role: panel footnote. 10px (smaller than the rest), margin 6px / 0.</p>
+
+  <p class="simple-footer">.simple-footer - "Live derivation - fetched 26-05-06 18:42 UTC"</p>
+  <p class="anno">role: glance table attribution / freshness. max-width 640px.</p>
+
+  <p class="freshness-note">.freshness-note - "fetched 26-05-06 18:42 UTC" - belongs to a different family (tabular, not italic).</p>
+  <p class="anno">role: refresh timestamp on data panels. 10px tabular muted, NOT italic.</p>
+</section>
+
+
+<!-- ============================================================
+     6. Headings
+     ============================================================ -->
+<section id="headings">
+  <h2>Headings</h2>
+  <p class="interp">h2 - h3 - h4 plus settings-panel variants. The h3 / .settings-section pair are visually nearly identical despite different rules.</p>
+
+  <div class="sheet-row">
+    <div>
+      <h2>h2 - section title</h2>
+      <p class="anno">16px ink - 3px ink left border - reserved for section &lt;h2&gt;</p>
+
+      <h3>h3 - block subhead</h3>
+      <p class="anno">12px muted - uppercase - 700 weight - .6px tracking</p>
+
+      <h4 style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;margin:18px 0 6px">h4 - panel-group title</h4>
+      <p class="anno">10px muted - uppercase - 500 weight - .5px tracking</p>
+    </div>
+    <div>
+      <div class="settings-section" style="font-size:11px;margin:14px 0 6px;padding:4px 0 2px;border-bottom:1px solid var(--border);color:var(--ink);text-transform:uppercase;letter-spacing:.5px;font-weight:600">settings-section</div>
+      <p class="anno">11px ink - uppercase - 600 weight - bottom border - settings panel only</p>
+
+      <div style="font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin:18px 0 8px">settings-panel h3 (overridden)</div>
+      <p class="anno">13px ink - uppercase - 600 weight - settings panel scope</p>
+    </div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     7. Inline elements
+     ============================================================ -->
+<section id="inline">
+  <h2>Inline elements</h2>
+
+  <p>Regular paragraph with a <a href="#">plain link</a>, an <a href="#" class="term-link" tabindex="0">inline term</a> (dotted underline, click-to-define affordance), <strong>strong text</strong>, and inline <code>code</code>.</p>
+  <p class="anno">Links use --accent. .term-link uses dotted bottom-border in --muted, hovers to --ink.</p>
+
+  <p><small>Footnote-style small text at 12px / muted.</small></p>
+</section>
+
+
+<!-- ============================================================
+     8. Tables
+     ============================================================ -->
+<section id="tables">
+  <h2>Tables</h2>
+  <p class="interp">Two distinct table styles - .data-table for the dense band / probability / path / ducting tables, .simple-table for the at-a-glance band summary.</p>
+
+  <h3>.data-table (12px tabular)</h3>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Band</th>
+          <th class="num">f (MHz)</th>
+          <th class="num">Tier</th>
+          <th class="num">Margin</th>
+          <th class="num">Confidence</th>
+          <th class="num">Mode</th>
+          <th class="num">Best Path</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="band">10m</td>
+          <td class="num">28.500</td>
+          <td class="num q-excellent">excellent</td>
+          <td class="num">+18 dB</td>
+          <td class="num">96 %</td>
+          <td class="num">F2</td>
+          <td class="num">Tokyo</td>
+        </tr>
+        <tr>
+          <td class="band">20m</td>
+          <td class="num">14.200</td>
+          <td class="num q-good">good</td>
+          <td class="num">+9 dB</td>
+          <td class="num">82 %</td>
+          <td class="num">F2</td>
+          <td class="num">Sydney (LP)</td>
+        </tr>
+        <tr>
+          <td class="band">40m</td>
+          <td class="num q-warn">fair</td>
+          <td class="num">+1 dB</td>
+          <td class="num">58 %</td>
+          <td class="num">F2</td>
+          <td class="num">EU</td>
+          <td class="num">-</td>
+        </tr>
+        <tr>
+          <td class="band">80m</td>
+          <td class="num">3.700</td>
+          <td class="num q-bad">poor</td>
+          <td class="num">−6 dB</td>
+          <td class="num">71 %</td>
+          <td class="num">NVIS</td>
+          <td class="num">-</td>
+        </tr>
+        <tr>
+          <td class="band">160m</td>
+          <td class="num">1.900</td>
+          <td class="num q-muted">closed</td>
+          <td class="num">-</td>
+          <td class="num">-</td>
+          <td class="num">-</td>
+          <td class="num">-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="freshness-note">fetched 26-05-06 18:42 UTC</p>
+
+  <h3>.simple-table (13px tabular, glance summary)</h3>
+  <table class="simple-table">
+    <tbody>
+      <tr>
+        <td class="band">10m</td>
+        <td class="stats q-excellent">SNR 18 / 14 spots</td>
+        <td class="verdict q-excellent">excellent</td>
+        <td class="note">DX wide open</td>
+      </tr>
+      <tr>
+        <td class="band">20m</td>
+        <td class="stats q-good">SNR 9 / 41 spots</td>
+        <td class="verdict q-good">good</td>
+        <td class="note">workable to most paths</td>
+      </tr>
+      <tr>
+        <td class="band">80m</td>
+        <td class="stats q-bad">SNR -6 / 3 spots</td>
+        <td class="verdict q-bad">poor</td>
+        <td class="note">regional only</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Definition list (iono-panel dl)</h3>
+  <div class="iono-panel" style="max-width:340px">
+    <h4 style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;margin:0 0 4px">Nearest digisonde</h4>
+    <dl style="display:grid;grid-template-columns:auto 1fr;gap:1px 10px;font-size:13px;font-variant-numeric:tabular-nums;margin:0">
+      <dt style="color:var(--muted);font-size:12px">foF2</dt><dd style="margin:0;color:var(--ink);font-weight:600">8.4 MHz</dd>
+      <dt style="color:var(--muted);font-size:12px">foEs</dt><dd style="margin:0;color:var(--ink);font-weight:600">3.1 MHz</dd>
+      <dt style="color:var(--muted);font-size:12px">hmF2</dt><dd style="margin:0;color:var(--ink);font-weight:600">312 km</dd>
+    </dl>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     9. Components
+     ============================================================ -->
+<section id="components">
+  <h2>Components</h2>
+
+  <h3>drivers-val cell</h3>
+  <div class="drivers-row">
+    <div class="drivers-group">
+      <h4>Solar</h4>
+      <div class="drivers-vals">
+        <div class="drivers-val">
+          <span class="drivers-val-label">F10.7</span>
+          <span class="drivers-val-num">142 <span class="drivers-val-unit">sfu</span></span>
+          <span class="drivers-val-sub">F10.7A <b>138</b> · F10.7P <b>140</b></span>
+        </div>
+        <div class="drivers-val">
+          <span class="drivers-val-label">X-ray</span>
+          <span class="drivers-val-num q-warn">M2.1 </span>
+          <span class="drivers-val-sub">2.1e-05 W/m²</span>
+        </div>
+        <div class="drivers-val">
+          <span class="drivers-val-label">SN</span>
+          <span class="drivers-val-num">94</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>kp-chart bars</h3>
+  <div class="kp-chart">
+    <div class="kp-col"><div class="kp-bar" style="height:22%;background:var(--sev-good)"></div><span class="kp-date">5/4</span></div>
+    <div class="kp-col"><div class="kp-bar" style="height:33%;background:var(--sev-good)"></div></div>
+    <div class="kp-col"><div class="kp-bar" style="height:44%;background:var(--sev-warn)"></div></div>
+    <div class="kp-col"><div class="kp-bar" style="height:55%;background:var(--sev-warn)"></div><span class="kp-date">5/5</span></div>
+    <div class="kp-col"><div class="kp-bar" style="height:66%;background:var(--sev-strong)"></div></div>
+    <div class="kp-col"><div class="kp-bar" style="height:77%;background:var(--sev-bad)"></div></div>
+    <div class="kp-col"><div class="kp-bar" style="height:55%;background:var(--sev-warn)"></div><span class="kp-date">5/6</span></div>
+    <div class="kp-col"><div class="kp-bar" style="height:33%;background:var(--sev-good)"></div></div>
+  </div>
+  <p class="anno">All bars route through var(--sev-*); toggle OS dark mode and the green/yellow/red bars shift while strong (orange) holds.</p>
+
+  <h3>sparkline (inline SVG, scaled up for visibility)</h3>
+  <svg viewBox="0 0 100 22" preserveAspectRatio="none" style="display:block;width:100%;max-width:520px;height:60px;border:1px solid var(--border);border-radius:4px;padding:4px;box-sizing:border-box">
+    <line x1="0" x2="100" y1="14" y2="14" stroke="rgba(128,128,128,0.3)" stroke-width="0.5"></line>
+    <polyline fill="none" stroke="var(--accent)" stroke-width="1.2" points="0,14 8,12 16,11 24,13 32,15 40,18 48,17 56,15 64,11 72,7 80,4 88,6 96,9 100,12"></polyline>
+  </svg>
+  <p class="anno">helpers.sparkline - viewBox 100x22 default; can be re-sized via opts.width / opts.height.</p>
+</section>
+
+
+<!-- ============================================================
+     10. Alerts
+     ============================================================ -->
+<section id="alerts">
+  <h2>Alerts</h2>
+
+  <div class="alert-line alert-info">
+    <span class="alert-label">INFO</span>
+    <span class="alert-text">Quiet conditions. Kp 2.0, no flares above C-class in last 24 h.</span>
+    <span class="alert-time">26-05-06 18:00 UTC</span>
+  </div>
+  <div class="alert-line alert-watch">
+    <span class="alert-label">WATCH</span>
+    <span class="alert-text">G1 geomagnetic storm watch in effect for next 24 h. Bz turning southward.</span>
+    <span class="alert-time">26-05-06 17:30 UTC</span>
+  </div>
+  <div class="alert-line alert-alert">
+    <span class="alert-label">ALERT</span>
+    <span class="alert-text">M5.2 X-ray flare in progress. Active region 13845. D-region absorption likely on sunlit HF paths.</span>
+    <span class="alert-time">26-05-06 18:12 UTC</span>
+  </div>
+  <div class="alert-line alert-extreme">
+    <span class="alert-label">EXTREME</span>
+    <span class="alert-text">G4 geomagnetic storm in progress. Sym-H -212 nT. HF unreliable on most paths; aurora extending below 50° geomagnetic latitude.</span>
+    <span class="alert-time">26-05-06 06:18 UTC</span>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     11. Verdict tiers
+     ============================================================ -->
+<section id="tiers">
+  <h2>Verdict tiers</h2>
+  <p class="interp">ITU-R P.842 reliability buckets. .q-excellent intentionally darker green than .q-good so the top tier is visually distinct.</p>
+  <div class="sheet-row cols-4">
+    <div><span class="q-excellent" style="font-size:18px;font-weight:700">EXCELLENT</span><div class="anno">.q-excellent - 700 weight</div></div>
+    <div><span class="q-good" style="font-size:18px;font-weight:600">GOOD</span><div class="anno">.q-good - 600 weight</div></div>
+    <div><span class="q-warn" style="font-size:18px">FAIR</span><div class="anno">.q-warn</div></div>
+    <div><span class="q-bad" style="font-size:18px">POOR</span><div class="anno">.q-bad</div></div>
+  </div>
+  <div class="sheet-row cols-4" style="margin-top:18px">
+    <div><span class="q-muted" style="font-size:18px">CLOSED</span><div class="anno">.q-muted - same as pending</div></div>
+  </div>
+</section>
+
+
+<!-- ============================================================
+     12. Forms (settings panel)
+     ============================================================ -->
+<section id="forms">
+  <h2>Form controls (settings panel)</h2>
+  <p class="interp">Pulled out of the floating settings panel so the input / button styles can be reviewed inline.</p>
+
+  <div style="max-width:360px;border:1px solid var(--border);border-radius:6px;padding:16px;background:var(--bg)">
+    <div style="font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink);font-weight:600;margin:0 0 8px">Station</div>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 14px;line-height:1.4">Used by the physics model to compute SNR margins for your specific antenna and TX power.</p>
+
+    <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Callsign</label>
+      <input type="text" value="TA1BUT" style="padding:5px 8px;border:1px solid var(--border);border-radius:3px;font:13px Menlo,Consolas,monospace;background:var(--bg);color:var(--ink);text-transform:uppercase;width:90px;letter-spacing:.5px">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:10px">
+      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Antenna</label>
+      <select style="padding:5px 8px;border:1px solid var(--border);border-radius:3px;font:13px system-ui,sans-serif;background:var(--bg);color:var(--ink);width:100%">
+        <option>Wire dipole (40-10m)</option>
+        <option>Yagi 3-el</option>
+        <option>Vertical (30-6m)</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+      <button style="padding:5px 14px;border:1px solid var(--border);border-radius:3px;font:13px system-ui,sans-serif;cursor:pointer;background:var(--bg);color:var(--ink)">Cancel</button>
+      <button style="padding:5px 14px;border:1px solid var(--accent);border-radius:3px;font:13px system-ui,sans-serif;cursor:pointer;background:var(--accent);color:#fff">Save</button>
+    </div>
+  </div>
+
+  <h3>Header buttons (.controls)</h3>
+  <div class="controls" style="display:flex;gap:6px">
+    <button>theme</button>
+    <button>language</button>
+    <button>settings</button>
+  </div>
+  <p class="anno">12px muted - 1px border. Hover: ink color, --muted border.</p>
+</section>
+
+
+<footer>
+  <p class="credits-lead">Static reference. No live data. Edit /temp.html to add or audit components.</p>
+</footer>
+
+</body>
+</html>
