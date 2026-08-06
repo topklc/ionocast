@@ -761,7 +761,7 @@ applies its own per-band $\sigma_g$ widening on top
 (\S\ref{sec:reliability}) rather than passing latitude /
 seasonality dependence into the absorption term itself.
 
-The constant $K_D = 200$ was chosen so $L_{\text{day}}(\SI{1.85}{\MHz}) =
+The constant $K_D = 200$ is chosen so $L_{\text{day}}(\SI{1.85}{\MHz}) =
 \SI{36.2}{\dB}$ (at the 1.838\,MHz WSPR band anchor of
 Table~\ref{tab:lowbandextra} the same formula gives
 \SI{36.6}{\dB}; both figures appear in this paper depending on
@@ -992,11 +992,11 @@ scale that the riometer-record literature consistently
 reproduces.  The specific M1=4 / X1=12 / X10=20 dB values are
 not directly cross-checkable against an open digital source;
 the WSPR-loss validation below is what anchors them in
-ionocast. The values were cross-checked against WSPR loss
+ionocast. The values are cross-checked against WSPR loss
 patterns observed during cycle-25 M-class and X-class events (the
 wspr-live archive of 2024--2026 flare hours; see
 \S\ref{sec:calibrate}): on 20\,m and 17\,m WSPR spot drops of
-5--12\,dB versus the prior quiet-day median tracked the predicted
+5--12\,dB versus the preceding quiet-day median track the predicted
 $D(X) \cdot (7/f)^{1.5}$ envelope to within ${\sim}\SI{2}{\dB}$
 across M1 through X4. (No cycle-25 X10 events have occurred at
 the time of writing, so the X10 anchor is set by the literature
@@ -1555,7 +1555,7 @@ The 30\,m cutoff is empirical: at and above 30\,m the
 $L_{\text{Dreg}}$ baseline (Eq.~\ref{eq:labsd}) plus the modeled
 F2-region terms account for the band's quiet-day budget within
 the harness's residual resolution, so $L_{\text{low}}$ adds
-nothing.  Below 30\,m the residuals were systematic enough to
+nothing.  Below 30\,m the residuals are systematic enough to
 warrant the empirical correction.
 \end{table}
 
@@ -2906,8 +2906,8 @@ floor $F$ supplied per point by \texttt{nightFloor()}
 (Eq.~\ref{eq:nightfloor}, $F \in [0.20, 0.60]$; when
 F\textsubscript{10.7A} itself is the missing input,
 \texttt{nightFloor} returns a fixed $0.4$, so the unit-test
-path is deterministic).  This is the same
-form Eq.~\ref{eq:pathmuf} supersedes.  Its weakness is shape, not
+path is deterministic).  Its weakness relative to
+Eq.~\ref{eq:pathmuf} is shape, not
 the floor value: a dark hop reads $F \cdot
 \text{MUF}_{\text{mid}}$ (e.g.\ $0.4 \cdot 20 = \SI{8}{\MHz}$
 from a daylight 20\,MHz midpoint) with no latitude / EIA /
@@ -3950,7 +3950,7 @@ roughly sum to the 15\,dB calibration value.  Future work may
 elevate them to named per-mechanism terms; the present paper
 ships the aggregate.
 
-The D-region terms still apply --- the E layer sits above the D
+The D-region terms still apply: the E layer sits above the D
 layer, so an Es signal still passes the absorbing region once per
 hop.  $L_{\text{hop}}$ is zero for Es (single-hop, no intermediate
 ground reflections).  $L_{\text{aur}}$ \emph{is} charged
@@ -4649,16 +4649,16 @@ inversion terms and the remaining terms, in M-units, are:
         humidity rather than the surface gradient that actually
         drives evap-duct height).  Capped at 30.
   \item $S_{\text{cliff}}$, the marine moisture-cliff
-        reconstruction (added 2026-08).  The trade / subsidence
+        reconstruction.  The trade / subsidence
         inversion over the subtropical highs (Azores--Bermuda,
         California--Baja, Canary) is a sharp ${\sim}$100--200\,m
         humidity cliff at 800--1500\,m that GFS's 250--500\,m
         level spacing smears across 3--4 layers, dropping every
         \emph{per-layer} $\mathrm{d}N/\mathrm{d}h$ to the
         $-79$\,N/km super-refractive onset or weaker even when
-        the physical inversion ducts hard --- the failure mode
+        the physical inversion ducts hard, the failure mode
         behind a near-zero rank correlation with Hepburn's field
-        over the NW Atlantic before this term.  The
+        over the NW Atlantic without this term.  The
         column-integrated vapour-pressure drop survives the
         smearing: with $e_{\text{low}}$ the maximum $e$ in the
         lowest 500\,m and $e_{\text{hi}}$ the minimum up to
@@ -4670,16 +4670,16 @@ inversion terms and the remaining terms, in M-units, are:
         - \SI{8}{hPa})\bigr)$ with $K_c = 5$\,M-units/hPa,
         weighted by the cliff height (1.0 to 2\,km, 0.5 to
         3\,km) and faded out as $\max(0, 1 -
-        \Delta_{\text{duct}}/20)$ --- a profile that already
+        \Delta_{\text{duct}}/20)$: a profile that already
         resolves a duct needs no reconstruction.
         $K_c$ and the 8\,hPa onset are env-tunable
         (\texttt{TROPO\_K\_CLIFF},
         \texttt{TROPO\_CLIFF\_MIN\_DROP}) for the calibration
         sweeps described below.
-  \item $S_{\text{noct}}$, the nocturnal / stable moist-land duct
-        (added 2026-08).  Shallow radiation inversions over moist
+  \item $S_{\text{noct}}$, the nocturnal / stable moist-land
+        duct.  Shallow radiation inversions over moist
         land (Gulf-coast plains, Po valley) live in the lowest
-        50--150\,m --- entirely sub-grid for every GFS layer ---
+        50--150\,m (entirely sub-grid for every GFS layer),
         but GFS's own boundary-layer scheme still diagnoses the
         regime.  Over land, when $z_{\text{HPBL}} < 400$\,m
         (collapsed stable BL), 10\,m wind $< 4$\,m/s, and
@@ -4702,9 +4702,9 @@ layer-gradient probe) cannot invalidate.  Over ocean the
 surface-adjacent layer ($< 100$\,m AGL) is exempt from the check:
 a warm sea keeps the lowest decametres marginally super-adiabatic
 almost everywhere (an SST excess of a fraction of a kelvin
-suffices), and that shallow mixing \emph{coexists with} --- rather
-than destroys --- the trade inversion aloft.  Before the
-exemption, the flag halved the duct terms across exactly the
+suffices), and that shallow mixing \emph{coexists with}, rather
+than destroys, the trade inversion aloft.  Without the
+exemption, the flag would halve the duct terms across exactly the
 marine columns $S_{\text{cliff}}$ exists to score.
 
 \paragraph{Moisture gate.}  $S_{\text{surf}}$ and $S_{\ell}$ are
@@ -4714,9 +4714,9 @@ of $N$ ($3.73\times10^{5}\,e/T^2$): a warm marine inversion with
 $e \approx \SI{15}{hPa}$ traps strongly, while an
 Antarctic-winter radiative inversion of the \emph{same}
 $\Delta T$ but $e < \SI{1}{hPa}$ barely bends a signal.  Left
-ungated, the dry-but-intense polar inversions saturated the
-surface bonus and painted the winter pole as solid ducting (over
-half of all globally flagged ducting cells sat poleward of
+ungated, the dry-but-intense polar inversions would saturate the
+surface bonus and paint the winter pole as solid ducting (over
+half of all globally flagged ducting cells sitting poleward of
 $70\degree$S).  Both temperature-only terms are therefore scaled
 by $g_m$, ramping linearly to full strength at the reference
 vapour pressure \texttt{MOIST\_E\_REF} $= \SI{12}{hPa}$
@@ -4725,7 +4725,7 @@ computed from the 2\,m dewpoint.  The gate is applied
 \emph{before} the HPBL bonus so a dry inversion cannot trip the
 ``confirmed inversion'' arm there; the M-based duct intensity,
 marine, and evaporation terms already carry humidity and are not
-gated.  The reference value was chosen by a dry-land /
+gated.  The reference value is chosen by a dry-land /
 duct-zone separation sweep over a live GFS cycle: no change to
 the canonical California / Mediterranean / Gulf duct zones
 through 12\,hPa, while California's ${\sim}14$\,hPa marine layer
@@ -4736,7 +4736,7 @@ the same cycle): among the strongest ducting-flagged cells
 ($\mathcal{T} \ge 100$) the Antarctic share ($\le 70\degree$S)
 drops from 60.3\% to 1.0\%, while the broad moist ducting field
 ($\mathcal{T} \ge 10$) is untouched (14.6\% vs 15.0\%) and the
-sonde three-class agreement is unchanged --- the gate only trims
+sonde three-class agreement is unchanged: the gate only trims
 dry-inversion false positives; no real duct crosses below the
 cut.
 
@@ -4748,8 +4748,8 @@ five pressure levels between 1000 and 500\,hPa
 (1000 / 925 / 850 / 700 / 500), giving 75 to 150\,hPa gaps that
 average across the 50 to 300\,m thick layers where most operational
 ducts physically live.  Run with the same index formula, the ECMWF
-feed scored 0\% recall on observed super-refractive layers; the
-same harness against the GFS feed scored 80\%.  ECMWF retains a
+feed scores 0\% recall on observed super-refractive layers; the
+same harness against the GFS feed scores 80\%.  ECMWF retains a
 synoptic-skill edge on multi-day large-system forecasts that is
 not relevant for current-state ducting.  The full ECMWF-IFS
 137-model-level product would resolve sub-100\,m structure but is
@@ -4773,11 +4773,8 @@ height-weighting cap), the calibrated cuts are
 \end{equation}
 (\texttt{CUT\_STANDARD} $= 20$, \texttt{CUT\_DUCTING} $= 90$ in
 \texttt{src/tropo/runtime.mjs}), scoring ducting recall
-${\sim}63\%$ at precision ${\sim}71\%$ on the current
-reference cycle (GFS 2026-07-01 06z).  This operating point
-supersedes an earlier build's 100\%-precision /
-${\sim}17\%$-recall figures, which predate the 750 / 650 /
-550\,hPa level additions and the current cuts.  The
+${\sim}63\%$ at precision ${\sim}71\%$ on the
+reference cycle (GFS 2026-07-01 06z).  The
 remaining recall gap is GFS's vertical resolution rather than the
 formula: surface and
 shallow ducts in 50 to 300\,m thick layers fall between the model's
@@ -4785,7 +4782,7 @@ shallow ducts in 50 to 300\,m thick layers fall between the model's
 That is a known and bounded data-source limit; the operational
 implication is that bright cells on the heatmap are reliable but
 the absence of color does not rule out ducting.  Over ocean the
-gap is now partially compensated rather than accepted:
+gap is partially compensated rather than accepted:
 $S_{\text{cliff}}$ reconstructs the smeared trade-inversion
 credit from the column-integrated moisture drop, which is exactly
 the signature that survives the vertical averaging.  The
@@ -4794,15 +4791,16 @@ calibration tool warns loudly when fed a multi-lead envelope grid
 prints the valid-to-sonde time offset.
 
 \paragraph{Field calibration against Hepburn's forecasts.}  The
-radiosonde anchor is land-biased by station geography, which left
-the marine regimes --- where the most spectacular tropo lives ---
-unvalidated: a 2026-08-03 cross-comparison found the index
+radiosonde anchor is land-biased by station geography, which
+leaves the marine regimes (where the most spectacular tropo
+lives) unvalidated on their own: without the marine terms above,
+the index reads
 essentially uncorrelated (Spearman $\rho = -0.16$) with Hepburn's
 tropo-index field~\cite{hepburntropo} over the NW-Atlantic frame
 while agreeing moderately ($\rho = 0.54$) over the Mediterranean.
 A second calibration harness
-(\texttt{scripts/hepburn-compare.py}, pure-stdlib Python) was
-built to close this: it decodes Hepburn's published 4-bit-palette
+(\texttt{scripts/hepburn-compare.py}, pure-stdlib Python)
+closes this: it decodes Hepburn's published 4-bit-palette
 forecast PNGs into per-cell index ranks (georeferenced from the
 map's own axis ticks; palette ordered cold-to-warm; contour ink
 and beyond-scale fills disambiguated contextually) and
@@ -4813,11 +4811,11 @@ reference with decades of operator validation; rank correlation
 (not value regression) is used precisely so ionocast is anchored
 to his spatial orderings without inheriting his absolute scale.
 The maps are used strictly as a calibration reference and are
-never republished.  The three 2026-08 physics changes above
+never republished.  The marine-regime terms above
 ($S_{\text{surf}}$ sub-grid remainder, $S_{\text{cliff}}$, the
-ocean convection exemption) plus $S_{\text{noct}}$ were each
-traced to a specific disagreement class surfaced by this harness,
-then the coefficients were swept offline over 21 frames (3
+ocean convection exemption, and $S_{\text{noct}}$) each
+trace to a specific disagreement class surfaced by this harness,
+and the coefficients are swept offline over 21 frames (3
 regions $\times$ 7 valid times spanning two days of GFS leads,
 ${\sim}$123\,000 paired cells; the ingest's
 \texttt{TROPO\_EMIT\_TERMS} mode emits the raw term ingredients
@@ -4825,8 +4823,9 @@ per cell so a full $K_c \times$ onset $\times K_n$ sweep
 recomposes $\mathcal{T}$ offline without re-running GRIB
 extraction).  Mean Spearman rises from 0.59 at $K_c = 0$ to a
 broad plateau of ${\sim}$0.75 across $K_c \in [5, 6]$; $K_c = 5$
-was selected by strict dominance (it beat the prior 4.5 on 20 of
-21 frames, never losing beyond rank noise) rather than by the
+is selected by strict dominance (it wins on 20 of
+21 frames against neighbouring candidates, never losing beyond
+rank noise) rather than by the
 plateau maximum.  Per-region at the selected coefficients:
 eastern North America 0.61, Europe 0.74, western North America
 0.81, stable across leads to $+54$\,h.  One disagreement is
@@ -4836,7 +4835,7 @@ over ${\sim}30\degree$C water, $M$ decreasing from the
 surface) that Hepburn's field marks below normal; the resolved
 $M$-profile is trusted over the reference there.
 
-\paragraph{Continuous recalibration.}  The 2026-08 sweep samples
+\paragraph{Continuous recalibration.}  The calibration sweep samples
 one synoptic period in Northern-Hemisphere high summer, so its
 coefficients are treated as season-provisional rather than final.
 Two standing mechanisms keep the calibration live without
@@ -4845,15 +4844,15 @@ already carry the season; calendar coefficients would be fitted
 speculation until the data demands them).  First, a daily drift
 suite (\texttt{hepburn} in \texttt{scripts/tests.mjs}) scores the
 \emph{production} grid against the matching Hepburn maps and
-alarms below a mean $\rho$ floor of 0.35 --- far under the
+alarms below a mean $\rho$ floor of 0.35, far under the
 calibrated ${\sim}$0.75, so seasonal wobble passes and only a
 regime collapse pages.  Second, a monthly workflow
 (\texttt{monthly.yml} (retune job)) re-runs the full sweep on
 fresh five-lead term-emitting grids and appends the verdict to a
 seasonal evidence ledger
 (\texttt{scripts/data/hepburn-calibration-history.jsonl}); it
-proposes a coefficient change --- as a reviewable pull request,
-never a direct push --- only when the best combination beats the
+proposes a coefficient change (as a reviewable pull request,
+never a direct push) only when the best combination beats the
 current defaults by $> 0.005$ mean $\rho$ \emph{and} wins on
 $\ge 80\%$ of frames, with $K_c$ stepped at most 0.5 per month
 inside $[3, 8]$ so a single anomalous month cannot displace the
@@ -4896,7 +4895,7 @@ Office surface charts.  Black isolines come from the same contour
 pass on the smoothed \texttt{fineGrid} (sharing the fills' vertex
 set): the two P.453 class boundaries ($\mathcal{T} = 20$ and
 $90$) are stroked heavy, plus two intermediate guide levels
-(nearest bands to the segment midpoints) stroked light --- not
+(nearest bands to the segment midpoints) stroked light: not
 every band edge, and not the unsmoothed source grid.
 
 \paragraph{Why this is not folded into the SNR budget.} The heatmap
@@ -4924,7 +4923,7 @@ alternative-mode bonuses, with no further blending or bias
 correction.  Gray-line is additive (it describes a distinct D-region
 attenuation drop at the terminator), but TEP and scatter recovery
 both describe F-region irregularity-driven recovery and so are
-\emph{combined by maximum} rather than summed --- on a TEP-eligible
+\emph{combined by maximum} rather than summed: on a TEP-eligible
 15\,m path in the 17--23 LT window above MUF, both fire on the same
 physical channel and stacking them double-counts the recovery:
 \begin{equation}\label{eq:blend}
@@ -4955,9 +4954,9 @@ The current model omits this widening: bonus-active verdicts on
 both upper HF and the low/mid bands read slightly more confident
 than they should, with the under-counting at ${\sim}1$--$1.4$\,dB
 of $\sigma$ depending on band.  At the operationally most
-relevant case --- 15\,m near-MUF with a moderate-cycle TEP firing
+relevant case (15\,m near-MUF with a moderate-cycle TEP firing
 at $B_{\text{TEP}} \approx \SI{13}{\dB}$, $\sigma_g(\text{15\,m}) =
-\SI{10}{\dB}$ --- the same $\sqrt{\sigma_g^2 + 25} - \sigma_g$
+\SI{10}{\dB}$) the same $\sqrt{\sigma_g^2 + 25} - \sigma_g$
 correction gives $\sqrt{125} - 10 \approx \SI{1.18}{\dB}$ of
 under-counted $\sigma$, shifting the $z$-score by
 ${\sim}\!10\,\%$ at typical near-MUF margins (e.g.\ $z = 1.0$
@@ -5044,10 +5043,10 @@ side or the other.  A formal data-flow diagram is candidate
 documentation work tracked in Section~\ref{sec:limits}; until
 then this paragraph is the explicit description.
 
-Several of the budget's empirical constants --- the lumped ionospheric
+Several of the budget's empirical constants (the lumped ionospheric
 loss $L_{\text{iono}}$, the per-extra-hop defocusing constant $D$
 (Section~\ref{sec:lhop}), and the F2-scatter weight $w_{\text{sc}}$
-(Section~\ref{sec:scatter}) --- were originally set from published
+(Section~\ref{sec:scatter})) are anchored to published
 ITU-R decompositions and ham-operator experience rather than measured
 in place. The per-band $\sigma$ table (Table~\ref{tab:bandsigma}) is
 \emph{not} fitted by the harness: $\sigma$ is anchored to the
@@ -5059,7 +5058,7 @@ the tier boundary scales with whatever $\sigma$ is set, and a
 machine-fitted $\sigma$ would chase the WSPR-truth artefact rather
 than the underlying physics spread.
 
-The current calibration harness is \texttt{scripts/harness.mjs}.
+The calibration harness is \texttt{scripts/harness.mjs}.
 It imports the production physics directly from
 \texttt{src/physics/} (no inline copy that can drift), replays the
 SNR budget over a
@@ -5073,7 +5072,7 @@ foF2 / foEs histories from 27 digisonde stations
 (Appendix~\ref{app:giro}) spanning Europe, North America, the South
 Atlantic, Australia, the Pacific, and an expanded equatorial-belt
 set (Ascension and Jicamarca for the Atlantic / Americas
-equatorial-trough anchor pair --- Jicamarca on the dip equator,
+equatorial-trough anchor pair: Jicamarca on the dip equator,
 Ascension at dip lat ${\sim}\!-3\degree$ also deep in the trough
 region; Townsville and Niue for the Pacific southern crest;
 BVJ03 Boa Vista at $+12\degree$ for the lone northern-crest
@@ -5096,15 +5095,15 @@ the WSPR aggregate.  This is a sanity check on the model's binary
 verdict, not a calibration target: WSPR-spot activity and link
 viability for the configured station are correlated but not
 identical, so binary accuracy is reported with that caveat
-(see~Section~\ref{sec:tiers}).  An earlier per-band tier-midpoint
-residual emitter targeted a WSPR-percentile tier truth; that
-target was retired when the verdict moved to fixed dB cuts
-(Section~\ref{sec:tiers}), since fitting per-band absolute
-margins to WSPR percentiles couples the verdict labels to the
-WSPR-truth artefact rather than the underlying physics.  In its place the harness writes a per-(path, band)
+(see~Section~\ref{sec:tiers}).  The harness does not fit
+per-band absolute
+margins to WSPR percentiles: doing so would couple the verdict
+labels (fixed dB cuts, Section~\ref{sec:tiers}) to the
+WSPR-truth artefact rather than the underlying physics.
+Instead the harness writes a per-(path, band)
 margin/$\sigma$ baseline and flags any cell that drifts more than
-\SI{2}{\dB} in mean margin or 5\,pp in $P(\text{open})$ across runs
---- a self-consistency regression detector that needs no external
+\SI{2}{\dB} in mean margin or 5\,pp in $P(\text{open})$ across
+runs: a self-consistency regression detector that needs no external
 truth.
 
 The ``alive'' floor itself comes in two forms, selectable via
@@ -5126,9 +5125,9 @@ The ``alive'' floor itself comes in two forms, selectable via
     harness run, but the open-rate truth is path-specific, so the
     per-(path, band) drift signal directly reflects per-pair
     behaviour.  Used to flag a per-mechanism regression that the
-    global mode averages out --- for example, the \S\ref{sec:muf-consensus}
-    asymmetric-MUF retest, where the bias was concentrated on the
-    minority of cells where kc2g sat above climatology.
+    global mode averages out: for example, the \S\ref{sec:muf-consensus}
+    asymmetric-MUF behaviour, where bias concentrates on the
+    minority of cells where kc2g sits above climatology.
 \end{itemize}
 Both modes write to separate baseline files so an operator can
 maintain both anchors simultaneously and compare drift in either
@@ -5153,29 +5152,29 @@ false} in \texttt{src/constants.js}; the R3 per-hop foF2 fusion
 path is implemented but kept off in production until the
 per-pair WSPR ground-truth wiring of \S\ref{sec:perpath} can
 calibrate it without exploiting the global-truth structural
-ceiling).  At the 2026-04-28 calibration freeze, all three
-seeds converged to the same basin in $\leq 2$ iterations: the
-final $\{L_{\text{iono}},\,D,\,w_{\text{sc}}\}$ landed within
+ceiling).  At the calibration freeze, all three
+seeds converge to the same basin in $\leq 2$ iterations: the
+final $\{L_{\text{iono}},\,D,\,w_{\text{sc}}\}$ land within
 $\pm 10\%$ across seeds; $\sigma\text{-scale}$ and the two
-$w_{\text{NVIS-tail}} / w_{\text{Es-prim}}$ weights settled at
-$1.0$ from every seed at that freeze (their natural-units
-fixed point at the time); $\text{fusion-flag}$ converged to
-\emph{false} on every seed.  Final Brier landed within
-$\pm 0.001$ of the median seed.  \emph{Drift caveat:} solar
-activity has moved the harness target since the freeze (see
+$w_{\text{NVIS-tail}} / w_{\text{Es-prim}}$ weights settle at
+$1.0$ from every seed (their natural-units
+fixed point at the freeze window); $\text{fusion-flag}$ converges to
+\emph{false} on every seed.  Final Brier lands within
+$\pm 0.001$ of the median seed.  \emph{Drift caveat:} the
+harness target moves with solar activity (see
 the ``Solar-driven drift on re-run'' note in
 Table~\ref{tab:harnessruns}).  Re-running the same coordinate
-descent against later 30-day windows pulls
+descent against a different 30-day window pulls
 $\sigma\text{-scale}$ and $w_{\text{Es-prim}}$ off the $1.0$
-fixed point: a 2026-05-06 re-run lands $\sigma\text{-scale}
+fixed point (e.g.\ $\sigma\text{-scale}
 \approx 2.0$ and $w_{\text{Es-prim}} \approx 1.5$ as the local
-optima against that window.  Production constants stay at
-their 2026-04-28-freeze values per the explicit no-auto-commit
+optima against one later window).  Production constants stay at
+their freeze values per the explicit no-auto-commit
 policy below; the re-run divergence is a calibration-frame
-drift signal, not a regression.  Lift across the freeze cycle
-was concentrated on 12\,m / 10\,m, driven entirely by the
+drift signal, not a regression.  Lift across the sweep
+concentrates on 12\,m / 10\,m, driven entirely by the
 $w_{\text{sc}} = 1.5$ scatter recovery; the other six
-parameters showed no measurable Brier change at the freeze
+parameters show no measurable Brier change
 when swept individually.
 
 The fixed reference values cited throughout the paper are
@@ -5185,79 +5184,58 @@ be tied to a specific basket / config / metric.
 \begin{table}[H]
 \centering
 \caption{Canonical harness numbers cited in the paper, each tied to
-its (basket, ground-truth mode, configuration) so a reader can
+its (basket, ground-truth mode) so a reader can
 disambiguate.  Binary ``open'' threshold is $\geq 50$ spots/h on
-the global aggregate or $\geq 1$ spot/h on the per-path aggregate.}
+the global aggregate or $\geq 1$ spot/h on the per-path aggregate.
+The global-truth row is the reference 30-day run (252\,350
+samples); the per-path row is scored on its own 30-day window.}
 \label{tab:harnessruns}
-\begin{tabular}{@{}llrrrr@{}}
+\begin{tabular}{@{}llrr@{}}
 \toprule
-\textbf{Run} & \textbf{Basket} &
-\multicolumn{2}{c}{\textbf{Global truth}} &
-\multicolumn{2}{c}{\textbf{Per-path truth}} \\
-& & \textbf{accBin} & \textbf{Brier} & \textbf{accBin} & \textbf{Brier} \\
+\textbf{Ground truth} & \textbf{Basket} &
+\textbf{accBin} & \textbf{Brier} \\
 \midrule
-Pre-scatter baseline (2026-04 freeze)           & 35 paths   & 91.08\,\% & 0.0625 & --- & --- \\
-Post-scatter sweep (2026-04 freeze)             & 35 paths   & 92.35\,\% & 0.0535 & --- & --- \\
-Pre-B6 production (2026-04-28 freeze)           & 35 paths   & 94.25\,\% & 0.0386 & 30.97\,\%\,${}^{\mathsection}$ & 0.6353\,${}^{\mathsection}$ \\
-Post-B6 production (2026-05-08)                 & 35 paths   & 84.08\,\% & 0.1081 & 40.17\,\%\,${}^{\mathsection}$ & 0.5575\,${}^{\mathsection}$ \\
-Pre-physics-batch A/B anchor (2026-07-03)       & 35 paths   & 88.12\,\% & 0.0799 & --- & --- \\
-Post-physics-batch (2026-07-03, current)        & 35 paths   & 88.62\,\% & 0.0760 & --- & --- \\
+Global (``open somewhere'', $\geq 50$ spots/h) & 35 paths & 88.62\,\% & 0.0760 \\
+Per-path (TX/RX bbox, $\geq 1$ spot/h)${}^{\mathsection}$ & 35 paths & 40.17\,\% & 0.5575 \\
 \bottomrule
 \end{tabular}\\[2pt]
 \footnotesize
 ${}^{\mathsection}$ Per-path-truth metric uses TX/RX-bbox-restricted aggregates with the
 $\geq 1$ spot/h floor; the resulting accBin / Brier numbers are
-\emph{not directly comparable} to the global-truth column because
+\emph{not directly comparable} to the global-truth row because
 the per-path floor is far stricter (most cells read closed) and
 because operator-activity sparsity dominates the binary outcome
-on minority-traffic bands.  The pre-B6 freeze headline
-$94.25\,\% / 0.0386$ and the post-B6 current headline
-$84.08\,\% / 0.1081$ are both the global-truth metric and both
-inherit the structural ``open somewhere'' ceiling that the
-per-path mode was specifically built to expose
-(Section~\ref{sec:limits} \#9); the post-B6 numbers are
-\emph{lower} on global truth because the new D-region formula
-predicts 160\,m closed more often (correctly, per the per-path
-metric: 160\,m accBin rose from 19.9\,\% to 37.6\,\% across the
-B6 cut).  The per-path column is the more rigorous metric and
-is the one that should drive constant retunes; B6 improved it
-materially on 160\,m and left the other bands unchanged.  Treat the global number as a
+on minority-traffic bands.  The global-truth metric
+inherits the structural ``open somewhere'' ceiling that the
+per-path mode exists to expose
+(Section~\ref{sec:limits} \#9).  The per-path metric is the more
+rigorous of the two and
+is the one that should drive constant retunes.  Treat the global
+number as a
 regression-detection signal, not a quality score; the per-path
-column is for cell-level drift detection against the saved
+metric is for cell-level drift detection against the saved
 baseline.
 
 \smallskip
 \textbf{Solar-driven drift on re-run.}  The headline numbers are
-the values produced by the 30-day window centred on the
-2026-04-28 calibration freeze.  Re-running the same harness
-against a later 30-day window will give different absolute
+the values produced by a specific 30-day window.
+Re-running the same harness
+against a later 30-day window gives different absolute
 numbers as solar activity shifts the band-by-band open-rate
-distribution: a 2026-05-06 fresh run ($F_{10.7}$ rose
-$105 \to 156$ over the intervening week) produced
-$86.06\,\%$ / $0.0937$ global and $38.29\,\%$ / $0.5740$
-per-path.  This is calibration-frame drift, not regression: the
+distribution (a week of $F_{10.7}$ rising
+$105 \to 156$ moves the global metric by several points).
+This is calibration-frame drift, not regression: the
 sweep-derived constants are unchanged but the truth signal
-itself has moved with the sun.  The committed
+itself moves with the sun.  The committed
 \texttt{scripts/data/harness.baseline.json} is the regression
 anchor and the ${\sim}\!2$\,dB / $5$\,pp cell thresholds are the
 actual drift gates.
-
-\smallskip
-\textbf{2026-07-03 physics batch.}  The two 2026-07-03 rows are a
-true A/B on \emph{identical} 30-day data (252\,350 samples ---
-same window, same truth), isolating the physics changes (NVIS
-ring + skip zone, oblique-MUF re-referencing, curved-earth
-takeoff angle, storm-phase reorder, Es smoothing and symmetry,
-V-pol ground reflection, VHF-aurora CGM gate, storm-feed
-hygiene): Brier $0.0799 \to 0.0760$, binary accuracy
-$88.12\% \to 88.62\%$, with every band improved and none
-regressed.
 \end{table}
 
 The harness does not auto-commit \emph{constants}: a human
 reviews the suggested
 constants and pastes the winners into \texttt{src/constants.js}.
-(The WSPR spot \emph{baselines} are the exception --- they are
+(The WSPR spot \emph{baselines} are the exception: they are
 observational data, not fitted parameters, and are refreshed by
 the daily 06:00\,UTC CI auto-commit described above.)
 
@@ -5314,10 +5292,10 @@ The script supports four reporting paths:
 \centering
 \caption{Path~4b cross-skimmer-aggregated binary tier confusion,
 30-day RBN sample (146\,639 NCDXF spots + 20\,352 amateur-beacon
-spots, 2026-04-11 to 2026-05-10).  Distance buckets follow the
-legacy radial-basket rings (2500 / 4000 / 6000 / 9000 / 12000 /
-16000\,km; the buckets are an analysis stratification and remain
-valid under the destination-grid basket).
+spots, 2026-04-11 to 2026-05-10).  Distance buckets are fixed
+analysis rings (2500 / 4000 / 6000 / 9000 / 12000 /
+16000\,km), a stratification independent of the
+destination-grid basket.
 $P(\text{spot})$ is monotone in tier; the Excellent stratification
 by DX flag (last two rows) is the data signal behind the
 \S\ref{sec:dxflag} split.}
@@ -5360,7 +5338,7 @@ $>$ Poor $>$ Closed) is preserved; the absolute scale is a
 property of RBN-as-instrument, not of the verdict.
 
 \paragraph{Why WSPR and PSKReporter are not the cleaner truth.}
-Both alternatives showed equivalent decoder-side pathology when
+Both alternatives show equivalent decoder-side pathology when
 tested as absolute-SNR truths.  WSPR observation responds to
 predicted channel SNR with sensitivity ${\sim}\!0.2$ instead of
 $1.0$ (slope invariant under every receiver-side knob:
@@ -5370,14 +5348,14 @@ ${\sim}\!-0.9$.  RBN has a complementary saturation ceiling
 around $+13$ to $+15\,\si{\dB}$ observed SNR.  All three are
 suited for binary ``did the path open'' truth but none of them
 calibrates absolute SNR magnitude, which is why
-Table~\ref{tab:tiers}'s cuts were validated on RBN
+Table~\ref{tab:tiers}'s cuts are validated on RBN
 \emph{tier-frequency} rather than RBN \emph{SNR-residual}.
 
 \subsection{Circuit Reliability}\label{sec:reliability}
 
 Given the margin $M$ and spread $\sigma$, the circuit reliability is
 the probability that the achieved SNR meets or exceeds the mode's
-required SNR --- in other words, the probability the link is usable on
+required SNR, in other words the probability the link is usable on
 a given attempt:
 \begin{equation}\label{eq:reliability}
   R(M, \sigma) = \Phi\!\left(\frac{M}{\sigma}\right)
@@ -5401,7 +5379,7 @@ recommendation itself presents the calculation in piecewise /
 tabular form rather than the literal $\Phi(M/\sigma)$ identity
 used here, but both reduce to the same Gaussian assumption on
 day-to-day SNR fluctuations.  ionocast evaluates this model with
-live nowcast inputs --- $M$ is the current-hour budget margin
+live nowcast inputs: $M$ is the current-hour budget margin
 (Eq.~\ref{eq:blend}), and $\sigma$ is the per-band base $\sigma_g$
 (Table~\ref{tab:bandsigma}, set within the ITU-R P.533 day-to-day
 spread range 6--12\,dB; ionocast picks 8--12\,dB by band)
@@ -5416,9 +5394,9 @@ divergence.}  P.842 as written is a \emph{climatological} predictor:
 the formula is evaluated with the monthly-median margin at a given
 hour and the day-to-day spread, so $R$ answers ``on what fraction of
 days does the median link at this hour exceed the requirement?''
-ionocast evaluates the same algebra with live data --- the
+ionocast evaluates the same algebra with live data (the
 current-hour observed kc2g MUF, the live F\textsubscript{10.7A},
-$K_p^{\text{eff}}$ from the past 7\,d --- and so $R$ answers
+$K_p^{\text{eff}}$ from the past 7\,d), and so $R$ answers
 ``what is the probability the link is viable \emph{right now}, given
 the model's residual uncertainty?''  Both questions use the same Gaussian-spread machinery, but they
 are not the same question.  An operator deciding whether to call
@@ -5431,11 +5409,12 @@ but does not drive the tier label.
 
 Tier thresholds (Section~\ref{sec:tiers}) are pinned to fixed dB
 margins ($+18 / +6 / -5 / -14$) that do not scale with the band's
-$\sigma$.  This is a deliberate revert from an earlier
-sigma-percentile cut scheme that ran optimistic in real-world
-contests: the percentile boundaries placed Good at $+0.25\sigma$,
+$\sigma$.  This is deliberate: a
+sigma-percentile cut scheme runs optimistic in real-world
+contests, since percentile boundaries would place Good at
+$+0.25\sigma$,
 which corresponds to a $\sim$2\,\si{\dB} margin on lower HF
-($\sigma_g = 8\,\si{\dB}$) and routinely disappeared under the
+($\sigma_g = 8\,\si{\dB}$) and routinely disappears under the
 3 to 6\,\si{\dB} of QRM that contest environments add on top of the
 ITU-R P.372 baseline noise the model assumes.  The fixed-dB cuts
 take operator intuition as primary: $+6\,\si{\dB}$ Good means the
@@ -5458,8 +5437,8 @@ calibration against 30\,d of WSPR per-path aggregates (TX/RX bbox
 restricted, floor 1\,spot/h; the per-path scoring path inside
 \texttt{scripts/harness.mjs} when run with
 \texttt{--ground-truth=per-path})
-finds that predicted tier ranks correctly --- excellent $>$ good $>$
-fair $>$ poor $>$ closed in observed open-rate ordering --- but the
+finds that predicted tier ranks correctly (excellent $>$ good $>$
+fair $>$ poor $>$ closed in observed open-rate ordering) but the
 absolute per-path completion rate runs $\sim$60--65\,pp below the
 predicted reliability across the upper four tiers (the predicted
 ``excellent'' bucket sees a $\sim$30\,\% per-path open rate against
@@ -5467,8 +5446,8 @@ the WSPR cache; ``good'' $\sim$14\,\%; ``fair'' $\sim$3\,\%; ``poor''
 $\sim$1\,\%; ``closed'' $\sim$0.1\,\%; these per-tier rates are
 from an ad-hoc post-processing of the per-cell
 \texttt{harness.report.json}, not from a byTier field that the
-standard report currently emits).  The held-out window
-(2026-04-26 onwards, post the 2026-04-25 loss-constant calibration)
+standard report currently emits).  A held-out window
+(after the loss-constant calibration cut)
 matches the in-sample window within 1\,pp on every tier, ruling out
 a calibration-drift explanation.  The gap is a
 physics-vs-operator-availability semantics issue: $R$ captures
@@ -5534,10 +5513,10 @@ $2\Phi(0.61) - 1 \approx 46\%$. The one-sided form is the correct
 ``how locked in is this verdict against the most likely flip''
 indicator and is what operators typically want; the two-sided form
 is the literal $P(\text{predicted} = \text{true})$ retained as
-\texttt{tierConfidence} in the source.  The earlier band-table
-column showed the two-sided form, which capped well below 50\%
-for centred middle-tier verdicts and required a ``\,(peak)''
-annotation; the current $S$ replaces it.
+\texttt{tierConfidence} in the source.  A band-table
+column showing the two-sided form would cap well below 50\%
+for centred middle-tier verdicts and require a ``\,(peak)''
+annotation, which is why the band table surfaces $S$ instead.
 
 \paragraph{Operator-attempt completion rate (deferred).}\label{sec:completion}
 The band-table currently surfaces only the physics-permitted tier
@@ -5562,7 +5541,7 @@ hour actually complete a QSO,'' which is the question an operator
 picking a band to call CQ on is asking. Tier and Comp.\ together
 would disambiguate the physics-vs-availability gap: an Excellent
 tier on 12\,m at 0300\,UTC reads $\sim$95\,\% physics-permitted
-(R) and $\sim$5--10\,\% Comp.\ --- the band is open, but nobody
+(R) and $\sim$5--10\,\% Comp.: the band is open, but nobody
 is listening. Once the column ships, the intended operator
 guidance is: use Tier when planning around the physics, use
 Comp.\ when picking a band to actually call CQ on right now.
@@ -5579,14 +5558,14 @@ the planned Comp.\ column would surface the percentage per row
 rather than as a cross-band ranking.  In the limit of a future per-pair availability
 prior with band-specific ceilings, the factorisation would need
 refining to account for the fact that bands with high WSPR activity
-have those operators \emph{because} the band is reliably open ---
+have those operators \emph{because} the band is reliably open,
 a feedback that the current intra-band normalisation sidesteps but
 does not eliminate.
 
 \paragraph{Storm-time correlation breaks the independence
 assumption.}  During a major geomagnetic storm both $R$ drops
 (physics) and $a(b, h)$ should drop too (operators on the affected
-bands stop calling because they observe the band is dead) ---
+bands stop calling because they observe the band is dead);
 i.e.\ $R$ and $a$ would be positively correlated under exactly
 the disturbance conditions where Comp.\ would be most
 operationally relevant.  The factorisation $R \cdot a(b, h)$
@@ -5612,7 +5591,7 @@ ionocast picking the upper-half subset 8--12\,dB across the
 table) and seven situational penalties
 (six enumerated below plus the Es-active mode contribution
 defined in \S\ref{sec:es-prop-mode}).\footnote{Notation: $\sigma$ is overloaded across the
-paper for distinct quantities --- the prediction-spread family in
+paper for distinct quantities: the prediction-spread family in
 this section ($\sigma$, $\sigma_g$, $\sigma_{\text{MUF}}$,
 $\sigma_{\text{storm}}$, $\sigma_{\text{forecast}}$,
 $\sigma_{\text{term}}$, $\sigma_{\text{recovery}}$,
@@ -5627,8 +5606,8 @@ dimensionless $\sigma$-scale tuning parameter on the
 coordinate-descent grid in Appendix~\ref{app:repro}
 (Table~\ref{tab:tunegrid}, which uniformly multiplies the
 per-band $\sigma_g$ table during calibration sweeps; held at
-1.0 in production).  The unit-ramp clamp formerly written as
-$\sigma(x)$ has been renamed $R(x)$ in \S\ref{sec:espersistence}
+1.0 in production).  The unit-ramp clamp in
+\S\ref{sec:espersistence} is written $R(x)$
 to avoid collision.  The remaining distinct meanings are
 recoverable from local context (units, subscripts) but the
 overloading is real.}
@@ -5646,9 +5625,9 @@ overloading is real.}
         $3 + 0.75\,(K_p^{\text{eff}} - 5)$\,dB above; that
         gives \SI{+3}{\dB} at $K_p^{\text{eff}} = 5$ and
         \SI{+6}{\dB} at $K_p^{\text{eff}} = 9$.  (The ramp
-        replaced a hard step at $K_p = 5$; the adjacent auroral
-        loss term already ramped over $K_p$ 4--5 and the $\sigma$
-        stepping was inconsistent with it.)
+        matches the adjacent auroral
+        loss term, which ramps over $K_p$ 4--5; a hard $\sigma$
+        step at $K_p = 5$ would be inconsistent with it.)
         Using the effective rather than live $K_p$ means the storm
         $\sigma$ persists into the recovery phase (when the live
         index has already dropped but the F-region thermosphere is
@@ -5674,7 +5653,7 @@ overloading is real.}
         Forecast slots are judged by their \emph{end} time (an
         in-progress 3-hour slot counts at zero lead), take full
         weight out to 6\,h of lead, and taper linearly to zero
-        weight at 12\,h --- so the promised 6--12\,h half of the
+        weight at 12\,h, so the promised 6--12\,h half of the
         window genuinely contributes, at reduced weight, instead
         of a hard 6\,h cutoff.  Sharp
         electron-density gradients build hours before the index reading,
@@ -5696,7 +5675,7 @@ overloading is real.}
         forecast bump down on each 3-hour tick rather than as the
         thermosphere actually catches up.
         Without this gap-based gate, summing in quadrature with the
-        current-Kp $\sigma_{\text{storm}}$ branch would have produced
+        current-Kp $\sigma_{\text{storm}}$ branch would produce
         $\sqrt{\sigma_{\text{storm}}^2 + 0.49\,\sigma_{\text{storm}}^2}
         \approx 1.22\,\sigma_{\text{storm}}$ at the moment of catch-up
         (a 22\% inflation), instead of the intended hand-off to
@@ -5726,7 +5705,7 @@ overloading is real.}
   \item \textbf{Storm-recovery TID:} during the recovery phase of a
         geomagnetic storm ($\text{Dst} \le -30$\,nT with
         $K_p^{\text{eff}}$ \emph{exceeding} the live $K_p$ by more
-        than $0.5$ --- the live index has dropped while the lagged
+        than $0.5$: the live index has dropped while the lagged
         F-region kernel remains elevated, see
         Section~\ref{sec:kplag}),
         large-scale travelling ionospheric disturbances ripple
@@ -5737,14 +5716,11 @@ overloading is real.}
         phase classifier exits ``recovery''.
   \item \textbf{Storm-active pre-main warning:} in the
         \emph{active} phase (storm conditions present but neither
-        main nor recovery --- e.g.\ Dst between $-30$ and
+        main nor recovery: e.g.\ Dst between $-30$ and
         $-50$\,nT, or $K_p$ elevated with Dst not yet bottomed
         out), the ionosphere is unsettled but not yet at peak
         depression; a lighter \SI{+2}{\dB} is added to $\sigma$
-        (variance contribution $4\,\text{dB}^2$).  This
-        classifier output was previously a no-op in the verdict
-        pipeline despite being a real phase the derive layer
-        could classify.
+        (variance contribution $4\,\text{dB}^2$).
   \item \textbf{Night-time low/mid HF inflation:} ITU-R P.533
         within-month variability for night-time multi-Mm paths on
         160\,m through 30\,m runs ${\sim}\!8\text{--}10$\,dB; the
@@ -5758,8 +5734,8 @@ overloading is real.}
         ramped rather than stepped: full weight at
         $f \le \SI{15}{\MHz}$, tapering linearly to zero at
         $\SI{17}{\MHz}$, so 20\,m (14.1) and 17\,m (18.1) do not
-        sit on opposite sides of a hard step at the old
-        \SI{16}{\MHz} literal.  On the upper bands the table
+        sit on opposite sides of a hard step at
+        \SI{16}{\MHz}.  On the upper bands the table
         value already reflects the higher
         upper-band spread, so further inflation would
         double-count.
@@ -5804,9 +5780,9 @@ plasma-bubble / spread-F activity at low and equatorial latitudes
 during the recovery phase produces irregularity-driven fading on
 transequatorial paths that share no auroral hops.  The global
 $\sigma$ widening captures this collectively.  The
-\emph{path-localized} component of storm response --- additional
+\emph{path-localized} component of storm response (additional
 auroral D-region absorption on hops crossing the storm-expanded
-$\phi_{\text{CGM}}$ threshold --- is captured separately in
+$\phi_{\text{CGM}}$ threshold) is captured separately in
 $L_{\text{aur}}$ (Section~\ref{sec:laur}, with the
 storm-main amplification described below), so a midlat path during a
 G3 storm sees the global $\sigma_{\text{storm}}$ widening but no
@@ -5818,17 +5794,18 @@ auroral paths get both the absorption (mean) and the widening
 \emph{deep equatorial} midlat paths during main phase (where LSTID
 arrival is delayed by an hour or two relative to the global signal),
 worth at most ${\sim}\SI{1}{\dB}$ of $\sigma$ inflation on those
-paths --- below the per-band $\sigma_g$ resolution and accepted as
+paths, below the per-band $\sigma_g$ resolution and accepted as
 the cost of the global formulation.
 
 \paragraph{Storm-phase auroral amplification.}\label{par:laur-stormamp}  Independent of the
 $\sigma$ widening above, the path-summed auroral absorption term
 $L_{\text{aur}}$
-(Section~\ref{sec:laur}) is incremented by \SI{+4}{\dB} --- once
+(Section~\ref{sec:laur}) is incremented by \SI{+4}{\dB} (once
 per path, after the per-hop and path-total caps, deliberately not
-re-capped (Section~\ref{sec:laur}'s forward-reference paragraph
-explains why re-clamping inverted the amplification on saturated
-paths) --- during the storm \emph{main} phase, and by
+re-capped; Section~\ref{sec:laur}'s forward-reference paragraph
+explains why re-clamping would invert the amplification on
+saturated
+paths) during the storm \emph{main} phase, and by
 \SI{+2}{\dB} on the same basis during the \emph{active} pre-main
 window.
 During main, the auroral oval expands equatorward and the
@@ -5840,15 +5817,16 @@ extra absorption (3--6\,dB) on high-latitude amateur HF paths
 during peak Dst depression.  ITU-R P.533~\cite{itup533}
 Annex 1 Table 2 tabulates climatological auroral-and-other
 losses ($L_h$) keyed on geomagnetic latitude, season, and
-local time --- with values reaching 12--16\,dB on
+local time (with values reaching 12--16\,dB on
 auroral-zone (62.5--72.5° geomagnetic) winter dawn paths and
-under 3\,dB on midlatitude paths --- but does not isolate a
+under 3\,dB on midlatitude paths) but does not isolate a
 ``main-phase extra'' increment as a separate column.  The
 3--6\,dB range cited here is therefore an
 operator-experience figure consistent with the disturbed-vs-
 quiet difference implicit in P.533's seasonal climatology
-rather than a literal P.533 entry.  An earlier draft used a $1.4\times$ multiplier,
-which would have produced ${+}\SI{10}{\dB}$ on a 25\,dB nominal
+rather than a literal P.533 entry.  A multiplicative form
+(e.g.\ $1.4\times$)
+would produce ${+}\SI{10}{\dB}$ on a 25\,dB nominal
 $L_{\text{aur}}$ (well past the 3--6 dB range cited as the
 target); the additive form lands at the cited midpoint
 regardless of the steady-state value.  Recovery and
@@ -5858,17 +5836,16 @@ classified from Dst trajectory plus the storm-lag kernel
 order): \emph{recovery} is $\text{Dst} \le -30$\,nT with
 $K_p^{\text{eff}} > K_p + 0.5$ (the live index has dropped while
 the lagged kernel remains elevated) and MUST be tested before
-main --- Dst recovers over days, so a deep storm still reads
+main: Dst recovers over days, so a deep storm still reads
 $\text{Dst} \le -50$ long after $K_p$ has fallen, and a
 main-first ordering (whose condition is a superset of recovery's
-whenever $\text{Dst} \le -50$) fired the \SI{+4}{\dB} main
-amplification during the physical recovery and made the
-recovery-TID $\sigma$ unreachable for deep storms (fixed
-2026-07-03).  \emph{Main} is then simply $\text{Dst} \le
+whenever $\text{Dst} \le -50$) would fire the \SI{+4}{\dB} main
+amplification during the physical recovery and make the
+recovery-TID $\sigma$ unreachable for deep
+storms.  \emph{Main} is then simply $\text{Dst} \le
 -50$\,nT with $K_p$ still driving, covering both the rising edge
-(kernel still loading, $K_p^{\text{eff}} < K_p$ --- the period
-of maximal oval expansion, which the old ordering misfiled as
-``active'') and the matured peak.
+(kernel still loading, $K_p^{\text{eff}} < K_p$, the period
+of maximal oval expansion) and the matured peak.
 
 \begin{table}[H]
 \centering
@@ -5876,7 +5853,7 @@ of maximal oval expansion, which the old ordering misfiled as
 day-to-day spread range and validated against per-spot wspr-snr
 residual standard deviation bucketed by (band, distance,
 hour-of-day, Kp, tx-latitude band) at $\geq$10 samples per
-bucket; the measured within-bucket $\sigma$ was stable across
+bucket; the measured within-bucket $\sigma$ is stable across
 three bucket-granularity settings (coarse 1500\,km / 6\,h vs
 tight 500\,km / 1\,h), confirming the spread is within-condition
 rather than cross-condition contamination.  12\,m / 10\,m fall
@@ -5912,7 +5889,7 @@ whether 10\,m's $\sigma_g$ is 10 or 12\,\si{\dB}.  $\sigma_g$
 enters only the per-band Stability metric (the dB-distance to the
 nearest fixed boundary, divided by $\sigma_g$, fed through $\Phi$;
 Eq.~\ref{eq:tierstab}) and the side-metric reliability $R$.  This
-is a deliberate trade-off against the earlier sigma-percentile
+is a deliberate trade-off against a sigma-percentile
 scheme, where a $\pm \SI{2}{\dB}$ miscalibration in $\sigma_g$
 could flip the tier label on near-boundary bands; under fixed-dB
 cuts the label is invariant to that calibration uncertainty and
@@ -5945,7 +5922,7 @@ spread.
 ]
 
 % Gaussian PDF, mu=3, sigma=8.
-% Fixed-dB tier boundaries (post 2026-05-10 revert from sigma-percentile):
+% Fixed-dB tier boundaries:
 %   excellent at +18 dB
 %   good      at  +6 dB
 %   fair      at  -5 dB
@@ -6051,25 +6028,25 @@ destination-grid basket (the ${\sim}$400--500-cell $10\degree$
 mesh plus the 12-cell local NVIS ring,
 Section~\ref{sec:kc2gobs}), and the tier is the
 \textbf{worldwide hub mean}: 14 fixed activity-hub anchors
-(\texttt{HUB\_ANCHORS} in \texttt{src/derive/paths.js} --- US
+(\texttt{HUB\_ANCHORS} in \texttt{src/derive/paths.js}: US
 East / US West / W~Europe / C-E~Europe / Japan / China-E~Asia /
 S~Asia / Russia-Siberia / Middle East / Australia / New Zealand /
 Brazil / Argentina / S~Africa) are each snapped once per refresh
 to the nearest non-local scored grid cell within
 \SI{1500}{\km} (${\sim}$one grid diagonal; local NVIS cells are
 excluded so a hub near the QTH keeps worldwide-F2 semantics, and
-an anchor whose nearest cell was distance-filtered out of the
-basket is dropped --- the QTH cannot reach that region at all).
-For each band, the hub cells that are \emph{eligible} ---
-$f \le \text{MUF}_{\text{eff}}$, or final margin $\ge$ the Poor
-floor via a recovery mode --- contribute their margins, and the
+an anchor whose nearest cell is distance-filtered out of the
+basket is dropped: the QTH cannot reach that region at all).
+For each band, the hub cells that are \emph{eligible}
+($f \le \text{MUF}_{\text{eff}}$, or final margin $\ge$ the Poor
+floor via a recovery mode) contribute their margins, and the
 verdict is \texttt{tierFromMargin} of the \emph{mean} hub
 margin.  This is a ``general yet accurate, worldwide''
 statement: it cannot be carried by one loud short hop, and it is
 not terminator/ocean-dominated because the population is 14
 curated activity regions rather than the uniform grid.  The
 accepted trade-off is that 160\,m / 80\,m (and often 10\,m) read
-low when they are only regionally open --- they genuinely are
+low when they are only regionally open: they genuinely are
 not worldwide bands at that hour; the per-band best path and DX
 flag still surface the regional opening.  When no hub cell is
 eligible (or the geometry-less local-MUF fallback produced no
@@ -6080,16 +6057,16 @@ confidence follow whichever basis produced the tier.  The reason
 string and \texttt{openDirs} list record which compass
 directions are open; a breadth note reading ``open worldwide''
 is appended when at least half the band's eligible grid paths
-clear the Good threshold.  (Two earlier aggregations are
-documented for the record: pure best-margin-path-wins, which a
-single loud short hop could carry; and a median-across-paths
-experiment, which the failing long paths dominated.  The hub
-mean supersedes both.  A coverage-fraction aggregation ---
-\texttt{coverageTier} with per-tier fraction targets
+clear the Good threshold.  (Alternative aggregations are
+rejected by construction: pure best-margin-path-wins can be
+carried by a
+single loud short hop, and a median-across-paths is dominated
+by the failing long paths.  A coverage-fraction aggregation
+(\texttt{coverageTier} with per-tier fraction targets
 \texttt{TIER\_COVERAGE\_TARGET} in \texttt{src/physics/tier.js},
 awarding the highest tier whose share of eligible paths clears
-its target --- remains exported but is not wired into the
-verdict; its calibration attempt was terminator/ocean-dominated
+its target) remains exported but is not wired into the
+verdict; it is terminator/ocean-dominated
 over the uniform grid, which is exactly the failure the curated
 hub set avoids.)
 
@@ -6110,7 +6087,7 @@ f/MUF column for the band
 currently selected.  The two surfaces share the same underlying
 budget; the band-table row is the headline, the Reference Paths
 panel is the source-of-truth.  The Best-Path column itself is
-therefore only a hint --- if it reads ``WNW 9\,Mm'' on 20\,m and
+therefore only a hint: if it reads ``WNW 9\,Mm'' on 20\,m and
 the operator wants south-east Asia, the Reference Paths panel
 is what to consult next.
 
@@ -6147,7 +6124,7 @@ predicted SNR and the mode's required SNR (Table~\ref{tab:modesnr})
 including all additive mode bonuses; the cuts are absolute dB
 values, identical across all bands.  The corresponding circuit
 reliability $R = \Phi(M/\sigma)$ varies with the per-band
-$\sigma_g$ but is no longer the boundary criterion.}
+$\sigma_g$ but is not the boundary criterion.}
 \label{tab:tiers}
 \begin{tabular}{@{}lll@{}}
 \toprule
@@ -6162,31 +6139,32 @@ Closed    & $< -14\,\si{\dB}$          & Band effectively closed \\
 \end{tabular}
 \end{table}
 
-\paragraph{Why fixed dB rather than $R$-percentile cuts.}  An
-earlier revision of the verdict mapped tiers to fixed
+\paragraph{Why fixed dB rather than $R$-percentile cuts.}
+Mapping tiers to fixed
 reliability buckets ($R = 0.90 / 0.60 / 0.35 / 0.10$, equivalent
 to margin $\geq 1.2816\,\sigma / 0.2533\,\sigma / -0.3853\,\sigma /
--1.2816\,\sigma$).  It read well as operator-facing prose
-(``Good $=$ QSO completes 3 in 5 attempts'') but a 2026-05-10
-field-day audit by the author showed it labelled bands as Good
-or Fair that were unworkable on-air; only 20\,m, 17\,m, and
-15\,m carried real traffic at the time the model was reading
-five HF bands as Good or better.  The mismatch came from two
+-1.2816\,\sigma$) reads well as operator-facing prose
+(``Good $=$ QSO completes 3 in 5 attempts'') but
+on-air field auditing against real contest traffic shows such
+a scheme labelling bands as Good
+or Fair that are unworkable on-air: it can read
+five HF bands as Good or better while only 20\,m, 17\,m, and
+15\,m carry real traffic.  The mismatch comes from two
 sources.  First, the percentile cut at $+0.2533\,\sigma$
 puts Good at margin $\approx +2$\,\si{\dB} on lower HF
 ($\sigma_g = \SI{8}{\dB}$); a 2\,\si{\dB} model margin
 disappears under the 3 to 6\,\si{\dB} of QRM that a contest
 environment adds on top of the ITU-R P.372~\cite{itup372}
 baseline noise the model assumes.  Second, the formal
-operator-readable framing turned out to over-promise: ``3 in 5
-QSOs complete'' encoded a $60\%$ floor that does not survive
+operator-readable framing over-promises: ``3 in 5
+QSOs complete'' encodes a $60\%$ floor that does not survive
 contact with on-air reality where adjacent-channel splatter,
 fading, and operator-side antenna or noise mis-estimation all
 push outcomes downward.  The fixed-dB cuts take operator
 intuition as primary: $+6\,\si{\dB}$ as Good means the model
 expects to clear required SNR by 6 dB \emph{before} real-world
 noise adds anything, which lines up with what an operator
-calls a usable band on-air.  The boundaries are now
+calls a usable band on-air.  The boundaries are
 $\sigma$-independent; band-specific $\sigma_g$ continues to
 drive the stability and confidence columns.
 
@@ -6208,16 +6186,16 @@ short-path
 Excellent that also has DX reach surfaces both axes at once.
 
 \paragraph{Why a separate dimension rather than a tier value.}
-A prior revision baked the distance test into
-\texttt{tierFromMargin}: $+18\,\si{\dB}$ margin demoted to Good
-when $d_{\text{km}} < \SI{6000}{\km}$.  This made Excellent
-mean ``DX is open'' in operator terms, but a 2026-05-11 RBN
-beacon binary tier-confusion run
-(\S\ref{sec:rbn-tier-confusion}) showed that the gate produced
+Baking the distance test into
+\texttt{tierFromMargin} ($+18\,\si{\dB}$ margin demoted to Good
+when $d_{\text{km}} < \SI{6000}{\km}$) would make Excellent
+mean ``DX is open'' in operator terms, but the RBN
+beacon binary tier-confusion data
+(\S\ref{sec:rbn-tier-confusion}) show that such a gate produces
 a monotonicity inversion in
-$P(\text{spot in hour} \mid \text{tier})$: Good came in
+$P(\text{spot in hour} \mid \text{tier})$: Good comes in
 higher than Excellent because the basket's short rings carry
-high-margin regional paths into Good, while Excellent ended up
+high-margin regional paths into Good, while Excellent ends up
 restricted to long-DX paths whose per-skimmer-per-hour spot
 probability is intrinsically lower (multi-hop fading,
 sunrise/sunset zones, polar-cap transit absorption).  The
@@ -6263,22 +6241,22 @@ physics budget does not consume directly.  When observed activity for
 a band exceeds 1.3$\times$ the band's 30-day mean for the current
 UTC hour \emph{and} the physics-derived tier is currently below
 ``Good'' (i.e., Fair, Poor, or Closed), the verdict is promoted to
-Good.  This catches openings outside the budget --- weak
+Good.  This catches openings outside the budget: weak
 sporadic-E, off-axis scatter, propagation modes that the
 climatology underweights.
 
-\paragraph{Basis restriction.}  The promotion was designed and
+\paragraph{Basis restriction.}  The promotion is designed and
 calibrated for the best-path semantic (``is this band alive
-somewhere $\to$ usable'') and fires \emph{only when the tier was
-produced on the best-path fallback basis} --- i.e.\ when no hub
-cell was eligible and the worldwide hub mean of
+somewhere $\to$ usable'') and fires \emph{only when the tier is
+produced on the best-path fallback basis}, i.e.\ when no hub
+cell is eligible and the worldwide hub mean of
 \S\ref{sec:tiers} is unavailable.  WSPR spot counts are dominated
 by receiver geography (NA/EU) and short regional paths, so
 promoting a \emph{worldwide} tier on raw global spot volume would
 reintroduce exactly the regional bias the hub mean exists to
 remove (heavy 160\,m regional traffic promoting a
 worldwide-closed band to ``good'').  Under the worldwide basis,
-above-baseline activity still surfaces --- as the display-only
+above-baseline activity still surfaces, as the display-only
 ``exceptionally active: $N$ spots/h vs avg $M$'' decoration,
 which also fires on physics-Excellent bands where the promotion
 has nothing to promote (an Excellent band running $3\times$ its
@@ -6292,11 +6270,11 @@ band as absorbed at QTH \emph{and} observed activity sits below
 $0.5\times$ the band's 30-day mean for this hour, the group
 verdict is closed out with the reason ``D-region absorption
 blocking signals'' (and the per-band row's tier synced to
-``closed'').  The threshold used to be a flat 50\,spots/h, which
-sat below baseline on 10/12/15\,m (over-opening false positives)
+``closed'').  A flat 50\,spots/h threshold would
+sit below baseline on 10/12/15\,m (over-opening false positives)
 and above baseline on 160/80\,m (over-closing false negatives);
 scaling by the per-band baseline makes the gate behave
-consistently across the spectrum, with the flat 50 retained only
+consistently across the spectrum, with a flat 50 retained only
 as the fallback when no baseline is available.
 
 The override is a strict one-way ratchet \emph{capped at Good as a
@@ -6320,8 +6298,8 @@ when the override fires:
         override fires, the row is synced to the override-applied
         verdict (\texttt{tier = "good"}, plus a
         \texttt{spotOverride} flag); without the sync, the group
-        summary read ``good'' while the row still showed the
-        pre-override physics tier --- two contradictory answers
+        summary would read ``good'' while the row still showed the
+        pre-override physics tier, two contradictory answers
         to the same question.  The same sync discipline applies
         to the D-RAP close-out: when D-RAP absorption plus
         below-baseline activity force the group verdict to
@@ -6333,11 +6311,10 @@ when the override fires:
         the Tier comes from the override-promoted value when the
         override fires, with the activity note explaining
         \emph{why} the group was promoted.  The confidence
-        percent is appended on override rows too --- the model
+        percent is appended on override rows too: the model
         still knows how close the margin sits to the original
         tier boundaries, and the operator deserves the same
-        signal here as on physics rows.  (An earlier build
-        suppressed the percent on override lines; note that the
+        signal here as on physics rows.  (The
         appended value describes the pre-override margin's
         boundary distance.)
 \end{itemize}
@@ -6381,7 +6358,7 @@ cycle.
 This produces a $10 \times 24$ matrix of typical hourly spot rates
 across all days of the week.  The override fires when observed
 activity exceeds $1.3 \times$ the matrix entry for the current
-(band, UTC-hour) cell --- ``the band is \emph{meaningfully}
+(band, UTC-hour) cell: ``the band is \emph{meaningfully}
 busier than usual for this time of day.''  Weekends are included
 in the rolling baseline so that the live observation (which
 includes weekends) is compared against a like-for-like mean;
@@ -6404,14 +6381,14 @@ distribution itself is not separately tabulated in the paper
 (see Section~\ref{sec:limits}'s deferred-empirical-claims
 backlog item for the harness extension that would compute it).  Tightening to a bare $\text{spots} > \text{mean}$
 comparison would fire on every above-median hour and over-promote
-borderline cases; the multiplier was empirically chosen as the
+borderline cases; the multiplier is empirically chosen as the
 smallest value that filters out routine above-average hours
-without missing genuinely anomalous activity.  The choice was
-made by sweeping candidate thresholds in $\{1.0, 1.1, \ldots, 2.0\}$
+without missing genuinely anomalous activity, by
+sweeping candidate thresholds in $\{1.0, 1.1, \ldots, 2.0\}$
 against the same 30-day WSPR baseline data used to construct the
-matrix (\texttt{wspr.rx} table, 2026-04 window): 1.3$\times$ was
-the smallest ratio at which the override fired on roughly 5--10\%
-of (band, hour) cells per day --- low enough to read as
+matrix (\texttt{wspr.rx} table): 1.3$\times$ is
+the smallest ratio at which the override fires on roughly 5--10\%
+of (band, hour) cells per day, low enough to read as
 ``unusual'' rather than ``daily routine'', high enough to keep
 the override actionable on the cells where it matters (off-axis
 sporadic-E days, evening 15\,m enhancement during HSS recovery,
@@ -6476,7 +6453,7 @@ fit regional baselines without over-fitting noise.
   title style={font=\small\bfseries},
 ]
 
-% 80m: Nbase = -113 (post-2026-04-30 re-anchor)
+% 80m: Nbase = -113
 % Atmospheric: Natmo = -113 + max(0, -10 * cos(chi))
 % (day side clamped at the galactic base; see eq. in sec:noise)
 % At midnight cos(chi) ≈ -1 → Natmo = -113 + 10 = -103
@@ -6507,7 +6484,7 @@ fit regional baselines without over-fitting noise.
 \end{axis}
 \end{tikzpicture}
 \caption{Noise power components on 80\,m in a suburban environment
-         (post-2026-04-30 re-anchor: $N_{\text{base}} =
+         ($N_{\text{base}} =
          \SI{-113}{\dBm}$).
          The man-made noise (\SI{-98}{\dBm}) dominates at all
          hours; the atmospheric night-side swing barely affects
@@ -6516,9 +6493,9 @@ fit regional baselines without over-fitting noise.
          (the model used here) gives the black curve, which sits
          essentially at the man-made level since
          $10^{-113/10} + 10^{-98/10} \approx 10^{-98/10}$ when
-         the components differ by ${\sim}\!15$\,dB.  An earlier
-         formulation that combined the two by an incorrect
-         dB-domain operation produced a noise estimate
+         the components differ by ${\sim}\!15$\,dB.  Combining
+         the two by a
+         dB-domain operation instead would produce a noise estimate
          several dB above the man-made-dominated truth on
          suburban / urban sites, inflating the margin and biasing
          verdicts open; the power-sum form is therefore a
@@ -6545,7 +6522,7 @@ fit regional baselines without over-fitting noise.
   title style={font=\small\bfseries},
 ]
 
-% Post-S0-#2 paired rewrite (2026-05-07):
+% Quiet-day D-region form:
 % LabsD(f, chi) = Lday(f) * max(0, cos(chi))^0.7
 % Lday(f) = 200 / (f + 0.5)^2
 % Night: cos(chi) < 0.05 → 0 (gate omitted from the smooth illustrative curve)
@@ -6636,7 +6613,7 @@ surfaced across a nine-panel web UI:
         the Stability percent
         (Eq.~\ref{eq:tierstab}: $\Phi$ of $\sigma$-distance to the
         nearest tier boundary; bucket-width-independent and so
-        directly readable on an absolute scale --- 50\,\% at a
+        directly readable on an absolute scale: 50\,\% at a
         boundary, ${\sim}84$\,\% one $\sigma$ inside, $\to 100$\,\%
         deep inside), the dominant propagation mode (F2, NVIS, Es,
         TEP, F2-scatter, MS, or VHF Auroral-E
@@ -6662,9 +6639,7 @@ surfaced across a nine-panel web UI:
         tropospheric ducting heatmap of \S\ref{sec:tropomap}; the
         per-station $\mathrm{d}N/\mathrm{d}h$ from the nearest
         UWyo radiosonde (Section~\ref{sec:tropo}) appears as a
-        single classified cell in the band table itself.  (The
-        earlier standalone per-station ducting table has been
-        retired from the layout.)
+        single classified cell in the band table itself.
   \item \textbf{Upcoming Disruptions} (outlook): SWPC's 3-day
         R/S/G probability table, the SWPC 3-h $K_p$ forecast,
         Earth-directed CMEs from NASA DONKI, IMO-catalogue meteor
@@ -6672,11 +6647,11 @@ surfaced across a nine-panel web UI:
         ISES SFI / $A_p$ outlook.
   \item \textbf{Ionosphere}: nearest-GIRO-station digisonde
         readings (foF2 / foEs / hmF2), GNSS TEC, 30\,MHz cosmic
-        noise, the Reference Paths panel --- the per-QTH path
+        noise, the Reference Paths panel (the per-QTH path
         table listing kc2g MUF on the longest viable path per
-        compass bearing (up to 16 rows summarising the
-        ${\sim}$400--500-cell destination grid plus local ring)
-        --- plus the kc2g global foF2 map and the GloTEC TEC map.
+        compass bearing, up to 16 rows summarising the
+        ${\sim}$400--500-cell destination grid plus local ring),
+        plus the kc2g global foF2 map and the GloTEC TEC map.
         The Reference Paths panel is the source-of-truth that
         Section~\ref{sec:tiers}'s band-table Best-Path column
         compresses; an operator who wants per-destination detail
@@ -6758,11 +6733,11 @@ ${\sim}84$\,\% one $\sigma$ inside the bucket, asymptotic to
 100\,\% deep inside; finite-width middle buckets (Poor / Fair /
 Good, 9 / 11 / 12\,dB wide in the fixed-dB coordinates of
 Table~\ref{tab:tiers}) cap at per-bucket centred ceilings set by
-half their dB width over the band's $\sigma$ --- at the
+half their dB width over the band's $\sigma$ (at the
 representative $\sigma = \SI{9}{\dB}$,
 $\Phi(4.5/9) \approx 69\,\%$ for Poor, $\Phi(5.5/9) \approx
 73\,\%$
-for Fair, $\Phi(6/9) \approx 75\,\%$ for Good --- so read
+for Fair, $\Phi(6/9) \approx 75\,\%$ for Good), so read
 mid-tier values relative to their
 own bucket-specific ceiling and open-ended Closed / Excellent
 values against the absolute scale.
@@ -6788,9 +6763,9 @@ message code is missing or unrecognised, the parser falls back
 to the leading severity word in the body (``ALERT:'',
 ``WARNING:'', ``WATCH:'', ``SUMMARY:'', ``FORECAST:'',
 ``ADVISORY:'') with the same mapping.  Anything else lands in
-\emph{info}.  The mustard \emph{warn} tier was retired during
-the pill-revamp pass and is no longer emitted by either the
-SWPC pipeline or the soft-alert rules.
+\emph{info}.  There is no intermediate \emph{warn} tier;
+neither the
+SWPC pipeline nor the soft-alert rules emit one.
 
 \paragraph{Rule-derived (soft) alerts.}  Eleven rules run on
 every refresh against the same data bundle the per-band budget
@@ -6806,7 +6781,7 @@ numbers are introduced.
 \paragraph{Intra-tier sort order.}  Alerts are sorted primarily
 by severity tier (\emph{extreme} > \emph{alert} > \emph{watch} >
 \emph{info}); within a single tier the rule iteration order is
-the deterministic tiebreak: FLARE first (most time-urgent ---
+the deterministic tiebreak: FLARE first (most time-urgent:
 X-ray ionisation peaks within seconds of the flare event,
 operator response window is minutes), then geomagnetic indices
 ($K_p$, $B_z$, $D_{\text{st}}$ in that order), then aurora,
@@ -6887,9 +6862,9 @@ Geomagnetic-storm composite  & \texttt{stormPhase = "main"} (per \S\ref{sec:fast
 \end{table}
 
 Soft alerts render alongside SWPC notices rather than only when
-the official feed is empty: the derived context --- southward
+the official feed is empty: the derived context (southward
 $B_z$, falling $D_{\text{st}}$, DRAP blanketing QTH, an HSS
-front arriving --- is material information SWPC does not
+front arriving) is material information SWPC does not
 publish until formal watch or warning bulletins are issued,
 which may lag the underlying event by several hours.
 
@@ -6913,11 +6888,11 @@ $w_{\text{sc}}$ tied to a metric with a structural cap);
 infrastructure rather than the physics is the bottleneck
 (\#1 in-app feedback loop not yet built, \#8 upper-band
 scatter-recovery dependence as an implementation status note);
-and \emph{closed items retained for calibration history}
-(\#14 $N_{\text{base}}$ re-anchor, kept as the most recent
-ground-truth alignment but not gating any current verdict).
-The numbering is chronological by when the item entered the
-backlog; readers wanting priority order should weight
+and \emph{closed items retained for reference}
+(\#14 $N_{\text{base}}$ anchor,
+a ground-truth alignment record not gating any current verdict).
+The numbering is stable for cross-referencing rather than
+priority-ordered; readers wanting priority order should weight
 \#1--\#7 (active gaps) above \#9, \#12, \#14 (calibration /
 metric-ceiling items).
 
@@ -6938,7 +6913,7 @@ metric-ceiling items).
         band-frequency lookup misses entirely, which the BANDS
         table makes impossible in production), and the offline
         harness (Section~\ref{sec:calibrate}) is the only
-        feedback mechanism --- it validates the global tune
+        feedback mechanism: it validates the global tune
         against 30~d of WSPR aggregates but does not specialise
         to any one operator.
 
@@ -7021,18 +6996,20 @@ metric-ceiling items).
         for the offline calibration harness once a longer archive
         is available.
 
-  \item \textbf{Upper-band tracking is now scatter-recovery-bound.}
-        After the climatology rebuild (Section~\ref{sec:climo}), the
+  \item \textbf{Upper-band tracking is scatter-recovery-bound.}
+        With the climatology (Section~\ref{sec:climo}), the
         H-pol Fresnel multi-hop model (Section~\ref{sec:lhop}), the
-        per-band $\sigma$ refit (Table~\ref{tab:bandsigma}), and the
+        per-band $\sigma$ anchor (Table~\ref{tab:bandsigma}), and the
         F2-scatter recovery weight calibrated by joint coordinate
-        descent (Section~\ref{sec:scatter}, Section~\ref{sec:calibrate}),
-        the upper-band binary-accuracy lift is concentrated on
+        descent (Section~\ref{sec:scatter}, Section~\ref{sec:calibrate})
+        in place,
+        the remaining upper-band binary-accuracy headroom is
+        concentrated on
         12\,m and 10\,m, where the F2-scatter recovery channel is
         the dominant remaining lever.  Lower bands (60\,m and
         below) saturate at $>$\,98\,\% accuracy under the
         global-truth metric and are not budget-limited.  Headline
-        binary-accuracy values for each calibration run are in
+        binary-accuracy values are in
         Table~\ref{tab:harnessruns}; \emph{read those numbers as
         regression-detection signals, not as operator-facing
         per-path accuracy} (see \#9 below for the structural
@@ -7045,13 +7022,12 @@ metric-ceiling items).
         somewhere'' globally, so a predictor that errs toward ``open''
         scores well even when its per-path verdicts are wrong.  The
         sharpest evidence is the gap between the two ground-truth
-        modes \emph{on the same harness run}: at the pre-B6
-        2026-04-28 freeze the global aggregate read $94.25\,\%$
+        modes: the
+        global aggregate reads in the high 80s
         accBin while the per-path mode (TX/RX-bbox restriction with
-        $\geq\!1$ spot/h floor) read $30.97\,\%$ on the identical
-        predictions; the post-B6 2026-05-08 baseline reads
-        $84.08\,\%$ global vs $40.17\,\%$ per-path, narrower but
-        still substantial.  A 40--60\,pp gap across two
+        $\geq\!1$ spot/h floor) reads in the low 40s on the same
+        physics (Table~\ref{tab:harnessruns}).  A 40+\,pp gap
+        across two
         encodings of the same underlying truth is not a model
         property; it is a metric property.  The headline number is
         sitting on the ``somewhere is open'' ceiling, not on a
@@ -7059,9 +7035,9 @@ metric-ceiling items).
         TX-RX-pair queries (per-path ground truth) and replacing the
         climatology fallback with a real-time IRI assimilation
         (IRTAM) are the next two highest-leverage improvements.
-        (The old objection that the Cloudflare Pages-only
-        architecture hosts no server-side periodic fetcher no
-        longer holds: the tropo pipeline's
+        (The Cloudflare Pages-only
+        architecture is no obstacle to a server-side periodic
+        fetcher: the tropo pipeline's
         \texttt{daily.yml} (tropo job) GitHub Actions cron already
         retrieves and republishes gridded data 4$\times$ daily to
         R2, and the same pattern would serve an IRTAM grid.)
@@ -7072,15 +7048,16 @@ metric-ceiling items).
         Ascension (Atlantic, dip lat ${\sim}-3\degree$, deep in
         the trough region), Townsville and Niue (southern crest,
         Pacific), and Jicamarca (essentially on the dip equator,
-        a second equatorial-trough anchor rather than a crest one). The
-        2026-04-29 BVJ03 addition closed the one-sided crest fit;
-        the EIA grid sweep (Section~\ref{sec:climo}) now bottoms
+        a second equatorial-trough anchor rather than a crest
+        one). BVJ03 closes the one-sided crest fit;
+        the EIA grid sweep (Section~\ref{sec:climo}) bottoms
         out near $\max\!|\text{bias}| \approx \SI{1.18}{\MHz}$
-        rather than the pre-BVJ03 ${\sim}\SI{2.2}{\MHz}$ floor.
+        (versus a ${\sim}\SI{2.2}{\MHz}$ floor without a
+        northern-crest station).
         Further reduction is bounded by station density across
         the longitude-varying dip equator: Indian-sector and SE
         Asian dip-latitude stations (Trivandrum, Hyderabad,
-        Madimbo, etc.\ are candidates --- none currently return
+        Madimbo, etc.\ are candidates; none currently return
         DIDB data) or a real-time IRI assimilation are the next
         leverage points.  This residual is coupled to the polar
         over-prediction in \#11 below: both are residuals on the
@@ -7092,7 +7069,7 @@ metric-ceiling items).
         coupled in the same model term.}  High-latitude stations
         Tromsø, Gakona, and Eielson AFB over-predict daytime foF2
         by ${\sim}1$--\SI{1.7}{\MHz}, and the equatorial bias
-        (\#10 above) floors at ${\sim}\SI{1.18}{\MHz}$ post-BVJ03.
+        (\#10 above) floors at ${\sim}\SI{1.18}{\MHz}$.
         These are listed as separate items because their candidate
         fixes differ (polar wants a steeper sigmoid above
         $60^\circ$, partly addressed by
@@ -7102,8 +7079,8 @@ metric-ceiling items).
         $\mathcal{P}(\phi) \cdot d(\cos\chi)$ dayBump and
         $A_{\text{EIA}}(F_{10.7\text{A}})$ term in
         Eq.~\ref{eq:fof2-base}: fitting the polar fall-off and
-        the EIA Gaussian amplitude / width separately --- as a
-        sequence of single-region tunes --- can each regress the
+        the EIA Gaussian amplitude / width separately (as a
+        sequence of single-region tunes) can each regress the
         other.  A clean closure needs a joint refit holding both
         residuals visible in the cost function; the
         BVJ03-extended basket makes this tractable now and is
@@ -7111,7 +7088,7 @@ metric-ceiling items).
         latitude-gradient joint refit item.
 
   \item \textbf{Scatter-recovery weight $w_{\text{sc}} = 1.5$ is
-        defensible-but-not-final.}  The scatter weight was set by a
+        defensible-but-not-final.}  The scatter weight is set by a
         coordinate-descent sweep against the harness's binary
         ``$\geq 50$ spots/h'' WSPR target (Section~\ref{sec:scatter}
         / Section~\ref{sec:calibrate}).  An unrestricted sweep keeps
@@ -7122,7 +7099,7 @@ metric-ceiling items).
         \SI{15}{\dB}-cap physical edge.  The paper acknowledges
         this in Section~\ref{sec:scatter}, but the limitation is
         worth surfacing as its own line in this list: the
-        calibrated $w_{\text{sc}}$ has been validated against a
+        calibrated $w_{\text{sc}}$ is validated against a
         metric whose calibrators do not fully trust beyond a
         certain point.  Closing the loop properly requires
         re-running the sweep against the per-pair WSPR ground
@@ -7161,28 +7138,29 @@ metric-ceiling items).
         regime; both are deferred to a future VHF-Es-aware
         harness.
 
-  \item \textbf{$N_{\text{base}}$ table re-anchored to P.372 quiet-rural
-        (closed 2026-04-30).}  Pre-2026-04-30, $N_{\text{base}}$
-        was being compared against eyeball P.372 references that
-        sat below the cosmic galactic floor.  Once the
-        \texttt{tests.mjs} noise-floor suite was corrected to
-        evaluate $N_{\text{base}} + \Delta N_{\text{diurnal}}$ at
-        midnight against properly-anchored P.372 references, the
-        model came out quieter than P.372 quiet-rural midnight by
-        0--11\,dB on the upper bands.  The 2026-04-30 retune ports
-        the corrected anchors directly into $N_{\text{base}}$ (net
-        shift: 17--10\,m all $+11$\,dB, 30\,m $+5$, 20\,m $+8$,
-        80--40\,m $+1$--$2$, 160\,m $+10$, 60\,m unchanged).  WSPR
-        per-spot residual mean improved from $-23.97$ to
-        $-18.73$\,dB; per-pair Brier improved 0.64$\to$0.57.  The
-        item is retained in this list as the most recent calibration
-        ground-truth alignment; it is closed for forward work and
+  \item \textbf{$N_{\text{base}}$ table anchored to P.372
+        quiet-rural (closed).}  The
+        \texttt{tests.mjs} noise-floor suite
+        evaluates $N_{\text{base}} + \Delta N_{\text{diurnal}}$ at
+        midnight against properly-anchored P.372 references, and
+        the shipped $N_{\text{base}}$ table ports those anchors
+        directly; a table compared instead against references
+        sitting below the cosmic galactic floor would read
+        quieter than P.372 quiet-rural midnight by
+        0--11\,dB on the upper bands.  Against 30-day WSPR the
+        anchored table scores a
+        per-spot residual mean of
+        $-18.73$\,dB (versus $-23.97$ for the misanchored
+        variant) and per-pair Brier 0.57 (versus 0.64).  The
+        item is retained in this list as the calibration
+        ground-truth alignment record; it is closed for forward
+        work and
         does not gate any current verdict.
 
   \item \textbf{Generic chordal-hop propagation not modelled
         outside TEP and F2-scatter.}  ionocast explicitly models
-        one chordal mode --- trans-equatorial propagation
-        (\S\ref{sec:tep}, \texttt{tepBonusDb}) --- which captures
+        one chordal mode, trans-equatorial propagation
+        (\S\ref{sec:tep}, \texttt{tepBonusDb}), which captures
         the chordal afternoon / evening F-region mode across
         the magnetic equator that skips multiple D-region
         traversals.  The F2-scatter recovery
@@ -7211,9 +7189,9 @@ metric-ceiling items).
         suggest), the verdict reads slightly pessimistic.
         Adding a generic chordal-mode bonus would require a
         calibration anchor distinct from the equatorial TEP
-        record --- candidate paths are sparse in the WSPR
+        record (candidate paths are sparse in the WSPR
         basket and the bonus would risk over-rewarding paths
-        the standard budget already calls open --- so the
+        the standard budget already calls open), so the
         gap is acknowledged here rather than papered over.
         Closing it cleanly is gated on an extension of the
         per-pair WSPR ground-truth wiring (\#9) plus a
@@ -7225,10 +7203,10 @@ metric-ceiling items).
         flux and CGM latitude only; the solar zenith angle at the
         polar hop does not enter.  Physically, polar-cap
         absorption is a factor ${\sim}3$--$5$ smaller in dB on
-        the night side of the cap --- Sauer \&
+        the night side of the cap (Sauer \&
         Wilkinson~\cite{sauer2008} and NOAA's operational D-RAP
         model both carry separate day and night polar-absorption
-        formulations --- so the current form over-charges dark
+        formulations), so the current form over-charges dark
         polar hops (or equivalently under-charges sunlit ones,
         depending on which side the calibration anchors settle).
         The per-hop machinery already computes $\cos\chi_k$ at
@@ -7249,16 +7227,16 @@ metric-ceiling items).
         solar-proton absorption product: at a polar QTH during a
         SEP event, the reported HAF already contains the
         proton-driven component that $L_{\text{PCA}}$ then
-        charges again per hop.  The overlap is bounded --- it
+        charges again per hop.  The overlap is bounded (it
         requires the QTH itself to sit in the polar cap while
-        the scored path also crosses it --- but on exactly those
+        the scored path also crosses it) but on exactly those
         paths the budget can charge the same proton ionisation
         twice.  Relatedly, the all-dark-path suppression of
         $L_{\text{DRAP}}$ (\S\ref{sec:labs}) is justified there
         by ``flare absorption is a photo-ionisation phenomenon'',
         which is true only of the X-ray component; the proton
         component persists in darkness (and is then covered by
-        $L_{\text{PCA}}$, so the suppression does not lose it ---
+        $L_{\text{PCA}}$, so the suppression does not lose it,
         but the stated rationale is incomplete).  A clean fix
         needs either the X-ray-only D-RAP sub-product or a
         polar-QTH gate that folds $L_{\text{DRAP}}$ into the
@@ -7318,7 +7296,7 @@ coordinates; the basket is intentionally diverse across hop count
 (1 to 5 hops, NVIS through long-path), midpoint geometry
 (near-station vs ocean), and latitude regime (midlatitude / polar /
 equatorial / transequatorial).  The same basket is the input to the
-sweep that produced the binary-accuracy figure quoted in
+sweep that produces the binary-accuracy figures quoted in
 Section~\ref{sec:tier-confidence}.
 
 \begin{table}[H]
@@ -7475,7 +7453,7 @@ bias documented in Section~\ref{sec:limits}.
 
 The harness-fitted constants $\{L_{\text{iono}}, D, w_{\text{sc}},
 w_{\text{NVIS-tail}}, w_{\text{Es-prim}}, \sigma\text{-scale},
-\text{fusion-flag}\}$ were produced by joint coordinate descent
+\text{fusion-flag}\}$ are produced by joint coordinate descent
 (Section~\ref{sec:calibrate},
 \texttt{scripts/tests/tune-r7.mjs}) starting
 from three deterministic seed configurations chosen to enter the
@@ -7530,14 +7508,14 @@ and asks whether the F2-only budget alone is sufficient;
 deeper $L_{\text{iono}}$ shifts the Brier optimum; \emph{modes-on}
 asks whether all alternative-propagation bonuses turned on at
 moderate weights, plus a wider $\sigma$, finds a different basin.
-All three converged to the same basin within ${\le}2$ iterations
+All three converge to the same basin within ${\le}2$ iterations
 (Section~\ref{sec:calibrate}), final
 $\{L_{\text{iono}}, D, w_{\text{sc}}\}$ within $\pm 10\,\%$ across
 seeds.
 
 \paragraph{Per-parameter sweep grid.}  Each coordinate-descent step
 sweeps one parameter through its grid below while holding the
-others fixed at their current best values.  Grids were chosen wide
+others fixed at their current best values.  Grids are chosen wide
 enough to cover both physical-edge values and obvious-overshoot
 values; the descent converges inside the physical region.
 
@@ -7616,8 +7594,9 @@ script families live alongside the harness in
     described above; \texttt{tune-eia.mjs} sweeps the EIA crest
     amplitude / width / latitude triplet against the equatorial
     GIRO basket (\S\ref{sec:climo}); \texttt{tune-blend.mjs}
-    sweeps the legacy ensemble-blend weights as a regression
-    canary against the retired N0NBH-style heuristicTier
+    sweeps the reference ensemble-blend weights as a regression
+    canary against the N0NBH-style \texttt{heuristicTier}
+    reference predictor
     (\S\ref{sec:ensemble}).  All three write report cards to
     stdout rather than mutating committed files.
   \item[Validation suites.] Cross-checks against external
@@ -7628,7 +7607,7 @@ script families live alongside the harness in
     \texttt{rbn-beacon.mjs} use Reverse Beacon Network spot data
     against CW skimmer references.  These cover decode-mode
     truth that WSPR-only validation misses.
-  \item[Diagnostic suites.] Pre-fix investigation tooling
+  \item[Diagnostic suites.] Investigation tooling
     retained for regression detection: \texttt{storm-split.mjs}
     bins per-path margin error by storm phase (CME-onset / main
     / recovery / quiet); \texttt{day-night.mjs} bins by sunlit
@@ -7648,7 +7627,7 @@ Appendix~\ref{app:giro}; the $\Phi$ approximation in
 Section~\ref{sec:reliability}; the IGRF pole and
 EIA / winter / equatorial / polar amplitudes inline at their
 respective equations.  What this paper does \emph{not} reproduce
-is (a) the WSPR ground-truth aggregates themselves --- those are
+is (a) the WSPR ground-truth aggregates themselves: those are
 queried live from \texttt{wspr.live} at harness-run time and
 their values shift week-to-week as activity rebalances; and
 (b) the SWPC, GIRO, GFZ, and Kyoto data feeds, which are also
@@ -7678,11 +7657,11 @@ not bit-exact metric values.
   \emph{Radio Noise},
   International Telecommunication Union, Geneva, 2021.
   \url{https://www.itu.int/rec/R-REC-P.372/}.
-  The 2026-04-30 noise-floor re-derivation in
-  Section~\ref{sec:noise} (Table~\ref{tab:noisebase}) was done
-  against this revision; figure references throughout the noise
+  The noise-floor derivation in
+  Section~\ref{sec:noise} (Table~\ref{tab:noisebase}) is anchored
+  to this revision; figure references throughout the noise
   prose track P.372-15 numbering, which differs in places from
-  the prior P.372-14 numbering (notably Fig.~38 vs Fig.~37 for
+  P.372-14 numbering (notably Fig.~38 vs Fig.~37 for
   the quiet-rural midlat reference).
 
 \bibitem{itup1239}
@@ -7782,15 +7761,13 @@ not bit-exact metric values.
   C.~Luetzelschwab (K9LA),
   \emph{Propagation Tutorials and Monthly-Column Archive},
   k9la.us, 2008--2024.
-  Cited as background for D-region absorption magnitude.  The
-  prior pre-2026-05-07 per-band $A_{\text{base}}$ table was
-  operator-experience consensus informed by this archive; that
-  table has been retired in favour of the closed-form
+  Cited as background for D-region absorption magnitude.
+  K9LA is
+  the calibration cross-check for the magnitudes the closed-form
   $L_{\text{day}}(f) = K_D / (f + 0.5)^{2}$ of
-  Eq.~\ref{eq:labsd}, which tracks the ITU-R P.533~\cite{itup533}
-  Annex 1 non-deviative-absorption shape directly.  K9LA remains
-  the calibration cross-check for the magnitudes the new closed
-  form produces on 160--30\,m amateur paths.
+  Eq.~\ref{eq:labsd} (which tracks the ITU-R P.533~\cite{itup533}
+  Annex 1 non-deviative-absorption shape directly)
+  produces on 160--30\,m amateur paths.
   \url{https://www.k9la.us/}.
 
 \bibitem{k1jt}
@@ -7815,7 +7792,7 @@ not bit-exact metric values.
 
 \bibitem{buonsanto1999}
   M.\,J.~Buonsanto,
-  ``Ionospheric Storms --- A Review,''
+  ``Ionospheric Storms -- A Review,''
   \emph{Space Science Reviews}, vol.~88, no.~3--4,
   pp.~563--601, 1999.
   \textsc{doi}: 10.1023/A:1005107532631.
@@ -7944,7 +7921,7 @@ not bit-exact metric values.
   \emph{Wyoming Weather Web Upper Air Sounding Archive},
   Laramie, WY.  Global radiosonde sounding archive used for
   tropospheric refractivity profiles in \S\ref{sec:tropo}.
-  \url{https://weather.uwyo.edu/upperair/sounding.html}.
+  \url{https://weather.uwyo.edu/upperair/sounding.shtml}.
 
 \bibitem{wsprlive}
   WSPR Live,
